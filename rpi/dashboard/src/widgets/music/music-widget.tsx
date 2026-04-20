@@ -535,7 +535,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             )}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate">{pl.name}</div>
-              <div className="text-xs text-[var(--muted-foreground)] truncate">{pl.tracks.total} tracks</div>
+              <div className="text-xs text-[var(--muted-foreground)] truncate">{pl.tracks?.total ?? 0} tracks</div>
             </div>
           </button>
         ))}
@@ -591,7 +591,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
           </button>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{playlist.name}</div>
-            <div className="text-xs text-[var(--muted-foreground)] truncate">{playlist.tracks.total} tracks</div>
+            <div className="text-xs text-[var(--muted-foreground)] truncate">{playlist.tracks?.total ? `${playlist.tracks.total} tracks` : 'Playlist'}</div>
           </div>
         </div>
 
@@ -637,9 +637,9 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
           ) : searchResults ? (
             <div className="p-2">
               {/* Tracks */}
-              {searchResults.tracks && searchResults.tracks.items.length > 0 && (
+              {searchResults.tracks && searchResults.tracks.items?.length > 0 && (
                 <SearchSection title="Tracks">
-                  {searchResults.tracks.items.map((track) => (
+                  {searchResults.tracks.items.filter(Boolean).map((track) => (
                     <button
                       key={track.id}
                       onClick={() => playTrack(track.uri)}
@@ -664,7 +664,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
               )}
 
               {/* Albums */}
-              {searchResults.albums && searchResults.albums.items.length > 0 && (
+              {searchResults.albums && searchResults.albums.items?.length > 0 && (
                 <SearchSection title="Albums">
                   {searchResults.albums.items.map((album) => (
                     <button
@@ -693,7 +693,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
               {/* Playlists */}
               {searchResults.playlists && searchResults.playlists.items.length > 0 && (
                 <SearchSection title="Playlists">
-                  {searchResults.playlists.items.map((pl) => (
+                  {searchResults.playlists.items.filter(Boolean).map((pl) => (
                     <button
                       key={pl.id}
                       onClick={() => {
@@ -702,7 +702,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
                       }}
                       className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-left min-h-[52px]"
                     >
-                      {pl.images[0]?.url ? (
+                      {pl.images?.[0]?.url ? (
                         <img src={pl.images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
                       ) : (
                         <div className="w-10 h-10 rounded bg-[var(--muted)] flex items-center justify-center shrink-0">
@@ -712,7 +712,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm truncate">{pl.name}</div>
                         <div className="text-xs text-[var(--muted-foreground)] truncate">
-                          {pl.tracks.total} tracks
+                          {pl.tracks?.total ?? ''} {pl.tracks?.total ? 'tracks' : 'Playlist'}
                         </div>
                       </div>
                     </button>
@@ -721,7 +721,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
               )}
 
               {/* No results */}
-              {!searchResults.tracks?.items.length && !searchResults.albums?.items.length && !searchResults.playlists?.items.length && (
+              {!searchResults.tracks?.items?.length && !searchResults.albums?.items?.length && !searchResults.playlists?.items?.length && (
                 <div className="p-4 text-sm text-[var(--muted-foreground)] text-center">No results found</div>
               )}
             </div>

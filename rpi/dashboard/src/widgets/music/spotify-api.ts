@@ -36,9 +36,9 @@ export interface SpotifyPlaylist {
   name: string
   description: string | null
   images: SpotifyImage[]
-  tracks: { total: number }
+  tracks?: { total: number }
   uri: string
-  owner: { display_name: string }
+  owner?: { display_name: string }
 }
 
 export interface SpotifyDevice {
