@@ -261,7 +261,7 @@ function StandardView({ weather, unitLabel, windUnitLabel, config }: {
 
       {/* Daily forecast */}
       {days > 0 && (
-        <div className="flex gap-2 mt-auto overflow-x-auto">
+        <div className="flex mt-auto">
           {weather.daily.slice(1, days + 1).map(day => (
             <DayColumn key={day.date} day={day} />
           ))}
@@ -374,7 +374,7 @@ function DetailedView({ weather, unitLabel, windUnitLabel, config }: {
 function HourlyView({ weather, unitLabel, config }: {
   weather: WeatherData; unitLabel: string; config: WeatherConfig
 }) {
-  const [hours, setHours] = useState<24 | 48>(24)
+  const [hours, setHours] = useState<6 | 12 | 24>(6)
 
   return (
     <div className="flex flex-col h-full px-4 py-3 gap-2">
@@ -386,24 +386,21 @@ function HourlyView({ weather, unitLabel, config }: {
           <span className="text-xs text-[var(--muted-foreground)]">Feels {weather.feelsLike}{unitLabel}</span>
         )}
         <div className="ml-auto flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
-          <button
-            onClick={() => setHours(24)}
-            className={`text-[10px] px-2 py-1 rounded transition-colors ${hours === 24 ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)]'}`}
-          >24h</button>
-          <button
-            onClick={() => setHours(48)}
-            className={`text-[10px] px-2 py-1 rounded transition-colors ${hours === 48 ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)]'}`}
-          >48h</button>
+          {([6, 12, 24] as const).map(h => (
+            <button
+              key={h}
+              onClick={() => setHours(h)}
+              className={`text-[10px] px-2 py-1 rounded transition-colors ${hours === h ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)]'}`}
+            >{h}h</button>
+          ))}
         </div>
       </div>
 
-      {/* Scrollable hourly timeline */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {weather.hourly.slice(0, hours).map((hour) => (
-            <HourlyColumn key={hour.time} hour={hour} unitLabel={unitLabel} showUv={config.showUvIndex} />
-          ))}
-        </div>
+      {/* Hourly columns — fill available space evenly, no scrollbar */}
+      <div className="flex-1 flex items-stretch min-h-0">
+        {weather.hourly.slice(0, hours).map((hour) => (
+          <HourlyColumn key={hour.time} hour={hour} unitLabel={unitLabel} showUv={config.showUvIndex} />
+        ))}
       </div>
     </div>
   )
@@ -430,8 +427,8 @@ function ConditionRow({ weather, unitLabel, windUnitLabel, config }: {
 function DayColumn({ day }: { day: DailyForecast }) {
   const info = getWeatherInfo(day.weatherCode)
   return (
-    <div className="flex flex-col items-center min-w-[48px] text-xs">
-      <span className="text-[var(--muted-foreground)]">{format(parseISO(day.date), 'EEE')}</span>
+    <div className="flex-1 flex flex-col items-center text-xs overflow-hidden">
+      <span className="text-[var(--muted-foreground)] truncate">{format(parseISO(day.date), 'EEE')}</span>
       <span className="text-base my-0.5">{info.icon}</span>
       <span>{day.tempMax}°</span>
       <span className="text-[var(--muted-foreground)]">{day.tempMin}°</span>
@@ -510,24 +507,21 @@ function HourlyChart({ hours }: { hours: HourlyForecast[] }) {
   )
 }
 
-function HourlyColumn({ hour, unitLabel, showUv }: {
-  hour: HourlyForecast; unitLabel: string; showUv: boolean
+function HourlyColumn({ hour, showUv }: {
+  hour: HourlyForecast; unitLabel?: string; showUv: boolean
 }) {
   const info = getWeatherInfo(hour.weatherCode, hour.isDay)
   return (
-    <div className="flex flex-col items-center min-w-[44px] text-xs shrink-0">
-      <span className="text-[var(--muted-foreground)]">{format(parseISO(hour.time), 'ha').toLowerCase()}</span>
+    <div className="flex-1 flex flex-col items-center justify-center text-xs overflow-hidden">
+      <span className="text-[var(--muted-foreground)] truncate">{format(parseISO(hour.time), 'ha').toLowerCase()}</span>
       <span className="text-lg my-0.5">{info.icon}</span>
-      <span className="font-medium">{hour.temperature}{unitLabel}</span>
+      <span className="font-medium">{hour.temperature}°</span>
       {hour.precipitationProbability > 0 && (
         <div className="flex items-center gap-0.5 text-blue-400 mt-0.5">
-          <Droplets size={10} />
+          <Droplets size={9} />
           <span className="text-[10px]">{hour.precipitationProbability}%</span>
         </div>
       )}
-      <span className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
-        {hour.windSpeed} {unitLabel.includes('F') ? 'mph' : 'km/h'}
-      </span>
       {showUv && hour.uvIndex > 0 && (
         <span className={`mt-0.5 inline-block w-2 h-2 rounded-full ${uvColor(hour.uvIndex)}`} title={`UV ${hour.uvIndex}`} />
       )}
