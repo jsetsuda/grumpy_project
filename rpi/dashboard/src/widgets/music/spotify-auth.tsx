@@ -8,8 +8,12 @@ const SCOPES = [
   'user-read-playback-state',
   'playlist-read-private',
   'playlist-read-collaborative',
+  'playlist-modify-public',
+  'playlist-modify-private',
   'user-read-recently-played',
   'user-library-read',
+  'streaming',
+  'app-remote-control',
 ].join(' ')
 
 interface SpotifyAuthProps {

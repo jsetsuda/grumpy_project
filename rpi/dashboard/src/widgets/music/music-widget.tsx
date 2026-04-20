@@ -314,15 +314,31 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     const token = await getToken()
     if (!token) return
     try {
+      // Find an active device, or pick the first available one
+      let deviceId: string | undefined
+      const devData = await getDevices(token)
+      const active = devData.devices.find(d => d.is_active)
+      if (active) {
+        deviceId = active.id
+      } else if (devData.devices.length > 0) {
+        deviceId = devData.devices[0].id
+        await transferPlayback(token, deviceId, false)
+      }
+
       if (contextUri && position !== undefined) {
-        await startPlayback(token, { context_uri: contextUri, offset: { position } })
+        await startPlayback(token, { context_uri: contextUri, offset: { position }, device_id: deviceId })
       } else {
-        await startPlayback(token, { uris: [uri] })
+        await startPlayback(token, { uris: [uri], device_id: deviceId })
       }
       setTimeout(fetchSpotifyNowPlaying, 500)
       setViewState({ view: 'now-playing' })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to play')
+      const msg = e instanceof Error ? e.message : 'Failed to play'
+      if (msg.includes('404')) {
+        setError('No active Spotify device. Open Spotify on a device first.')
+      } else {
+        setError(msg)
+      }
     }
   }, [getToken])
 
