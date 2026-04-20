@@ -79,13 +79,6 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
   const configRef = useRef(config.spotify)
   configRef.current = config.spotify
 
-  // Web Playback SDK — registers this browser as a Spotify Connect device
-  const { deviceId: localDeviceId, isReady: playerReady } = useSpotifyPlayer({
-    token: (provider === 'spotify' && config.spotify?.refreshToken) ? config.spotify?.accessToken || null : null,
-    deviceName: 'Grumpy Dashboard',
-    volume: 0.5,
-  })
-
   // Get valid access token, refreshing if needed
   const getToken = useCallback(async (): Promise<string | null> => {
     const spotify = configRef.current
@@ -98,6 +91,14 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     }
     return token ?? null
   }, [])
+
+  // Web Playback SDK — registers this browser as a Spotify Connect device
+  const { deviceId: localDeviceId, isReady: playerReady } = useSpotifyPlayer({
+    getToken,
+    enabled: provider === 'spotify' && !!config.spotify?.refreshToken,
+    deviceName: 'Grumpy Dashboard',
+    volume: 0.5,
+  })
 
   useEffect(() => {
     if (provider === 'none') return

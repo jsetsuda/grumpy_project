@@ -56,10 +56,10 @@ declare global {
 }
 
 interface UseSpotifyPlayerOptions {
-  token: string | null
+  getToken: () => Promise<string | null>
+  enabled: boolean
   deviceName?: string
   volume?: number
-  onReady?: (deviceId: string) => void
 }
 
 interface SpotifyPlayerState {
@@ -70,18 +70,18 @@ interface SpotifyPlayerState {
   currentState: SpotifyPlaybackState | null
 }
 
-export function useSpotifyPlayer({ token, deviceName = 'Grumpy Dashboard', volume = 0.5, onReady }: UseSpotifyPlayerOptions): SpotifyPlayerState {
+export function useSpotifyPlayer({ getToken, enabled, deviceName = 'Grumpy Dashboard', volume = 0.5 }: UseSpotifyPlayerOptions): SpotifyPlayerState {
   const [player, setPlayer] = useState<SpotifyPlayer | null>(null)
   const [deviceId, setDeviceId] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [isActive, setIsActive] = useState(false)
   const [currentState, setCurrentState] = useState<SpotifyPlaybackState | null>(null)
   const playerRef = useRef<SpotifyPlayer | null>(null)
-  const onReadyRef = useRef(onReady)
-  onReadyRef.current = onReady
+  const getTokenRef = useRef(getToken)
+  getTokenRef.current = getToken
 
   useEffect(() => {
-    if (!token) return
+    if (!enabled) return
 
     let mounted = true
 
@@ -91,20 +91,24 @@ export function useSpotifyPlayer({ token, deviceName = 'Grumpy Dashboard', volum
       const newPlayer = new window.Spotify.Player({
         name: deviceName,
         getOAuthToken: (cb: (token: string) => void) => {
-          cb(token!)
+          // The SDK calls this whenever it needs a token (including refresh)
+          getTokenRef.current().then(token => {
+            if (token) cb(token)
+          })
         },
         volume,
       })
 
       newPlayer.addListener('ready', ({ device_id }: { device_id: string }) => {
         if (!mounted) return
+        console.log('Spotify Web Player ready, device ID:', device_id)
         setDeviceId(device_id)
         setIsReady(true)
-        onReadyRef.current?.(device_id)
       })
 
       newPlayer.addListener('not_ready', () => {
         if (!mounted) return
+        console.log('Spotify Web Player not ready')
         setIsReady(false)
         setDeviceId(null)
       })
@@ -124,10 +128,17 @@ export function useSpotifyPlayer({ token, deviceName = 'Grumpy Dashboard', volum
       })
 
       newPlayer.addListener('account_error', ({ message }: { message: string }) => {
-        console.error('Spotify player account error:', message)
+        console.error('Spotify player account error (Premium required):', message)
       })
 
-      newPlayer.connect()
+      newPlayer.connect().then(success => {
+        if (success) {
+          console.log('Spotify Web Player connected')
+        } else {
+          console.error('Spotify Web Player failed to connect')
+        }
+      })
+
       playerRef.current = newPlayer
       setPlayer(newPlayer)
     }
@@ -147,7 +158,7 @@ export function useSpotifyPlayer({ token, deviceName = 'Grumpy Dashboard', volum
       setIsReady(false)
       setIsActive(false)
     }
-  }, [token, deviceName, volume])
+  }, [enabled, deviceName, volume])
 
   return { player, deviceId, isReady, isActive, currentState }
 }
