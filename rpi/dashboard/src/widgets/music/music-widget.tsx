@@ -544,7 +544,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             )}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate">{pl.name}</div>
-              <div className="text-xs text-[var(--muted-foreground)] truncate">{pl.tracks?.total ?? 0} tracks</div>
+              <div className="text-xs text-[var(--muted-foreground)] truncate">{pl.tracks?.total ?? pl.items?.total ?? 0} tracks</div>
             </div>
           </button>
         ))}
@@ -600,7 +600,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
           </button>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{playlist.name}</div>
-            <div className="text-xs text-[var(--muted-foreground)] truncate">{playlist.tracks?.total ? `${playlist.tracks.total} tracks` : 'Playlist'}</div>
+            <div className="text-xs text-[var(--muted-foreground)] truncate">{(playlist.tracks?.total || playlist.items?.total) ? `${playlist.tracks?.total ?? playlist.items?.total} tracks` : 'Playlist'}</div>
           </div>
         </div>
 
@@ -721,7 +721,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm truncate">{pl.name}</div>
                         <div className="text-xs text-[var(--muted-foreground)] truncate">
-                          {pl.tracks?.total ?? ''} {pl.tracks?.total ? 'tracks' : 'Playlist'}
+                          {pl.tracks?.total ?? pl.items?.total ?? ''} {(pl.tracks?.total || pl.items?.total) ? 'tracks' : 'Playlist'}
                         </div>
                       </div>
                     </button>

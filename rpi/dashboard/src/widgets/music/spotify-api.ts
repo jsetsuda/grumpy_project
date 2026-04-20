@@ -37,6 +37,7 @@ export interface SpotifyPlaylist {
   description: string | null
   images: SpotifyImage[]
   tracks?: { total: number }
+  items?: { total: number }
   uri: string
   owner?: { display_name: string }
 }
