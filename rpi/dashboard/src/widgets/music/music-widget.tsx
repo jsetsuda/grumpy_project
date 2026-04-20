@@ -472,6 +472,33 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     )
   }
 
+  // Seek to a position in the track
+  const seekTo = useCallback(async (positionMs: number) => {
+    const token = await getToken()
+    if (!token) return
+    try {
+      // If nothing is actively playing, resume first then seek
+      if (!nowPlaying?.isPlaying) {
+        await fetch('https://api.spotify.com/v1/me/player/play', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        })
+      }
+      const params = new URLSearchParams({ position_ms: String(Math.round(positionMs)) })
+      if (localDeviceId) params.set('device_id', localDeviceId)
+      const res = await fetch(`https://api.spotify.com/v1/me/player/seek?${params}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        console.error('Seek failed:', res.status, await res.text())
+      }
+      setTimeout(fetchSpotifyNowPlaying, 300)
+    } catch (e) {
+      console.error('Seek error:', e)
+    }
+  }, [getToken, nowPlaying?.isPlaying, localDeviceId])
+
   // --- Main renders ---
   return (
     <div className="flex flex-col h-full">
@@ -511,33 +538,6 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
       </div>
     </div>
   )
-
-  // Seek to a position in the track
-  const seekTo = useCallback(async (positionMs: number) => {
-    const token = await getToken()
-    if (!token) return
-    try {
-      // If nothing is actively playing, resume first then seek
-      if (!nowPlaying?.isPlaying) {
-        await fetch('https://api.spotify.com/v1/me/player/play', {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        })
-      }
-      const params = new URLSearchParams({ position_ms: String(Math.round(positionMs)) })
-      if (localDeviceId) params.set('device_id', localDeviceId)
-      const res = await fetch(`https://api.spotify.com/v1/me/player/seek?${params}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) {
-        console.error('Seek failed:', res.status, await res.text())
-      }
-      setTimeout(fetchSpotifyNowPlaying, 300)
-    } catch (e) {
-      console.error('Seek error:', e)
-    }
-  }, [getToken, nowPlaying?.isPlaying, localDeviceId])
 
   // --- Now Playing View ---
   function renderNowPlaying() {
