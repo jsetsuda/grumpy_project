@@ -154,8 +154,8 @@ export function WeatherWidget({ config: rawConfig, onConfigChange }: WidgetProps
 
   return (
     <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
-      {/* View/Forecast toggles — only show in standard and detailed */}
-      {(resolvedMode === 'standard' || resolvedMode === 'detailed') && (
+      {/* View/Forecast toggles — show on all modes except compact */}
+      {resolvedMode !== 'compact' && (
         <div className="flex items-center justify-between px-3 pt-2 shrink-0">
           <div className="flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
             {(['standard', 'hourly', 'detailed'] as DisplayMode[]).map(mode => (
@@ -172,21 +172,23 @@ export function WeatherWidget({ config: rawConfig, onConfigChange }: WidgetProps
               </button>
             ))}
           </div>
-          <div className="flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
-            {([0, 3, 5, 7] as ForecastDays[]).map(days => (
-              <button
-                key={days}
-                onClick={() => onConfigChange({ forecastDays: days })}
-                className={`text-[10px] px-1.5 py-1 rounded transition-colors ${
-                  forecastDays === days
-                    ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-                    : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
-                }`}
-              >
-                {days === 0 ? 'Off' : `${days}d`}
-              </button>
-            ))}
-          </div>
+          {resolvedMode !== 'hourly' && (
+            <div className="flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
+              {([0, 3, 5, 7] as ForecastDays[]).map(days => (
+                <button
+                  key={days}
+                  onClick={() => onConfigChange({ forecastDays: days })}
+                  className={`text-[10px] px-1.5 py-1 rounded transition-colors ${
+                    forecastDays === days
+                      ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  {days === 0 ? 'Off' : `${days}d`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
