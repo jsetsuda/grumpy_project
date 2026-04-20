@@ -46,6 +46,37 @@ function configApiPlugin(): Plugin {
         }
       })
 
+      // Proxy for fetching external URLs (iCal, etc.) to bypass CORS
+      server.middlewares.use('/api/proxy', async (req, res) => {
+        if (req.method !== 'GET') {
+          res.statusCode = 405
+          res.end('Method not allowed')
+          return
+        }
+
+        const url = new URL(req.url || '', 'http://localhost').searchParams.get('url')
+        if (!url) {
+          res.statusCode = 400
+          res.end('Missing url parameter')
+          return
+        }
+
+        try {
+          const proxyRes = await fetch(url)
+          if (!proxyRes.ok) {
+            res.statusCode = proxyRes.status
+            res.end(`Upstream error: ${proxyRes.status}`)
+            return
+          }
+          const text = await proxyRes.text()
+          res.setHeader('Content-Type', proxyRes.headers.get('content-type') || 'text/plain')
+          res.end(text)
+        } catch (e) {
+          res.statusCode = 500
+          res.end(`Proxy fetch failed: ${e}`)
+        }
+      })
+
       server.middlewares.use('/api/config', async (req, res) => {
         if (req.method === 'GET') {
           if (fs.existsSync(CONFIG_PATH)) {

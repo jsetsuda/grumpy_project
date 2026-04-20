@@ -33,7 +33,9 @@ export function CalendarWidget({ config }: WidgetProps<CalendarConfig>) {
 
         for (const source of config.sources) {
           try {
-            const res = await fetch(source.url)
+            // Proxy through server to bypass CORS
+            const proxyUrl = `/api/proxy?url=${encodeURIComponent(source.url)}`
+            const res = await fetch(proxyUrl)
             if (!res.ok) continue
             const text = await res.text()
             const parsed = parseIcal(text)
