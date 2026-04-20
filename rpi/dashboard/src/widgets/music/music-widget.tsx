@@ -580,15 +580,21 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
         {/* Seekable progress bar */}
         <div className="mt-3 mb-2">
           <div
-            className="h-3 bg-[var(--muted)] rounded-full overflow-hidden cursor-pointer relative group"
+            className="h-4 bg-[var(--muted)] rounded-full cursor-pointer relative flex items-center"
             onClick={handleSeek}
+            role="slider"
+            aria-valuenow={displayTrack.progress}
+            aria-valuemax={displayTrack.duration}
           >
             <div
-              className="absolute inset-y-0 left-0 bg-[var(--primary)] rounded-full transition-all duration-1000"
+              className="absolute inset-y-1 left-0 bg-[var(--primary)] rounded-full pointer-events-none"
               style={{ width: `${progressPct}%` }}
             />
-            {/* Hover indicator */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            {/* Seek handle */}
+            <div
+              className="absolute top-0.5 w-3 h-3 bg-white rounded-full shadow pointer-events-none"
+              style={{ left: `calc(${progressPct}% - 6px)` }}
+            />
           </div>
           <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-1">
             <span>{formatTime(displayTrack.progress)}</span>
