@@ -243,6 +243,17 @@ function WeatherSettings({ config, onChange }: { config: Record<string, any>; on
           ]}
         />
       </SettingsField>
+      <SettingsField label="Forecast Layout">
+        <SelectInput
+          value={config.forecastLayout || 'row'}
+          onChange={v => onChange({ forecastLayout: v })}
+          options={[
+            { value: 'row', label: 'Row (side by side)' },
+            { value: 'list', label: 'List (top to bottom)' },
+            { value: 'grid', label: 'Grid (cards)' },
+          ]}
+        />
+      </SettingsField>
       <Toggle checked={config.showFeelsLike ?? true} onChange={v => onChange({ showFeelsLike: v })} label="Show feels like temperature" />
       <Toggle checked={config.showWind ?? true} onChange={v => onChange({ showWind: v })} label="Show wind" />
       <Toggle checked={config.showHumidity ?? true} onChange={v => onChange({ showHumidity: v })} label="Show humidity" />

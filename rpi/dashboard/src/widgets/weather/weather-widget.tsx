@@ -7,6 +7,7 @@ import type { WidgetProps } from '../types'
 export type DisplayMode = 'auto' | 'compact' | 'standard' | 'detailed' | 'hourly'
 
 export type ForecastDays = 0 | 3 | 5 | 7
+export type ForecastLayout = 'row' | 'list' | 'grid'
 
 export interface WeatherConfig {
   lat: number
@@ -18,6 +19,7 @@ export interface WeatherConfig {
   showHumidity: boolean
   showUvIndex: boolean
   forecastDays: ForecastDays
+  forecastLayout: ForecastLayout
 }
 
 const DEFAULTS: Omit<WeatherConfig, 'lat' | 'lon'> = {
@@ -28,6 +30,7 @@ const DEFAULTS: Omit<WeatherConfig, 'lat' | 'lon'> = {
   showHumidity: true,
   showUvIndex: true,
   forecastDays: 5,
+  forecastLayout: 'row',
 }
 
 function resolveConfig(config: Partial<WeatherConfig>): WeatherConfig {
@@ -172,7 +175,7 @@ export function WeatherWidget({ config: rawConfig, onConfigChange }: WidgetProps
               </button>
             ))}
           </div>
-          {resolvedMode !== 'hourly' && (
+          <div className="flex gap-1">
             <div className="flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
               {([0, 3, 5, 7] as ForecastDays[]).map(days => (
                 <button
@@ -188,7 +191,24 @@ export function WeatherWidget({ config: rawConfig, onConfigChange }: WidgetProps
                 </button>
               ))}
             </div>
-          )}
+            {forecastDays > 0 && (
+              <div className="flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
+                {(['row', 'list', 'grid'] as ForecastLayout[]).map(layout => (
+                  <button
+                    key={layout}
+                    onClick={() => onConfigChange({ forecastLayout: layout })}
+                    className={`text-[10px] px-1.5 py-1 rounded transition-colors capitalize ${
+                      (config.forecastLayout || 'row') === layout
+                        ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    {layout}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -202,7 +222,7 @@ export function WeatherWidget({ config: rawConfig, onConfigChange }: WidgetProps
         <DetailedView weather={weather} unitLabel={unitLabel} windUnitLabel={windUnitLabel} config={config} />
       )}
       {resolvedMode === 'hourly' && (
-        <HourlyView weather={weather} unitLabel={unitLabel} config={config} />
+        <HourlyView weather={weather} unitLabel={unitLabel} windUnitLabel={windUnitLabel} config={config} />
       )}
       {error && (
         <div className="text-xs text-yellow-500 px-4 pb-1">Update failed, showing cached data</div>
@@ -261,11 +281,12 @@ function StandardView({ weather, unitLabel, windUnitLabel, config }: {
 
       {/* Daily forecast */}
       {days > 0 && (
-        <div className="flex mt-auto">
-          {weather.daily.slice(1, days + 1).map(day => (
-            <DayColumn key={day.date} day={day} />
-          ))}
-        </div>
+        <ForecastSection
+          days={weather.daily.slice(1, days + 1)}
+          layout={config.forecastLayout || 'row'}
+          config={config}
+          windUnitLabel={windUnitLabel}
+        />
       )}
     </div>
   )
@@ -281,7 +302,7 @@ function DetailedView({ weather, unitLabel, windUnitLabel, config }: {
   const next24h = weather.hourly.slice(0, 24)
 
   return (
-    <div className="flex flex-col h-full px-4 py-3 gap-3 overflow-y-auto">
+    <div className="flex flex-col h-full px-4 py-3 gap-3 overflow-hidden">
       {/* Current conditions */}
       <div className="flex items-start gap-4">
         <div className="flex items-center gap-3">
@@ -356,14 +377,12 @@ function DetailedView({ weather, unitLabel, windUnitLabel, config }: {
 
       {/* Daily forecast */}
       {days > 0 && (
-        <div>
-          <div className="text-xs font-medium text-[var(--muted-foreground)] mb-1">{days}-Day Forecast</div>
-          <div className="space-y-1">
-            {weather.daily.slice(1, days + 1).map(day => (
-              <DailyRow key={day.date} day={day} config={config} windUnitLabel={windUnitLabel} />
-            ))}
-          </div>
-        </div>
+        <ForecastSection
+          days={weather.daily.slice(1, days + 1)}
+          layout={config.forecastLayout || 'row'}
+          config={config}
+          windUnitLabel={windUnitLabel}
+        />
       )}
     </div>
   )
@@ -371,8 +390,8 @@ function DetailedView({ weather, unitLabel, windUnitLabel, config }: {
 
 // --- Hourly Mode ---
 
-function HourlyView({ weather, unitLabel, config }: {
-  weather: WeatherData; unitLabel: string; config: WeatherConfig
+function HourlyView({ weather, unitLabel, windUnitLabel, config }: {
+  weather: WeatherData; unitLabel: string; windUnitLabel: string; config: WeatherConfig
 }) {
   const [hours, setHours] = useState<6 | 12 | 24>(6)
 
@@ -382,9 +401,6 @@ function HourlyView({ weather, unitLabel, config }: {
       <div className="flex items-center gap-2 shrink-0">
         <span className="text-2xl">{weather.icon}</span>
         <span className="text-xl font-light">{weather.temperature}{unitLabel}</span>
-        {config.showFeelsLike && (
-          <span className="text-xs text-[var(--muted-foreground)]">Feels {weather.feelsLike}{unitLabel}</span>
-        )}
         <div className="ml-auto flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
           {([6, 12, 24] as const).map(h => (
             <button
@@ -396,10 +412,13 @@ function HourlyView({ weather, unitLabel, config }: {
         </div>
       </div>
 
+      {/* Condition info */}
+      <ConditionRow weather={weather} unitLabel={unitLabel} windUnitLabel={windUnitLabel} config={config} />
+
       {/* Hourly columns — fill available space evenly, no scrollbar */}
       <div className="flex-1 flex items-stretch min-h-0">
         {weather.hourly.slice(0, hours).map((hour) => (
-          <HourlyColumn key={hour.time} hour={hour} unitLabel={unitLabel} showUv={config.showUvIndex} />
+          <HourlyColumn key={hour.time} hour={hour} showUv={config.showUvIndex} />
         ))}
       </div>
     </div>
@@ -407,6 +426,49 @@ function HourlyView({ weather, unitLabel, config }: {
 }
 
 // --- Shared Components ---
+
+function ForecastSection({ days, layout, config, windUnitLabel }: {
+  days: DailyForecast[]; layout: ForecastLayout; config: WeatherConfig; windUnitLabel: string
+}) {
+  if (layout === 'list') {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 mt-2">
+        {days.map(day => (
+          <DailyRow key={day.date} day={day} config={config} windUnitLabel={windUnitLabel} />
+        ))}
+      </div>
+    )
+  }
+
+  if (layout === 'grid') {
+    return (
+      <div className="flex-1 grid grid-cols-3 gap-1.5 mt-2 min-h-0 auto-rows-fr">
+        {days.map(day => {
+          const info = getWeatherInfo(day.weatherCode)
+          return (
+            <div key={day.date} className="flex flex-col items-center justify-center bg-[var(--muted)] rounded-lg p-2 text-xs overflow-hidden">
+              <span className="text-[var(--muted-foreground)]">{format(parseISO(day.date), 'EEE')}</span>
+              <span className="text-lg my-0.5">{info.icon}</span>
+              <span className="font-medium">{day.tempMax}° / {day.tempMin}°</span>
+              {day.precipitationProbabilityMax > 0 && (
+                <span className="text-blue-400 text-[10px]">{day.precipitationProbabilityMax}%</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // Default: row (side by side, fill evenly)
+  return (
+    <div className="flex mt-auto">
+      {days.map(day => (
+        <DayColumn key={day.date} day={day} />
+      ))}
+    </div>
+  )
+}
 
 function ConditionRow({ weather, unitLabel, windUnitLabel, config }: {
   weather: WeatherData; unitLabel: string; windUnitLabel: string; config: WeatherConfig
@@ -482,7 +544,7 @@ function HourlyChart({ hours }: { hours: HourlyForecast[] }) {
   const range = maxT - minT || 1
 
   return (
-    <div className="flex gap-1 overflow-x-auto pb-1">
+    <div className="flex gap-1  pb-1">
       {hours.filter((_, i) => i % 2 === 0).map((hour) => {
         const info = getWeatherInfo(hour.weatherCode, hour.isDay)
         const heightPct = ((hour.temperature - minT) / range) * 100
