@@ -54,6 +54,21 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [viewState, setViewState] = useState<ViewState>({ view: 'now-playing' })
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Auto-return to now-playing after 20s of inactivity on other tabs
+  useEffect(() => {
+    if (viewState.view === 'now-playing') {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
+      return
+    }
+    inactivityTimer.current = setTimeout(() => {
+      setViewState({ view: 'now-playing' })
+    }, 20000)
+    return () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
+    }
+  }, [viewState])
 
   // Browse state
   const [browseTab, setBrowseTab] = useState<BrowseTab>('playlists')
