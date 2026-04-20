@@ -1,0 +1,36 @@
+import type { DashboardConfig } from './types'
+
+export const defaultConfig: DashboardConfig = {
+  version: 1,
+  grid: {
+    cols: 12,
+    rowHeight: 80,
+    margin: [12, 12],
+  },
+  widgets: [
+    {
+      id: 'clock-1',
+      type: 'clock',
+      layout: { x: 0, y: 0, w: 4, h: 3 },
+      config: { format24h: false, showSeconds: false },
+    },
+    {
+      id: 'weather-1',
+      type: 'weather',
+      layout: { x: 4, y: 0, w: 4, h: 3 },
+      config: { lat: 42.3314, lon: -83.0458, units: 'imperial' },
+    },
+    {
+      id: 'calendar-1',
+      type: 'calendar',
+      layout: { x: 8, y: 0, w: 4, h: 4 },
+      config: { sources: [], maxEvents: 8 },
+    },
+    {
+      id: 'todo-1',
+      type: 'todo',
+      layout: { x: 0, y: 3, w: 4, h: 4 },
+      config: { title: 'To Do' },
+    },
+  ],
+}
