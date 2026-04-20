@@ -3,6 +3,9 @@ import { ClockWidget } from './clock/clock-widget'
 import { WeatherWidget } from './weather/weather-widget'
 import { CalendarWidget } from './calendar/calendar-widget'
 import { TodoWidget } from './todo/todo-widget'
+import { MusicWidget } from './music/music-widget'
+import { PhotosWidget } from './photos/photos-widget'
+import { HaEntitiesWidget } from './ha-entities/ha-entities-widget'
 
 const registry = new Map<string, WidgetDefinition>()
 
@@ -42,6 +45,33 @@ register({
   name: 'To Do',
   description: 'Task list',
   component: TodoWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'music',
+  name: 'Music',
+  description: 'Now playing from Spotify, YouTube Music, or Apple Music',
+  component: MusicWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'photos',
+  name: 'Photos',
+  description: 'Photo slideshow from Immich or local folder',
+  component: PhotosWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'ha-entities',
+  name: 'Home Assistant',
+  description: 'Control lights, switches, and view sensors',
+  component: HaEntitiesWidget,
   defaultSize: { w: 4, h: 4 },
   minSize: { w: 3, h: 3 },
 })

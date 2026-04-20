@@ -32,5 +32,17 @@ export const defaultConfig: DashboardConfig = {
       layout: { x: 0, y: 3, w: 4, h: 4 },
       config: { title: 'To Do' },
     },
+    {
+      id: 'music-1',
+      type: 'music',
+      layout: { x: 4, y: 3, w: 4, h: 4 },
+      config: { provider: 'none' },
+    },
+    {
+      id: 'photos-1',
+      type: 'photos',
+      layout: { x: 8, y: 4, w: 4, h: 4 },
+      config: { provider: 'none', interval: 30, transition: 'fade' },
+    },
   ],
 }

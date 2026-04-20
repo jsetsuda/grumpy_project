@@ -1,13 +1,15 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { GridLayout, type LayoutItem, type Layout } from 'react-grid-layout'
-import { Lock, Unlock } from 'lucide-react'
+import { Lock, Unlock, Settings } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WidgetFrame } from './widget-frame'
+import { SettingsPanel } from './settings-panel'
 
 export function DashboardGrid() {
   const { config, updateWidgetConfig, updateAllLayouts } = useConfig()
   const [editMode, setEditMode] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [width, setWidth] = useState(window.innerWidth - 24)
 
   useEffect(() => {
@@ -36,14 +38,23 @@ export function DashboardGrid() {
 
   return (
     <div className="h-screen w-screen p-3 relative">
-      {/* Edit mode toggle */}
-      <button
-        onClick={() => setEditMode(!editMode)}
-        className="absolute top-3 right-3 z-50 p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--accent)] transition-colors"
-        title={editMode ? 'Lock layout' : 'Edit layout'}
-      >
-        {editMode ? <Unlock size={18} /> : <Lock size={18} />}
-      </button>
+      {/* Toolbar */}
+      <div className="absolute top-3 right-3 z-50 flex gap-2">
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--accent)] transition-colors"
+          title="Settings"
+        >
+          <Settings size={18} />
+        </button>
+        <button
+          onClick={() => setEditMode(!editMode)}
+          className="p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--accent)] transition-colors"
+          title={editMode ? 'Lock layout' : 'Edit layout'}
+        >
+          {editMode ? <Unlock size={18} /> : <Lock size={18} />}
+        </button>
+      </div>
 
       <GridLayout
         width={width}
@@ -84,6 +95,9 @@ export function DashboardGrid() {
           Drag and resize widgets · Tap the lock to save
         </div>
       )}
+
+      {/* Settings panel */}
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
