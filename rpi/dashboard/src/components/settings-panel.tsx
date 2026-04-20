@@ -218,6 +218,33 @@ function WeatherSettings({ config, onChange }: { config: Record<string, any>; on
           ]}
         />
       </SettingsField>
+      <SettingsField label="Display Mode">
+        <SelectInput
+          value={config.displayMode || 'auto'}
+          onChange={v => onChange({ displayMode: v })}
+          options={[
+            { value: 'auto', label: 'Auto (based on widget size)' },
+            { value: 'compact', label: 'Compact' },
+            { value: 'standard', label: 'Standard' },
+            { value: 'detailed', label: 'Detailed' },
+            { value: 'hourly', label: 'Hourly' },
+          ]}
+        />
+      </SettingsField>
+      <SettingsField label="Forecast Days">
+        <SelectInput
+          value={String(config.forecastDays || 7)}
+          onChange={v => onChange({ forecastDays: parseInt(v) })}
+          options={[
+            { value: '5', label: '5 days' },
+            { value: '7', label: '7 days' },
+          ]}
+        />
+      </SettingsField>
+      <Toggle checked={config.showFeelsLike ?? true} onChange={v => onChange({ showFeelsLike: v })} label="Show feels like temperature" />
+      <Toggle checked={config.showWind ?? true} onChange={v => onChange({ showWind: v })} label="Show wind" />
+      <Toggle checked={config.showHumidity ?? true} onChange={v => onChange({ showHumidity: v })} label="Show humidity" />
+      <Toggle checked={config.showUvIndex ?? true} onChange={v => onChange({ showUvIndex: v })} label="Show UV index" />
     </div>
   )
 }
