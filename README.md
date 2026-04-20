@@ -107,18 +107,21 @@ HA is always in the loop so it can apply policy, log, and route.
 
 ## Repo Layout
 
+Organized by machine — clone the repo anywhere, work in the directory for
+the machine you're on.
+
 ```
 grumpy/
 ├── README.md              This file — overall project scope
 ├── CLAUDE.md              Context and conventions for AI agents
-├── backend/               Phase 1-2: voice stack + LLM (runs on backend VM)
+├── backend/               Backend VM: voice stack + LLM services
 │   ├── docker-compose.yml
 │   ├── .env.example
 │   ├── manage.sh
 │   └── README.md
-├── dashboard/             Phase 3: React kiosk UI (built on workstation, served anywhere)
+├── homeassistant/         HA VM: integration configs, blueprints, automations
 │   └── README.md
-├── pi-client/             Phase 4: Pi provisioning (kiosk scripts, autostart)
+├── rpi/                   Raspberry Pi: dashboard app + kiosk provisioning
 │   └── README.md
 └── docs/                  Architecture diagrams, decision records, runbooks
 ```
