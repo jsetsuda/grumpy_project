@@ -10,6 +10,7 @@ import {
   search as spotifySearch, getDevices, transferPlayback, startPlayback,
   type SpotifyTrack, type SpotifyPlaylist, type SpotifyDevice, type SpotifySearchResults,
 } from './spotify-api'
+import { useSpotifyPlayer } from './use-spotify-player'
 
 export interface MusicConfig {
   provider: 'spotify' | 'youtube' | 'apple' | 'none'
@@ -77,6 +78,13 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
   // Keep a ref to config.spotify so getToken always reads fresh state
   const configRef = useRef(config.spotify)
   configRef.current = config.spotify
+
+  // Web Playback SDK — registers this browser as a Spotify Connect device
+  const { deviceId: localDeviceId, isReady: playerReady } = useSpotifyPlayer({
+    token: (provider === 'spotify' && config.spotify?.refreshToken) ? config.spotify?.accessToken || null : null,
+    deviceName: 'Grumpy Dashboard',
+    volume: 0.5,
+  })
 
   // Get valid access token, refreshing if needed
   const getToken = useCallback(async (): Promise<string | null> => {
@@ -317,12 +325,15 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     const token = await getToken()
     if (!token) return
     try {
-      // Find an active device, or pick the first available one
+      // Find an active device, prefer local player, or pick the first available one
       let deviceId: string | undefined
       const devData = await getDevices(token)
       const active = devData.devices.find(d => d.is_active)
       if (active) {
         deviceId = active.id
+      } else if (localDeviceId && playerReady) {
+        deviceId = localDeviceId
+        await transferPlayback(token, deviceId, false)
       } else if (devData.devices.length > 0) {
         deviceId = devData.devices[0].id
         await transferPlayback(token, deviceId, false)
