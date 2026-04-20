@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Music } from 'lucide-react'
+import { SpotifyAuth } from './spotify-auth'
 import type { WidgetProps } from '../types'
 
 export interface MusicConfig {
@@ -151,6 +152,26 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
         <Music size={32} className="mb-2 opacity-50" />
         <p className="text-sm">No music service connected</p>
         <p className="text-xs mt-1">Configure in widget settings</p>
+      </div>
+    )
+  }
+
+  if (provider === 'spotify' && !config.spotify?.refreshToken) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] px-4">
+        <Music size={32} className="mb-2 opacity-50" />
+        <p className="text-sm mb-3">Spotify not authorized</p>
+        {config.spotify?.clientId && config.spotify?.clientSecret ? (
+          <SpotifyAuth
+            clientId={config.spotify.clientId}
+            clientSecret={config.spotify.clientSecret}
+            onAuthorized={(refreshToken) =>
+              onConfigChange({ spotify: { clientId: config.spotify!.clientId, clientSecret: config.spotify!.clientSecret, refreshToken } })
+            }
+          />
+        ) : (
+          <p className="text-xs">Add Client ID and Secret in settings</p>
+        )}
       </div>
     )
   }

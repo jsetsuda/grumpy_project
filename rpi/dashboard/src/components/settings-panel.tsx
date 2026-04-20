@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
+import { SpotifyAuth } from '@/widgets/music/spotify-auth'
 import type { WidgetInstance } from '@/config/types'
 
 interface SettingsPanelProps {
@@ -304,8 +305,8 @@ function MusicSettings({ config, onChange }: { config: Record<string, any>; onCh
       {provider === 'spotify' && (
         <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">
           <p className="text-xs text-[var(--muted-foreground)] mb-2">
-            Create a Spotify app at developer.spotify.com. Set redirect URI to any localhost URL.
-            Use the Authorization Code flow to get a refresh token.
+            Create a Spotify app at developer.spotify.com. Set redirect URI to{' '}
+            <code className="text-xs">http://127.0.0.1:5173/spotify-callback</code>
           </p>
           <SettingsField label="Client ID">
             <TextInput value={spotify.clientId || ''} onChange={v => onChange({ spotify: { ...spotify, clientId: v } })} placeholder="Spotify Client ID" />
@@ -313,6 +314,13 @@ function MusicSettings({ config, onChange }: { config: Record<string, any>; onCh
           <SettingsField label="Client Secret">
             <TextInput value={spotify.clientSecret || ''} onChange={v => onChange({ spotify: { ...spotify, clientSecret: v } })} type="password" placeholder="Spotify Client Secret" />
           </SettingsField>
+          {spotify.clientId && spotify.clientSecret && !spotify.refreshToken && (
+            <SpotifyAuth
+              clientId={spotify.clientId}
+              clientSecret={spotify.clientSecret}
+              onAuthorized={(refreshToken) => onChange({ spotify: { ...spotify, refreshToken } })}
+            />
+          )}
           <SettingsField label="Refresh Token">
             <TextInput value={spotify.refreshToken || ''} onChange={v => onChange({ spotify: { ...spotify, refreshToken: v } })} type="password" placeholder="Spotify Refresh Token" />
           </SettingsField>
