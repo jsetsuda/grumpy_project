@@ -233,9 +233,11 @@ function WeatherSettings({ config, onChange }: { config: Record<string, any>; on
       </SettingsField>
       <SettingsField label="Forecast Days">
         <SelectInput
-          value={String(config.forecastDays || 7)}
+          value={String(config.forecastDays ?? 5)}
           onChange={v => onChange({ forecastDays: parseInt(v) })}
           options={[
+            { value: '0', label: 'None' },
+            { value: '3', label: '3 days' },
             { value: '5', label: '5 days' },
             { value: '7', label: '7 days' },
           ]}

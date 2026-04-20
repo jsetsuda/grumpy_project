@@ -6,6 +6,8 @@ import type { WidgetProps } from '../types'
 
 export type DisplayMode = 'auto' | 'compact' | 'standard' | 'detailed' | 'hourly'
 
+export type ForecastDays = 0 | 3 | 5 | 7
+
 export interface WeatherConfig {
   lat: number
   lon: number
@@ -15,7 +17,7 @@ export interface WeatherConfig {
   showWind: boolean
   showHumidity: boolean
   showUvIndex: boolean
-  forecastDays: 5 | 7
+  forecastDays: ForecastDays
 }
 
 const DEFAULTS: Omit<WeatherConfig, 'lat' | 'lon'> = {
@@ -25,7 +27,7 @@ const DEFAULTS: Omit<WeatherConfig, 'lat' | 'lon'> = {
   showWind: true,
   showHumidity: true,
   showUvIndex: true,
-  forecastDays: 7,
+  forecastDays: 5,
 }
 
 function resolveConfig(config: Partial<WeatherConfig>): WeatherConfig {
@@ -64,7 +66,7 @@ function autoDetectMode(w: number, h: number): ResolvedMode {
 
 // --- Main Widget ---
 
-export function WeatherWidget({ config: rawConfig }: WidgetProps<WeatherConfig>) {
+export function WeatherWidget({ config: rawConfig, onConfigChange }: WidgetProps<WeatherConfig>) {
   const config = resolveConfig(rawConfig)
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -145,11 +147,49 @@ export function WeatherWidget({ config: rawConfig }: WidgetProps<WeatherConfig>)
     )
   }
 
-  const unitLabel = config.units === 'imperial' ? '\u00B0F' : '\u00B0C'
+  const unitLabel = config.units === 'imperial' ? '°F' : '°C'
   const windUnitLabel = config.units === 'imperial' ? 'mph' : 'km/h'
+
+  const forecastDays = config.forecastDays ?? 5
 
   return (
     <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
+      {/* View/Forecast toggles — only show in standard and detailed */}
+      {(resolvedMode === 'standard' || resolvedMode === 'detailed') && (
+        <div className="flex items-center justify-between px-3 pt-2 shrink-0">
+          <div className="flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
+            {(['standard', 'hourly', 'detailed'] as DisplayMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => onConfigChange({ displayMode: mode })}
+                className={`text-[10px] px-2 py-1 rounded capitalize transition-colors ${
+                  resolvedMode === mode
+                    ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                }`}
+              >
+                {mode === 'standard' ? 'Now' : mode === 'hourly' ? 'Hourly' : 'Full'}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
+            {([0, 3, 5, 7] as ForecastDays[]).map(days => (
+              <button
+                key={days}
+                onClick={() => onConfigChange({ forecastDays: days })}
+                className={`text-[10px] px-1.5 py-1 rounded transition-colors ${
+                  forecastDays === days
+                    ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                    : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                }`}
+              >
+                {days === 0 ? 'Off' : `${days}d`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {resolvedMode === 'compact' && (
         <CompactView weather={weather} unitLabel={unitLabel} config={config} />
       )}
@@ -190,8 +230,8 @@ function CompactView({ weather, unitLabel, config }: {
       </div>
       {today && (
         <div className="text-right text-sm">
-          <div>{today.tempMax}\u00B0</div>
-          <div className="text-[var(--muted-foreground)]">{today.tempMin}\u00B0</div>
+          <div>{today.tempMax}°</div>
+          <div className="text-[var(--muted-foreground)]">{today.tempMin}°</div>
         </div>
       )}
     </div>
@@ -203,7 +243,7 @@ function CompactView({ weather, unitLabel, config }: {
 function StandardView({ weather, unitLabel, windUnitLabel, config }: {
   weather: WeatherData; unitLabel: string; windUnitLabel: string; config: WeatherConfig
 }) {
-  const days = config.forecastDays === 5 ? 5 : 7
+  const days = config.forecastDays || 0
   return (
     <div className="flex flex-col h-full px-4 py-3">
       {/* Current conditions */}
@@ -218,11 +258,13 @@ function StandardView({ weather, unitLabel, windUnitLabel, config }: {
       <ConditionRow weather={weather} unitLabel={unitLabel} windUnitLabel={windUnitLabel} config={config} />
 
       {/* Daily forecast */}
-      <div className="flex gap-2 mt-auto overflow-x-auto">
-        {weather.daily.slice(1, days + 1).map(day => (
-          <DayColumn key={day.date} day={day} />
-        ))}
-      </div>
+      {days > 0 && (
+        <div className="flex gap-2 mt-auto overflow-x-auto">
+          {weather.daily.slice(1, days + 1).map(day => (
+            <DayColumn key={day.date} day={day} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -232,7 +274,7 @@ function StandardView({ weather, unitLabel, windUnitLabel, config }: {
 function DetailedView({ weather, unitLabel, windUnitLabel, config }: {
   weather: WeatherData; unitLabel: string; windUnitLabel: string; config: WeatherConfig
 }) {
-  const days = config.forecastDays === 5 ? 5 : 7
+  const days = config.forecastDays || 0
   const today = weather.daily[0]
   const next24h = weather.hourly.slice(0, 24)
 
@@ -310,15 +352,17 @@ function DetailedView({ weather, unitLabel, windUnitLabel, config }: {
         <HourlyChart hours={next24h} />
       </div>
 
-      {/* 7-day forecast */}
-      <div>
-        <div className="text-xs font-medium text-[var(--muted-foreground)] mb-1">{days}-Day Forecast</div>
-        <div className="space-y-1">
-          {weather.daily.slice(1, days + 1).map(day => (
-            <DailyRow key={day.date} day={day} config={config} windUnitLabel={windUnitLabel} />
-          ))}
+      {/* Daily forecast */}
+      {days > 0 && (
+        <div>
+          <div className="text-xs font-medium text-[var(--muted-foreground)] mb-1">{days}-Day Forecast</div>
+          <div className="space-y-1">
+            {weather.daily.slice(1, days + 1).map(day => (
+              <DailyRow key={day.date} day={day} config={config} windUnitLabel={windUnitLabel} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -328,21 +372,33 @@ function DetailedView({ weather, unitLabel, windUnitLabel, config }: {
 function HourlyView({ weather, unitLabel, config }: {
   weather: WeatherData; unitLabel: string; config: WeatherConfig
 }) {
+  const [hours, setHours] = useState<24 | 48>(24)
+
   return (
     <div className="flex flex-col h-full px-4 py-3 gap-2">
-      {/* Current summary */}
+      {/* Current summary + controls */}
       <div className="flex items-center gap-2 shrink-0">
         <span className="text-2xl">{weather.icon}</span>
         <span className="text-xl font-light">{weather.temperature}{unitLabel}</span>
         {config.showFeelsLike && (
           <span className="text-xs text-[var(--muted-foreground)]">Feels {weather.feelsLike}{unitLabel}</span>
         )}
+        <div className="ml-auto flex gap-0.5 bg-[var(--muted)] rounded-md p-0.5">
+          <button
+            onClick={() => setHours(24)}
+            className={`text-[10px] px-2 py-1 rounded transition-colors ${hours === 24 ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)]'}`}
+          >24h</button>
+          <button
+            onClick={() => setHours(48)}
+            className={`text-[10px] px-2 py-1 rounded transition-colors ${hours === 48 ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm' : 'text-[var(--muted-foreground)]'}`}
+          >48h</button>
+        </div>
       </div>
 
       {/* Scrollable hourly timeline */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {weather.hourly.map((hour) => (
+          {weather.hourly.slice(0, hours).map((hour) => (
             <HourlyColumn key={hour.time} hour={hour} unitLabel={unitLabel} showUv={config.showUvIndex} />
           ))}
         </div>
@@ -364,7 +420,7 @@ function ConditionRow({ weather, unitLabel, windUnitLabel, config }: {
   if (parts.length === 0) return null
   return (
     <div className="text-xs text-[var(--muted-foreground)] mb-3">
-      {parts.join(' \u00B7 ')}
+      {parts.join(' · ')}
     </div>
   )
 }
@@ -375,8 +431,8 @@ function DayColumn({ day }: { day: DailyForecast }) {
     <div className="flex flex-col items-center min-w-[48px] text-xs">
       <span className="text-[var(--muted-foreground)]">{format(parseISO(day.date), 'EEE')}</span>
       <span className="text-base my-0.5">{info.icon}</span>
-      <span>{day.tempMax}\u00B0</span>
-      <span className="text-[var(--muted-foreground)]">{day.tempMin}\u00B0</span>
+      <span>{day.tempMax}°</span>
+      <span className="text-[var(--muted-foreground)]">{day.tempMin}°</span>
       {day.precipitationProbabilityMax > 0 && (
         <PrecipBar probability={day.precipitationProbabilityMax} />
       )}
@@ -392,8 +448,8 @@ function DailyRow({ day, config, windUnitLabel }: {
     <div className="flex items-center gap-2 text-xs py-1">
       <span className="w-10 text-[var(--muted-foreground)]">{format(parseISO(day.date), 'EEE')}</span>
       <span className="text-base w-7 text-center">{info.icon}</span>
-      <span className="w-8 text-right">{day.tempMax}\u00B0</span>
-      <span className="w-8 text-right text-[var(--muted-foreground)]">{day.tempMin}\u00B0</span>
+      <span className="w-8 text-right">{day.tempMax}°</span>
+      <span className="w-8 text-right text-[var(--muted-foreground)]">{day.tempMin}°</span>
       <PrecipBar probability={day.precipitationProbabilityMax} />
       {config.showWind && (
         <span className="text-[var(--muted-foreground)] ml-auto">{day.windSpeedMax} {windUnitLabel}</span>
@@ -441,7 +497,7 @@ function HourlyChart({ hours }: { hours: HourlyForecast[] }) {
                 style={{ height: `${Math.max(heightPct, 10)}%` }}
               />
             </div>
-            <span>{hour.temperature}\u00B0</span>
+            <span>{hour.temperature}°</span>
             {hour.precipitationProbability > 0 && (
               <span className="text-blue-400">{hour.precipitationProbability}%</span>
             )}
