@@ -1,0 +1,68 @@
+# Grumpy Backend — Voice Stack (Phase 1)
+#
+# Runs on the Grumpy Backend VM with RTX 3090 passthrough.
+# Three Wyoming Protocol services consumed by the HA VM's Assist pipeline.
+#
+#   - faster-whisper     : Speech-to-Text (STT)    GPU   port 10300
+#   - piper              : Text-to-Speech (TTS)    CPU   port 10200
+#   - openwakeword       : Wake word detection     CPU   port 10400
+#
+# Phase 2 will add Ollama to this same file.
+
+name: grumpy
+
+services:
+  whisper:
+    # The `:gpu` tag is a CUDA-enabled build.
+    # Requires NVIDIA Container Toolkit on the host.
+    image: lscr.io/linuxserver/faster-whisper:gpu
+    container_name: grumpy-whisper
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-America/Detroit}
+      # GPU-appropriate models:
+      #   medium-int8 : ~750MB VRAM, very fast
+      #   large-v3    : ~4GB VRAM, best accuracy       <-- recommended on 3090
+      - WHISPER_MODEL=${WHISPER_MODEL:-large-v3}
+      - WHISPER_LANG=${WHISPER_LANG:-en}
+      - WHISPER_BEAM=${WHISPER_BEAM:-1}
+    volumes:
+      - ./data/whisper:/config
+    ports:
+      - "10300:10300"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  piper:
+    image: rhasspy/wyoming-piper:latest
+    container_name: grumpy-piper
+    restart: unless-stopped
+    command: --voice ${PIPER_VOICE:-en_US-lessac-medium}
+    volumes:
+      - ./data/piper:/data
+    ports:
+      - "10200:10200"
+    environment:
+      - TZ=${TZ:-America/Detroit}
+
+  openwakeword:
+    image: rhasspy/wyoming-openwakeword:latest
+    container_name: grumpy-wakeword
+    restart: unless-stopped
+    command: >
+      --preload-model ${WAKE_WORD:-ok_nabu}
+      --custom-model-dir /custom
+      --threshold ${WAKE_THRESHOLD:-0.5}
+    volumes:
+      - ./data/openwakeword:/custom
+    ports:
+      - "10400:10400"
+    environment:
+      - TZ=${TZ:-America/Detroit}

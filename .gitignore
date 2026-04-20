@@ -1,0 +1,33 @@
+# Secrets & config
+.env
+*.env.local
+
+# Runtime data (models, caches)
+backend/data/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Python (for any helper scripts)
+__pycache__/
+*.pyc
+.venv/
+venv/
