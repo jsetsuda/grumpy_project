@@ -5,12 +5,16 @@ import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WidgetFrame } from './widget-frame'
 import { SettingsPanel } from './settings-panel'
+import { BackgroundLayer } from './background-layer'
+import { useTheme } from '@/hooks/use-theme'
 
 export function DashboardGrid() {
   const { config, updateWidgetConfig, updateAllLayouts } = useConfig()
   const [editMode, setEditMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [width, setWidth] = useState(window.innerWidth - 24)
+
+  useTheme(config.theme || 'midnight')
 
   useEffect(() => {
     const onResize = () => setWidth(window.innerWidth - 24)
@@ -37,7 +41,14 @@ export function DashboardGrid() {
   }, [editMode, updateAllLayouts])
 
   return (
-    <div className="h-screen w-screen p-3 relative">
+    <>
+      {config.backgroundMode === 'photo' && config.backgroundPhotos && (
+        <BackgroundLayer
+          config={config.backgroundPhotos}
+          overlay={config.backgroundOverlay ?? 60}
+        />
+      )}
+    <div className="h-screen w-screen p-3 relative z-10">
       {/* Toolbar */}
       <div className="absolute top-3 right-3 z-50 flex gap-2">
         <button
@@ -99,5 +110,6 @@ export function DashboardGrid() {
       {/* Settings panel */}
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
+    </>
   )
 }

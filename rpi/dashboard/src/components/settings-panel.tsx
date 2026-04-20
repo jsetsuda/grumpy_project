@@ -4,7 +4,8 @@ import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
 import { GooglePhotosAuth } from '@/widgets/photos/google-photos-auth'
-import type { WidgetInstance } from '@/config/types'
+import type { WidgetInstance, BackgroundPhotosConfig } from '@/config/types'
+import { themes, themeNames, type ThemeName } from '@/config/themes'
 
 interface SettingsPanelProps {
   open: boolean
@@ -12,7 +13,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { config, updateWidgetConfig, addWidget, removeWidget } = useConfig()
+  const { config, updateConfig, updateWidgetConfig, addWidget, removeWidget } = useConfig()
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null)
   const [showAddWidget, setShowAddWidget] = useState(false)
 
@@ -34,6 +35,18 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Theme & Background section */}
+          <ThemeBackgroundSettings
+            theme={(config.theme || 'midnight') as ThemeName}
+            backgroundMode={config.backgroundMode || 'solid'}
+            backgroundPhotos={config.backgroundPhotos}
+            backgroundOverlay={config.backgroundOverlay ?? 60}
+            onThemeChange={(t) => updateConfig({ theme: t })}
+            onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
+            onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
+            onOverlayChange={(o) => updateConfig({ backgroundOverlay: o })}
+          />
+
           {/* Widget list */}
           {config.widgets.map(widget => {
             const def = registry.get(widget.type)
@@ -554,6 +567,219 @@ function HaEntitiesSettings({ config, onChange }: { config: Record<string, any>;
         >
           <Plus size={14} /> Add entity
         </button>
+      </div>
+    </div>
+  )
+}
+
+// --- Theme & Background Settings ---
+
+interface ThemeBackgroundSettingsProps {
+  theme: ThemeName
+  backgroundMode: 'solid' | 'photo'
+  backgroundPhotos?: BackgroundPhotosConfig
+  backgroundOverlay: number
+  onThemeChange: (theme: ThemeName) => void
+  onBackgroundModeChange: (mode: 'solid' | 'photo') => void
+  onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
+  onOverlayChange: (opacity: number) => void
+}
+
+function ThemeBackgroundSettings({
+  theme,
+  backgroundMode,
+  backgroundPhotos,
+  backgroundOverlay,
+  onThemeChange,
+  onBackgroundModeChange,
+  onBackgroundPhotosChange,
+  onOverlayChange,
+}: ThemeBackgroundSettingsProps) {
+  const bgConfig: BackgroundPhotosConfig = backgroundPhotos || {
+    provider: 'none',
+    interval: 30,
+  }
+
+  return (
+    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+      <div className="p-3 border-b border-[var(--border)]">
+        <h3 className="text-sm font-medium">Theme & Background</h3>
+      </div>
+
+      <div className="p-3 space-y-4">
+        {/* Theme selector */}
+        <div>
+          <label className="text-xs font-medium text-[var(--muted-foreground)]">Theme</label>
+          <div className="grid grid-cols-4 gap-2 mt-2">
+            {themeNames.map(name => {
+              const t = themes[name]
+              const isActive = name === theme
+              return (
+                <button
+                  key={name}
+                  onClick={() => onThemeChange(name)}
+                  className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-colors ${
+                    isActive
+                      ? 'border-[var(--primary)] bg-[var(--muted)]'
+                      : 'border-[var(--border)] hover:bg-[var(--muted)]'
+                  }`}
+                >
+                  <div
+                    className="w-8 h-8 rounded-full border border-[var(--border)]"
+                    style={{ backgroundColor: t.swatch }}
+                  />
+                  <span className="text-[10px] font-medium leading-none">{t.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Background mode */}
+        <SettingsField label="Background">
+          <SelectInput
+            value={backgroundMode}
+            onChange={v => onBackgroundModeChange(v as 'solid' | 'photo')}
+            options={[
+              { value: 'solid', label: 'Solid Color' },
+              { value: 'photo', label: 'Photo Slideshow' },
+            ]}
+          />
+        </SettingsField>
+
+        {backgroundMode === 'photo' && (
+          <>
+            {/* Photo source settings */}
+            <SettingsField label="Photo Source">
+              <SelectInput
+                value={bgConfig.provider}
+                onChange={v => onBackgroundPhotosChange({ ...bgConfig, provider: v as BackgroundPhotosConfig['provider'] })}
+                options={[
+                  { value: 'none', label: 'None' },
+                  { value: 'immich', label: 'Immich' },
+                  { value: 'google', label: 'Google Photos' },
+                  { value: 'icloud', label: 'iCloud Shared Album' },
+                  { value: 'local', label: 'Local folder (URL)' },
+                ]}
+              />
+            </SettingsField>
+
+            {bgConfig.provider === 'immich' && (
+              <div className="p-3 bg-[var(--muted)] rounded-lg space-y-1">
+                <SettingsField label="Immich Server URL">
+                  <TextInput
+                    value={bgConfig.immich?.serverUrl || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, immich: { ...bgConfig.immich!, serverUrl: v, apiKey: bgConfig.immich?.apiKey || '' } })}
+                    placeholder="http://immich.local:2283"
+                  />
+                </SettingsField>
+                <SettingsField label="API Key">
+                  <TextInput
+                    value={bgConfig.immich?.apiKey || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, immich: { ...bgConfig.immich!, apiKey: v, serverUrl: bgConfig.immich?.serverUrl || '' } })}
+                    type="password"
+                    placeholder="Immich API Key"
+                  />
+                </SettingsField>
+                <SettingsField label="Album ID (optional)">
+                  <TextInput
+                    value={bgConfig.immich?.albumId || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, immich: { ...bgConfig.immich!, albumId: v, serverUrl: bgConfig.immich?.serverUrl || '', apiKey: bgConfig.immich?.apiKey || '' } })}
+                    placeholder="Leave empty for random photos"
+                  />
+                </SettingsField>
+              </div>
+            )}
+
+            {bgConfig.provider === 'google' && (
+              <div className="p-3 bg-[var(--muted)] rounded-lg space-y-1">
+                <p className="text-xs text-[var(--muted-foreground)] mb-2">
+                  Create a Google Cloud project with Photos Library API enabled.
+                </p>
+                <SettingsField label="Client ID">
+                  <TextInput
+                    value={bgConfig.google?.clientId || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, google: { ...bgConfig.google!, clientId: v, clientSecret: bgConfig.google?.clientSecret || '', refreshToken: bgConfig.google?.refreshToken || '' } })}
+                    placeholder="Google Client ID"
+                  />
+                </SettingsField>
+                <SettingsField label="Client Secret">
+                  <TextInput
+                    value={bgConfig.google?.clientSecret || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, google: { ...bgConfig.google!, clientSecret: v, clientId: bgConfig.google?.clientId || '', refreshToken: bgConfig.google?.refreshToken || '' } })}
+                    type="password"
+                    placeholder="Google Client Secret"
+                  />
+                </SettingsField>
+                <SettingsField label="Refresh Token">
+                  <TextInput
+                    value={bgConfig.google?.refreshToken || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, google: { ...bgConfig.google!, refreshToken: v, clientId: bgConfig.google?.clientId || '', clientSecret: bgConfig.google?.clientSecret || '' } })}
+                    type="password"
+                    placeholder="Google Refresh Token"
+                  />
+                </SettingsField>
+                <SettingsField label="Album ID (optional)">
+                  <TextInput
+                    value={bgConfig.google?.albumId || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, google: { ...bgConfig.google!, albumId: v, clientId: bgConfig.google?.clientId || '', clientSecret: bgConfig.google?.clientSecret || '', refreshToken: bgConfig.google?.refreshToken || '' } })}
+                    placeholder="Leave empty for all photos"
+                  />
+                </SettingsField>
+              </div>
+            )}
+
+            {bgConfig.provider === 'icloud' && (
+              <div className="p-3 bg-[var(--muted)] rounded-lg space-y-1">
+                <p className="text-xs text-[var(--muted-foreground)] mb-2">
+                  Create a Shared Album in Photos app, enable "Public Website", then paste the link.
+                </p>
+                <SettingsField label="Shared Album URL">
+                  <TextInput
+                    value={bgConfig.icloud?.sharedAlbumUrl || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, icloud: { sharedAlbumUrl: v } })}
+                    placeholder="https://www.icloud.com/sharedalbum/#TOKEN"
+                  />
+                </SettingsField>
+              </div>
+            )}
+
+            {bgConfig.provider === 'local' && (
+              <div className="p-3 bg-[var(--muted)] rounded-lg">
+                <SettingsField label="Base URL">
+                  <TextInput
+                    value={bgConfig.local?.baseUrl || ''}
+                    onChange={v => onBackgroundPhotosChange({ ...bgConfig, local: { baseUrl: v } })}
+                    placeholder="http://localhost/photos"
+                  />
+                </SettingsField>
+              </div>
+            )}
+
+            <SettingsField label="Slideshow interval (seconds)">
+              <TextInput
+                value={String(bgConfig.interval || 30)}
+                onChange={v => onBackgroundPhotosChange({ ...bgConfig, interval: parseInt(v) || 30 })}
+              />
+            </SettingsField>
+
+            {/* Overlay opacity slider */}
+            <SettingsField label={`Overlay opacity: ${backgroundOverlay}%`}>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={backgroundOverlay}
+                onChange={e => onOverlayChange(parseInt(e.target.value))}
+                className="w-full accent-[var(--primary)]"
+              />
+              <div className="flex justify-between text-[10px] text-[var(--muted-foreground)]">
+                <span>Transparent</span>
+                <span>Opaque</span>
+              </div>
+            </SettingsField>
+          </>
+        )}
       </div>
     </div>
   )

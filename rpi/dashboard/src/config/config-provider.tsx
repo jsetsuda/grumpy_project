@@ -4,6 +4,7 @@ import { defaultConfig } from './default-config'
 
 interface ConfigContextValue {
   config: DashboardConfig
+  updateConfig: (partial: Partial<DashboardConfig>) => void
   updateWidgetConfig: (widgetId: string, config: Partial<Record<string, unknown>>) => void
   updateWidgetLayout: (widgetId: string, layout: WidgetInstance['layout']) => void
   updateAllLayouts: (layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>) => void
@@ -72,6 +73,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     }
   }, [config, loaded])
 
+  const updateConfig = useCallback((partial: Partial<DashboardConfig>) => {
+    setConfig(prev => ({ ...prev, ...partial }))
+  }, [])
+
   const updateWidgetConfig = useCallback((widgetId: string, widgetConfig: Partial<Record<string, unknown>>) => {
     setConfig(prev => ({
       ...prev,
@@ -112,7 +117,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <ConfigContext.Provider value={{ config, updateWidgetConfig, updateWidgetLayout, updateAllLayouts, addWidget, removeWidget }}>
+    <ConfigContext.Provider value={{ config, updateConfig, updateWidgetConfig, updateWidgetLayout, updateAllLayouts, addWidget, removeWidget }}>
       {children}
     </ConfigContext.Provider>
   )

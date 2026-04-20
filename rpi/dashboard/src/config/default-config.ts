@@ -2,6 +2,9 @@ import type { DashboardConfig } from './types'
 
 export const defaultConfig: DashboardConfig = {
   version: 1,
+  theme: 'midnight',
+  backgroundMode: 'solid',
+  backgroundOverlay: 60,
   grid: {
     cols: 12,
     rowHeight: 80,
