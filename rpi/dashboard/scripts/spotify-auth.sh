@@ -7,7 +7,7 @@ set -e
 CLIENT_ID="${1}"
 CLIENT_SECRET="${2}"
 REDIRECT_URI="http://127.0.0.1:8888/callback"
-SCOPES="user-read-currently-playing user-modify-playback-state user-read-playback-state"
+SCOPES="user-read-currently-playing user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative user-read-recently-played user-library-read"
 
 if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
   echo "Usage: $0 <client_id> <client_secret>"

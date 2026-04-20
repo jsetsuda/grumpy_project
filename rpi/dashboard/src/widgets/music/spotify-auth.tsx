@@ -2,7 +2,15 @@ import { useEffect, useCallback, useRef } from 'react'
 
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize'
 const REDIRECT_URI = 'http://127.0.0.1:5173/spotify-callback'
-const SCOPES = 'user-read-currently-playing user-modify-playback-state user-read-playback-state'
+const SCOPES = [
+  'user-read-currently-playing',
+  'user-modify-playback-state',
+  'user-read-playback-state',
+  'playlist-read-private',
+  'playlist-read-collaborative',
+  'user-read-recently-played',
+  'user-library-read',
+].join(' ')
 
 interface SpotifyAuthProps {
   clientId: string
