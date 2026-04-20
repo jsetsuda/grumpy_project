@@ -217,17 +217,17 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
       switch (tab) {
         case 'playlists': {
           const data = await getUserPlaylists(token)
-          setPlaylists(data.items)
+          setPlaylists((data.items || []).filter(Boolean))
           break
         }
         case 'recent': {
           const data = await getRecentlyPlayed(token)
-          setRecentTracks(data.items.map((i) => i.track))
+          setRecentTracks((data.items || []).map((i) => i.track).filter(Boolean))
           break
         }
         case 'liked': {
           const data = await getSavedTracks(token)
-          setLikedTracks(data.items.map((i) => i.track))
+          setLikedTracks((data.items || []).map((i) => i.track).filter(Boolean))
           break
         }
       }
@@ -535,7 +535,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             }}
             className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-left min-h-[52px]"
           >
-            {pl.images[0]?.url ? (
+            {pl.images?.[0]?.url ? (
               <img src={pl.images[0].url} alt={pl.name} className="w-10 h-10 rounded object-cover shrink-0" />
             ) : (
               <div className="w-10 h-10 rounded bg-[var(--muted)] flex items-center justify-center shrink-0">
@@ -564,7 +564,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             onClick={() => playTrack(track.uri, contextUri, contextUri ? idx : undefined)}
             className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-left min-h-[52px]"
           >
-            {track.album.images[0]?.url ? (
+            {track.album?.images?.[0]?.url ? (
               <img src={track.album.images[0].url} alt={track.album.name} className="w-10 h-10 rounded object-cover shrink-0" />
             ) : (
               <div className="w-10 h-10 rounded bg-[var(--muted)] flex items-center justify-center shrink-0">
@@ -681,7 +681,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
                       onClick={() => playTrack(album.uri)}
                       className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-left min-h-[52px]"
                     >
-                      {album.images[0]?.url ? (
+                      {album.images?.[0]?.url ? (
                         <img src={album.images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
                       ) : (
                         <div className="w-10 h-10 rounded bg-[var(--muted)] flex items-center justify-center shrink-0">
