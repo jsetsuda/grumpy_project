@@ -255,7 +255,10 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
       const data = await getPlaylistTracks(token, playlist.id)
       setPlaylistTracks(data.items.filter((i) => i.track !== null).map((i) => i.track!))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load playlist')
+      // If 403, the app may not have access to playlist tracks
+      // (Spotify dev mode restriction). Still allow playing the whole playlist.
+      console.warn('Could not load playlist tracks:', e)
+      setPlaylistTracks([])
     } finally {
       setBrowseLoading(false)
     }
@@ -618,6 +621,13 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             <div className="text-sm font-medium truncate">{playlist.name}</div>
             <div className="text-xs text-[var(--muted-foreground)] truncate">{(playlist.tracks?.total || playlist.items?.total) ? `${playlist.tracks?.total ?? playlist.items?.total} tracks` : 'Playlist'}</div>
           </div>
+          {/* Play all button */}
+          <button
+            onClick={() => playTrack(playlist.uri, playlist.uri, 0)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-full text-xs font-medium hover:opacity-90 transition-opacity min-h-[44px]"
+          >
+            <Play size={14} /> Play
+          </button>
         </div>
 
         {/* Tracks */}
@@ -626,8 +636,13 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             <div className="flex items-center justify-center h-full">
               <Loader2 size={24} className="animate-spin text-[var(--muted-foreground)]" />
             </div>
-          ) : (
+          ) : playlistTracks.length > 0 ? (
             renderTrackList(playlistTracks, playlist.uri)
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] px-4">
+              <p className="text-sm">Track listing unavailable</p>
+              <p className="text-xs mt-1">Tap Play to start this playlist</p>
+            </div>
           )}
         </div>
       </div>
