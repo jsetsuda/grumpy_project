@@ -240,8 +240,45 @@ function CalendarSettings({ config, onChange }: { config: Record<string, any>; o
 
   return (
     <div>
-      <SettingsField label="Max events to display">
-        <TextInput value={String(config.maxEvents || 8)} onChange={v => onChange({ maxEvents: parseInt(v) || 8 })} />
+      <SettingsField label="Default view">
+        <SelectInput
+          value={config.defaultView || 'upcoming'}
+          onChange={v => onChange({ defaultView: v })}
+          options={[
+            { value: 'upcoming', label: 'Upcoming (list)' },
+            { value: 'day', label: 'Day' },
+            { value: 'week', label: 'Week' },
+            { value: 'month', label: 'Month' },
+          ]}
+        />
+      </SettingsField>
+
+      <SettingsField label="Time format">
+        <SelectInput
+          value={config.timeFormat || '12h'}
+          onChange={v => onChange({ timeFormat: v })}
+          options={[
+            { value: '12h', label: '12-hour (2:30 PM)' },
+            { value: '24h', label: '24-hour (14:30)' },
+          ]}
+        />
+      </SettingsField>
+
+      <SettingsField label="Week starts on">
+        <SelectInput
+          value={String(config.weekStartsOn ?? 0)}
+          onChange={v => onChange({ weekStartsOn: parseInt(v) })}
+          options={[
+            { value: '0', label: 'Sunday' },
+            { value: '1', label: 'Monday' },
+          ]}
+        />
+      </SettingsField>
+
+      <Toggle checked={config.showWeekends ?? true} onChange={v => onChange({ showWeekends: v })} label="Show weekends" />
+
+      <SettingsField label="Max events in list view">
+        <TextInput value={String(config.maxEvents || 12)} onChange={v => onChange({ maxEvents: parseInt(v) || 12 })} />
       </SettingsField>
 
       <div className="mt-3">

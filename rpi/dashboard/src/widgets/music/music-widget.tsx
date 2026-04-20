@@ -74,17 +74,22 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
 
   const provider = config.provider || 'none'
 
+  // Keep a ref to config.spotify so getToken always reads fresh state
+  const configRef = useRef(config.spotify)
+  configRef.current = config.spotify
+
   // Get valid access token, refreshing if needed
   const getToken = useCallback(async (): Promise<string | null> => {
-    if (!config.spotify) return null
-    let token = config.spotify.accessToken
-    const expiry = config.spotify.tokenExpiry || 0
+    const spotify = configRef.current
+    if (!spotify) return null
+    let token = spotify.accessToken
+    const expiry = spotify.tokenExpiry || 0
 
     if (!token || Date.now() > expiry) {
       token = await refreshSpotifyToken() ?? undefined
     }
     return token ?? null
-  }, [config.spotify])
+  }, [])
 
   useEffect(() => {
     if (provider === 'none') return
@@ -103,11 +108,12 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
   }, [nowPlaying, viewState.view, config.spotify?.refreshToken])
 
   async function fetchSpotifyNowPlaying() {
-    if (!config.spotify) return
+    const spotify = configRef.current
+    if (!spotify) return
 
     try {
-      let token: string | undefined = config.spotify.accessToken
-      const expiry = config.spotify.tokenExpiry || 0
+      let token: string | undefined = spotify.accessToken
+      const expiry = spotify.tokenExpiry || 0
 
       if (!token || Date.now() > expiry) {
         const refreshed = await refreshSpotifyToken()
@@ -150,7 +156,8 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
   }
 
   async function refreshSpotifyToken(): Promise<string | null> {
-    if (!config.spotify?.clientId || !config.spotify?.clientSecret || !config.spotify?.refreshToken) {
+    const spotify = configRef.current
+    if (!spotify?.clientId || !spotify?.clientSecret || !spotify?.refreshToken) {
       setError('Spotify not fully configured')
       return null
     }
@@ -161,22 +168,22 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           grant_type: 'refresh_token',
-          refresh_token: config.spotify.refreshToken,
-          client_id: config.spotify.clientId,
-          client_secret: config.spotify.clientSecret,
+          refresh_token: spotify.refreshToken,
+          client_id: spotify.clientId,
+          client_secret: spotify.clientSecret,
         }),
       })
 
       if (!res.ok) throw new Error('Token refresh failed')
       const data = await res.json()
 
-      onConfigChange({
-        spotify: {
-          ...config.spotify,
-          accessToken: data.access_token,
-          tokenExpiry: Date.now() + data.expires_in * 1000,
-        },
-      })
+      const newSpotify = {
+        ...spotify,
+        accessToken: data.access_token,
+        tokenExpiry: Date.now() + data.expires_in * 1000,
+      }
+      configRef.current = newSpotify
+      onConfigChange({ spotify: newSpotify })
 
       return data.access_token
     } catch {
@@ -186,7 +193,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
   }
 
   const spotifyCommand = useCallback(async (command: 'play' | 'pause' | 'next' | 'previous') => {
-    const token = config.spotify?.accessToken
+    const token = await getToken()
     if (!token) return
 
     const endpoints: Record<string, { method: string; url: string }> = {
@@ -199,7 +206,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     const { method, url } = endpoints[command]
     await fetch(url, { method, headers: { Authorization: `Bearer ${token}` } })
     setTimeout(fetchSpotifyNowPlaying, 500)
-  }, [config.spotify?.accessToken])
+  }, [getToken])
 
   // Browse data loading
   const loadBrowseData = useCallback(async (tab: BrowseTab) => {
@@ -235,7 +242,8 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     if (viewState.view === 'browse') {
       loadBrowseData(browseTab)
     }
-  }, [viewState.view, browseTab, loadBrowseData])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewState.view, browseTab])
 
   // Load playlist tracks
   const loadPlaylistTracks = useCallback(async (playlist: SpotifyPlaylist) => {
@@ -298,7 +306,8 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     if (viewState.view === 'devices') {
       loadDevices()
     }
-  }, [viewState.view, loadDevices])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewState.view])
 
   // Play a track
   const playTrack = useCallback(async (uri: string, contextUri?: string, position?: number) => {
