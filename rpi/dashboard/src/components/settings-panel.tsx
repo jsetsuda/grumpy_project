@@ -3,6 +3,7 @@ import { X, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
+import { GooglePhotosAuth } from '@/widgets/photos/google-photos-auth'
 import type { WidgetInstance } from '@/config/types'
 
 interface SettingsPanelProps {
@@ -410,6 +411,8 @@ function MusicSettings({ config, onChange }: { config: Record<string, any>; onCh
 function PhotosSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
   const provider = config.provider || 'none'
   const immich = config.immich || {}
+  const google = config.google || {}
+  const icloud = config.icloud || {}
 
   return (
     <div>
@@ -420,6 +423,9 @@ function PhotosSettings({ config, onChange }: { config: Record<string, any>; onC
           options={[
             { value: 'none', label: 'None' },
             { value: 'immich', label: 'Immich' },
+            { value: 'google', label: 'Google Photos' },
+            { value: 'icloud', label: 'iCloud Shared Album' },
+            { value: 'amazon', label: 'Amazon Photos' },
             { value: 'local', label: 'Local folder (URL)' },
           ]}
         />
@@ -436,6 +442,53 @@ function PhotosSettings({ config, onChange }: { config: Record<string, any>; onC
           <SettingsField label="Album ID (optional)">
             <TextInput value={immich.albumId || ''} onChange={v => onChange({ immich: { ...immich, albumId: v } })} placeholder="Leave empty for random photos" />
           </SettingsField>
+        </div>
+      )}
+
+      {provider === 'google' && (
+        <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">
+            Create a Google Cloud project with Photos Library API enabled. Set OAuth redirect URI to{' '}
+            <code className="text-xs">http://127.0.0.1:5173/google-callback</code>
+          </p>
+          <SettingsField label="Client ID">
+            <TextInput value={google.clientId || ''} onChange={v => onChange({ google: { ...google, clientId: v } })} placeholder="Google Client ID" />
+          </SettingsField>
+          <SettingsField label="Client Secret">
+            <TextInput value={google.clientSecret || ''} onChange={v => onChange({ google: { ...google, clientSecret: v } })} type="password" placeholder="Google Client Secret" />
+          </SettingsField>
+          {google.clientId && google.clientSecret && !google.refreshToken && (
+            <GooglePhotosAuth
+              clientId={google.clientId}
+              clientSecret={google.clientSecret}
+              onAuthorized={(refreshToken) => onChange({ google: { ...google, refreshToken } })}
+            />
+          )}
+          <SettingsField label="Refresh Token">
+            <TextInput value={google.refreshToken || ''} onChange={v => onChange({ google: { ...google, refreshToken: v } })} type="password" placeholder="Google Refresh Token" />
+          </SettingsField>
+          <SettingsField label="Album ID (optional)">
+            <TextInput value={google.albumId || ''} onChange={v => onChange({ google: { ...google, albumId: v } })} placeholder="Leave empty for all photos" />
+          </SettingsField>
+        </div>
+      )}
+
+      {provider === 'icloud' && (
+        <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">
+            Create a Shared Album in the Photos app, enable "Public Website" in sharing options, then paste the link here.
+          </p>
+          <SettingsField label="Shared Album URL">
+            <TextInput value={icloud.sharedAlbumUrl || ''} onChange={v => onChange({ icloud: { ...icloud, sharedAlbumUrl: v } })} placeholder="https://www.icloud.com/sharedalbum/#TOKEN" />
+          </SettingsField>
+        </div>
+      )}
+
+      {provider === 'amazon' && (
+        <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg">
+          <p className="text-xs text-[var(--muted-foreground)]">
+            Amazon Photos doesn't have a public API. Sync your photos to a local folder using the Amazon Photos desktop app, then switch to the "Local folder (URL)" option and point it at that folder.
+          </p>
         </div>
       )}
 

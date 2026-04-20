@@ -47,15 +47,60 @@ function configApiPlugin(): Plugin {
         }
       })
 
-      // Proxy for fetching external URLs (iCal, etc.) to bypass CORS
-      server.middlewares.use('/api/proxy', async (req, res) => {
-        if (req.method !== 'GET') {
+      server.middlewares.use('/api/google/token', async (req, res) => {
+        if (req.method !== 'POST') {
           res.statusCode = 405
           res.end('Method not allowed')
           return
         }
 
-        const url = new URL(req.url || '', 'http://localhost').searchParams.get('url')
+        const chunks: Buffer[] = []
+        for await (const chunk of req) {
+          chunks.push(chunk as Buffer)
+        }
+        const body = JSON.parse(Buffer.concat(chunks).toString())
+        const { code, clientId, clientSecret, redirectUri, refreshToken } = body
+
+        try {
+          const params: Record<string, string> = {
+            client_id: clientId,
+            client_secret: clientSecret,
+          }
+
+          if (refreshToken) {
+            params.grant_type = 'refresh_token'
+            params.refresh_token = refreshToken
+          } else {
+            params.grant_type = 'authorization_code'
+            params.code = code
+            params.redirect_uri = redirectUri
+          }
+
+          const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(params),
+          })
+
+          const data = await tokenRes.json()
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(data))
+        } catch {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: 'Google token exchange failed' }))
+        }
+      })
+
+      // Proxy for fetching external URLs (iCal, etc.) to bypass CORS
+      server.middlewares.use('/api/proxy', async (req, res) => {
+        if (req.method !== 'GET' && req.method !== 'POST') {
+          res.statusCode = 405
+          res.end('Method not allowed')
+          return
+        }
+
+        const parsedUrl = new URL(req.url || '', 'http://localhost')
+        const url = parsedUrl.searchParams.get('url')
         if (!url) {
           res.statusCode = 400
           res.end('Missing url parameter')
@@ -63,7 +108,18 @@ function configApiPlugin(): Plugin {
         }
 
         try {
-          const proxyRes = await fetch(url)
+          const fetchOptions: RequestInit = { method: req.method }
+
+          if (req.method === 'POST') {
+            const chunks: Buffer[] = []
+            for await (const chunk of req) {
+              chunks.push(chunk as Buffer)
+            }
+            fetchOptions.body = Buffer.concat(chunks).toString()
+            fetchOptions.headers = { 'Content-Type': 'application/json' }
+          }
+
+          const proxyRes = await fetch(url, fetchOptions)
           if (!proxyRes.ok) {
             res.statusCode = proxyRes.status
             res.end(`Upstream error: ${proxyRes.status}`)
