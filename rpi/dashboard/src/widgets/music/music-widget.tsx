@@ -100,6 +100,26 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     volume: 0.5,
   })
 
+  // Auto-transfer playback to this device on page load when SDK is ready
+  const hasTransferred = useRef(false)
+  useEffect(() => {
+    if (!playerReady || !localDeviceId || hasTransferred.current) return
+    hasTransferred.current = true
+    ;(async () => {
+      const token = await getToken()
+      if (!token) return
+      try {
+        // Check if there's already an active device
+        const devData = await getDevices(token)
+        const active = devData.devices.find(d => d.is_active)
+        // Only auto-transfer if no other device is active
+        if (!active) {
+          await transferPlayback(token, localDeviceId, false)
+        }
+      } catch { /* ignore */ }
+    })()
+  }, [playerReady, localDeviceId])
+
   useEffect(() => {
     if (provider === 'none') return
     if (provider === 'spotify' && config.spotify?.refreshToken) {
@@ -109,12 +129,40 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     }
   }, [provider, config.spotify?.refreshToken])
 
-  // Auto-switch to browse when nothing is playing
+  // When nothing is playing, try to show the last played track instead of switching away
+  const [lastPlayed, setLastPlayed] = useState<NowPlaying | null>(null)
+
   useEffect(() => {
-    if (!nowPlaying && viewState.view === 'now-playing' && config.spotify?.refreshToken) {
-      setViewState({ view: 'browse' })
+    if (nowPlaying) {
+      // Save to lastPlayed so we can show it when playback stops
+      setLastPlayed(nowPlaying)
     }
-  }, [nowPlaying, viewState.view, config.spotify?.refreshToken])
+  }, [nowPlaying])
+
+  // Fetch last played on mount if nothing is currently playing
+  useEffect(() => {
+    if (!nowPlaying && !lastPlayed && config.spotify?.refreshToken) {
+      (async () => {
+        const token = await getToken()
+        if (!token) return
+        try {
+          const data = await getRecentlyPlayed(token, 1)
+          if (data.items.length > 0) {
+            const track = data.items[0].track
+            setLastPlayed({
+              title: track.name,
+              artist: track.artists.map(a => a.name).join(', '),
+              album: track.album.name,
+              albumArt: track.album?.images?.[0]?.url,
+              isPlaying: false,
+              progress: 0,
+              duration: track.duration_ms,
+            })
+          }
+        } catch { /* ignore */ }
+      })()
+    }
+  }, [config.spotify?.refreshToken])
 
   async function fetchSpotifyNowPlaying() {
     const spotify = configRef.current
@@ -449,9 +497,23 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     </div>
   )
 
+  // Seek to a position in the track
+  const seekTo = useCallback(async (positionMs: number) => {
+    const token = await getToken()
+    if (!token) return
+    try {
+      await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${Math.round(positionMs)}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setTimeout(fetchSpotifyNowPlaying, 300)
+    } catch { /* ignore */ }
+  }, [getToken])
+
   // --- Now Playing View ---
   function renderNowPlaying() {
-    if (!nowPlaying) {
+    const displayTrack = nowPlaying || lastPlayed
+    if (!displayTrack) {
       return (
         <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] px-4">
           <Music size={32} className="mb-2 opacity-50" />
@@ -466,17 +528,26 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
       )
     }
 
-    const progressPct = nowPlaying.duration > 0
-      ? (nowPlaying.progress / nowPlaying.duration) * 100
+    const progressPct = displayTrack.duration > 0
+      ? (displayTrack.progress / displayTrack.duration) * 100
       : 0
+
+    function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
+      if (!displayTrack) return
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const pct = x / rect.width
+      const positionMs = pct * displayTrack.duration
+      seekTo(positionMs)
+    }
 
     return (
       <div className="flex flex-col h-full p-4">
         <div className="flex gap-3 flex-1 min-h-0">
-          {nowPlaying.albumArt ? (
+          {displayTrack.albumArt ? (
             <img
-              src={nowPlaying.albumArt}
-              alt={nowPlaying.album}
+              src={displayTrack.albumArt}
+              alt={displayTrack.album}
               className="w-16 h-16 rounded-lg object-cover shrink-0"
             />
           ) : (
@@ -485,22 +556,28 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             </div>
           )}
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <div className="text-sm font-medium truncate">{nowPlaying.title}</div>
-            <div className="text-xs text-[var(--muted-foreground)] truncate">{nowPlaying.artist}</div>
-            <div className="text-xs text-[var(--muted-foreground)] truncate">{nowPlaying.album}</div>
+            <div className="text-sm font-medium truncate">{displayTrack.title}</div>
+            <div className="text-xs text-[var(--muted-foreground)] truncate">{displayTrack.artist}</div>
+            <div className="text-xs text-[var(--muted-foreground)] truncate">{displayTrack.album}</div>
           </div>
         </div>
 
+        {/* Seekable progress bar */}
         <div className="mt-3 mb-2">
-          <div className="h-1 bg-[var(--muted)] rounded-full overflow-hidden">
+          <div
+            className="h-3 bg-[var(--muted)] rounded-full overflow-hidden cursor-pointer relative group"
+            onClick={handleSeek}
+          >
             <div
-              className="h-full bg-[var(--primary)] rounded-full transition-all duration-1000"
+              className="absolute inset-y-0 left-0 bg-[var(--primary)] rounded-full transition-all duration-1000"
               style={{ width: `${progressPct}%` }}
             />
+            {/* Hover indicator */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-1">
-            <span>{formatTime(nowPlaying.progress)}</span>
-            <span>{formatTime(nowPlaying.duration)}</span>
+            <span>{formatTime(displayTrack.progress)}</span>
+            <span>{formatTime(displayTrack.duration)}</span>
           </div>
         </div>
 
@@ -509,10 +586,10 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             <SkipBack size={18} />
           </button>
           <button
-            onClick={() => spotifyCommand(nowPlaying.isPlaying ? 'pause' : 'play')}
+            onClick={() => spotifyCommand(displayTrack.isPlaying ? 'pause' : 'play')}
             className="p-3 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-full hover:opacity-90 transition-opacity min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
-            {nowPlaying.isPlaying ? <Pause size={20} /> : <Play size={20} />}
+            {displayTrack.isPlaying ? <Pause size={20} /> : <Play size={20} />}
           </button>
           <button onClick={() => spotifyCommand('next')} className="p-2 hover:bg-[var(--muted)] rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
             <SkipForward size={18} />
