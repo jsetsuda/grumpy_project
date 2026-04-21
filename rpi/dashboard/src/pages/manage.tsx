@@ -10,6 +10,7 @@ interface SharedCredentials {
   spotify?: { clientId: string; clientSecret: string; refreshToken: string }
   google?: { clientId: string; clientSecret: string; refreshToken: string }
   googleMaps?: { apiKey: string }
+  unifi?: { host: string; username: string; password: string }
 }
 
 export function DashboardManager() {
@@ -583,9 +584,21 @@ export function DashboardManager() {
               note="User Settings → API Keys → Create New API Key"
             />
 
+            {/* UniFi Protect */}
+            <CredentialCard
+              title="UniFi Protect"
+              status={(credentials as any).unifi?.host ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Host URL', value: (credentials as any).unifi?.host || '', placeholder: 'https://192.168.1.1', onChange: (v) => updateCredentials(['unifi', 'host'], v) },
+                { label: 'Username', value: (credentials as any).unifi?.username || '', placeholder: 'admin', onChange: (v) => updateCredentials(['unifi', 'username'], v) },
+                { label: 'Password', value: (credentials as any).unifi?.password || '', placeholder: 'Password', type: 'password', onChange: (v) => updateCredentials(['unifi', 'password'], v) },
+              ]}
+              note="UniFi Protect controller credentials. Use the same account you log in to the Dream Machine / Cloud Key with."
+            />
+
             {/* Custom credentials */}
             {Object.entries(credentials as any).filter(([k]) =>
-              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar', 'todoist', 'microsoft', 'googleTasks', 'youtube', 'plex', 'jellyfin', 'immich'].includes(k)
+              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar', 'todoist', 'microsoft', 'googleTasks', 'youtube', 'plex', 'jellyfin', 'immich', 'unifi'].includes(k)
             ).map(([key, value]) => (
               <CredentialCard
                 key={key}
@@ -866,6 +879,15 @@ const CREDENTIAL_TEMPLATES: Array<{
     fields: [
       { key: 'serverUrl', label: 'Server URL', placeholder: 'http://immich.local:2283' },
       { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Immich API Key' },
+    ],
+  },
+  {
+    key: 'unifi',
+    label: 'UniFi Protect',
+    fields: [
+      { key: 'host', label: 'Host URL', placeholder: 'https://192.168.1.1' },
+      { key: 'username', label: 'Username', placeholder: 'admin' },
+      { key: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
     ],
   },
 ]

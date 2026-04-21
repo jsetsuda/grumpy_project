@@ -18,6 +18,7 @@ interface SharedCredentials {
   spotify?: { clientId: string; clientSecret: string; refreshToken: string }
   google?: { clientId: string; clientSecret: string; refreshToken: string }
   googleMaps?: { apiKey: string }
+  unifi?: { host: string; username: string; password: string }
 }
 
 async function fetchCredentials(): Promise<SharedCredentials> {
@@ -84,6 +85,11 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
       config.provider = 'jellyfin'
       config.jellyfin = { ...c.jellyfin }
     }
+  }
+  if (widgetType === 'cameras') {
+    if (creds.unifi?.host) config.host = creds.unifi.host
+    if (creds.unifi?.username) config.username = creds.unifi.username
+    if (creds.unifi?.password) config.password = creds.unifi.password
   }
   return config
 }
@@ -372,6 +378,8 @@ export function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) 
       return <AnalogClockSettings config={widget.config} onChange={onConfigChange} />
     case 'streaming':
       return <StreamingSettings config={widget.config} onChange={onConfigChange} />
+    case 'cameras':
+      return <CamerasSettings config={widget.config} onChange={onConfigChange} />
     default:
       return <p className="text-sm text-[var(--muted-foreground)]">No settings available</p>
   }
@@ -2864,6 +2872,148 @@ function StreamingSettings({ config, onChange }: { config: Record<string, any>; 
           <Plus size={14} /> Add Custom Service
         </button>
       )}
+    </div>
+  )
+}
+
+function CamerasSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const [connecting, setConnecting] = useState(false)
+  const [connectError, setConnectError] = useState('')
+
+  const host = config.host || ''
+  const username = config.username || ''
+  const password = config.password || ''
+  const cameras: Array<{ id: string; name: string; enabled: boolean }> = config.cameras || []
+  const refreshInterval = config.refreshInterval || 5
+  const layout = config.layout || 'grid'
+
+  async function handleConnect() {
+    if (!host || !username || !password) {
+      setConnectError('Host, username, and password are required')
+      return
+    }
+    setConnecting(true)
+    setConnectError('')
+    try {
+      // Login
+      const loginRes = await fetch('/api/unifi-proxy/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host: host.replace(/\/$/, ''), username, password }),
+      })
+      if (!loginRes.ok) {
+        const err = await loginRes.json().catch(() => ({ error: 'Login failed' }))
+        setConnectError(err.error || 'Login failed')
+        setConnecting(false)
+        return
+      }
+      // Fetch bootstrap
+      const bsRes = await fetch(`/api/unifi-proxy/bootstrap?host=${encodeURIComponent(host.replace(/\/$/, ''))}`)
+      if (!bsRes.ok) {
+        setConnectError('Failed to fetch camera list')
+        setConnecting(false)
+        return
+      }
+      const bootstrap = await bsRes.json()
+      const cams: Array<{ id: string; name: string }> = (bootstrap.cameras || []).map((c: any) => ({
+        id: c.id,
+        name: c.name || c.id,
+      }))
+      // Merge with existing config — preserve enabled state for already-known cameras
+      const existingMap = new Map(cameras.map(c => [c.id, c]))
+      const merged = cams.map(c => ({
+        id: c.id,
+        name: c.name,
+        enabled: existingMap.get(c.id)?.enabled ?? true,
+      }))
+      onChange({ cameras: merged })
+    } catch (e) {
+      setConnectError(`Connection error: ${e}`)
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  return (
+    <div>
+      <SettingsField label="UniFi Protect Host URL">
+        <TextInput
+          value={host}
+          onChange={v => onChange({ host: v })}
+          placeholder="https://192.168.1.1"
+        />
+      </SettingsField>
+      <SettingsField label="Username">
+        <TextInput
+          value={username}
+          onChange={v => onChange({ username: v })}
+          placeholder="admin"
+        />
+      </SettingsField>
+      <SettingsField label="Password">
+        <TextInput
+          value={password}
+          onChange={v => onChange({ password: v })}
+          placeholder="Password"
+          type="password"
+        />
+      </SettingsField>
+      <div className="mt-3">
+        <button
+          onClick={handleConnect}
+          disabled={connecting}
+          className="w-full px-3 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md text-sm font-medium min-h-[44px] disabled:opacity-50"
+        >
+          {connecting ? 'Connecting...' : 'Connect & Discover Cameras'}
+        </button>
+        {connectError && (
+          <p className="text-xs text-red-400 mt-1">{connectError}</p>
+        )}
+      </div>
+
+      {cameras.length > 0 && (
+        <>
+          <div className="mt-4 text-xs font-medium text-[var(--muted-foreground)]">Cameras ({cameras.filter(c => c.enabled).length}/{cameras.length} enabled)</div>
+          <div className="mt-1 space-y-1">
+            {cameras.map(cam => (
+              <Toggle
+                key={cam.id}
+                checked={cam.enabled}
+                onChange={v => {
+                  const updated = cameras.map(c => c.id === cam.id ? { ...c, enabled: v } : c)
+                  onChange({ cameras: updated })
+                }}
+                label={cam.name}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      <SettingsField label="Refresh Interval">
+        <SelectInput
+          value={String(refreshInterval)}
+          onChange={v => onChange({ refreshInterval: Number(v) })}
+          options={[
+            { value: '1', label: '1 second' },
+            { value: '2', label: '2 seconds' },
+            { value: '5', label: '5 seconds' },
+            { value: '10', label: '10 seconds' },
+            { value: '30', label: '30 seconds' },
+          ]}
+        />
+      </SettingsField>
+
+      <SettingsField label="Layout">
+        <SelectInput
+          value={layout}
+          onChange={v => onChange({ layout: v })}
+          options={[
+            { value: 'grid', label: 'Grid (all cameras)' },
+            { value: 'single', label: 'Single (one large + thumbnails)' },
+          ]}
+        />
+      </SettingsField>
     </div>
   )
 }

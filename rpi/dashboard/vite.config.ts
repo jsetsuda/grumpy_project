@@ -5,6 +5,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
 import fs from 'fs'
 import http from 'http'
+import https from 'https'
 import net from 'net'
 
 const CONFIG_PATH = path.resolve(__dirname, 'config.json')
@@ -431,6 +432,169 @@ function configApiPlugin(): Plugin {
         } catch (e) {
           res.statusCode = 500
           res.end(`HA proxy failed: ${e}`)
+        }
+      })
+
+      // --- UniFi Protect proxy (cookie-based auth) ---
+      const unifiTokens = new Map<string, string>()
+
+      function unifiFetch(targetUrl: string, cookie?: string): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
+        return new Promise((resolve, reject) => {
+          const parsed = new URL(targetUrl)
+          const isHttps = parsed.protocol === 'https:'
+          const options: https.RequestOptions = {
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname + parsed.search,
+            method: 'GET',
+            rejectUnauthorized: false,
+            headers: cookie ? { Cookie: cookie } : {},
+          }
+          // For self-signed certs
+          if (isHttps) {
+            (options as any).rejectUnauthorized = false
+          }
+          const mod = isHttps ? https : http
+          const r = mod.request(options, (response) => {
+            const chunks: Buffer[] = []
+            response.on('data', (chunk: Buffer) => chunks.push(chunk))
+            response.on('end', () => {
+              const respHeaders: Record<string, string> = {}
+              for (const [k, v] of Object.entries(response.headers)) {
+                if (v) respHeaders[k] = Array.isArray(v) ? v.join(', ') : v
+              }
+              resolve({ status: response.statusCode || 500, headers: respHeaders, body: Buffer.concat(chunks) })
+            })
+          })
+          r.on('error', reject)
+          r.end()
+        })
+      }
+
+      function unifiPost(targetUrl: string, bodyStr: string, cookie?: string): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
+        return new Promise((resolve, reject) => {
+          const parsed = new URL(targetUrl)
+          const isHttps = parsed.protocol === 'https:'
+          const options: https.RequestOptions = {
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname + parsed.search,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(bodyStr),
+              ...(cookie ? { Cookie: cookie } : {}),
+            },
+          }
+          if (isHttps) {
+            (options as any).rejectUnauthorized = false
+          }
+          const mod = isHttps ? https : http
+          const r = mod.request(options, (response) => {
+            const chunks: Buffer[] = []
+            response.on('data', (chunk: Buffer) => chunks.push(chunk))
+            response.on('end', () => {
+              const respHeaders: Record<string, string> = {}
+              for (const [k, v] of Object.entries(response.headers)) {
+                if (v) respHeaders[k] = Array.isArray(v) ? v.join(', ') : v
+              }
+              resolve({ status: response.statusCode || 500, headers: respHeaders, body: Buffer.concat(chunks) })
+            })
+          })
+          r.on('error', reject)
+          r.write(bodyStr)
+          r.end()
+        })
+      }
+
+      server.middlewares.use('/api/unifi-proxy', async (req, res) => {
+        const parsedUrl = new URL(req.url || '', 'http://localhost')
+        const pathAfterMount = parsedUrl.pathname
+
+        try {
+          // POST /api/unifi-proxy/login
+          if (pathAfterMount === '/login' && req.method === 'POST') {
+            const body = JSON.parse(await readBody(req))
+            const { host, username, password } = body
+            if (!host || !username || !password) {
+              res.statusCode = 400
+              res.end(JSON.stringify({ error: 'Missing host, username, or password' }))
+              return
+            }
+            const loginUrl = `${host.replace(/\/$/, '')}/api/auth/login`
+            const result = await unifiPost(loginUrl, JSON.stringify({ username, password }))
+            // Extract TOKEN from set-cookie
+            const setCookie = result.headers['set-cookie'] || ''
+            const tokenMatch = setCookie.match(/TOKEN=([^;]+)/)
+            if (tokenMatch) {
+              unifiTokens.set(host.replace(/\/$/, ''), tokenMatch[1])
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ ok: true }))
+            } else if (result.status === 200 || result.status === 204) {
+              // Some firmware versions return token differently
+              const bodyText = result.body.toString()
+              try {
+                const json = JSON.parse(bodyText)
+                if (json.accessToken) {
+                  unifiTokens.set(host.replace(/\/$/, ''), json.accessToken)
+                  res.setHeader('Content-Type', 'application/json')
+                  res.end(JSON.stringify({ ok: true }))
+                  return
+                }
+              } catch { /* not JSON */ }
+              res.statusCode = 401
+              res.end(JSON.stringify({ error: 'Login failed — no token in response' }))
+            } else {
+              res.statusCode = result.status
+              res.end(JSON.stringify({ error: `Login failed (${result.status})` }))
+            }
+            return
+          }
+
+          // GET /api/unifi-proxy/bootstrap?host=...
+          if (pathAfterMount === '/bootstrap') {
+            const host = (parsedUrl.searchParams.get('host') || '').replace(/\/$/, '')
+            const token = unifiTokens.get(host)
+            if (!host || !token) {
+              res.statusCode = 401
+              res.end(JSON.stringify({ error: 'Not authenticated — login first' }))
+              return
+            }
+            const url = `${host}/proxy/protect/api/bootstrap`
+            const result = await unifiFetch(url, `TOKEN=${token}`)
+            res.statusCode = result.status
+            res.setHeader('Content-Type', 'application/json')
+            res.end(result.body)
+            return
+          }
+
+          // GET /api/unifi-proxy/snapshot?host=...&cameraId=...&w=640&h=360
+          if (pathAfterMount === '/snapshot') {
+            const host = (parsedUrl.searchParams.get('host') || '').replace(/\/$/, '')
+            const cameraId = parsedUrl.searchParams.get('cameraId')
+            const w = parsedUrl.searchParams.get('w') || '640'
+            const h = parsedUrl.searchParams.get('h') || '360'
+            const token = unifiTokens.get(host)
+            if (!host || !token || !cameraId) {
+              res.statusCode = 401
+              res.end(JSON.stringify({ error: 'Not authenticated or missing params' }))
+              return
+            }
+            const url = `${host}/proxy/protect/api/cameras/${cameraId}/snapshot?w=${w}&h=${h}`
+            const result = await unifiFetch(url, `TOKEN=${token}`)
+            res.statusCode = result.status
+            const ct = result.headers['content-type'] || 'image/jpeg'
+            res.setHeader('Content-Type', ct)
+            res.setHeader('Cache-Control', 'no-cache, no-store')
+            res.end(result.body)
+            return
+          }
+
+          res.statusCode = 404
+          res.end(JSON.stringify({ error: 'Unknown unifi-proxy endpoint' }))
+        } catch (e) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: `UniFi proxy error: ${e}` }))
         }
       })
 
