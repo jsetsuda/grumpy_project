@@ -248,18 +248,19 @@ export function NewsWidget({ config }: WidgetProps<NewsConfig>) {
     const visibleItems = items.slice(0, 5)
     return (
       <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
           {visibleItems.map((item, i) => (
             <a
               key={`${item.title}-${i}`}
               href={item.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="block p-2 rounded-lg hover:bg-[var(--muted)] transition-colors border-b border-[var(--border)] pb-3 last:border-b-0"
+              className="block py-3 px-3 rounded-lg hover:bg-[var(--muted)] transition-colors border-b border-[var(--border)] last:border-b-0"
+              style={{ borderLeft: '3px solid rgba(255,255,255,0.15)' }}
             >
-              <div className="text-base font-bold leading-tight line-clamp-2">{item.title}</div>
+              <div className="text-lg font-bold leading-snug line-clamp-2">{item.title}</div>
               {showSource && (
-                <div className="text-sm text-[var(--muted-foreground)] mt-1">
+                <div className="text-sm text-[var(--foreground)]/60 mt-1.5">
                   {item.source} &middot; {timeAgo(item.pubDate)}
                 </div>
               )}
@@ -274,23 +275,24 @@ export function NewsWidget({ config }: WidgetProps<NewsConfig>) {
   const visibleItems = items.slice(0, 10)
   return (
     <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
         {visibleItems.map((item, i) => (
           <a
             key={`${item.title}-${i}`}
             href={item.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="block p-3 rounded-lg hover:bg-[var(--muted)] transition-colors border-b border-[var(--border)] pb-4 last:border-b-0"
+            className="block py-3 px-3 rounded-lg hover:bg-[var(--muted)] transition-colors border-b border-[var(--border)] last:border-b-0"
+            style={{ borderLeft: '3px solid rgba(255,255,255,0.15)' }}
           >
-            <div className="text-base font-bold leading-snug line-clamp-2">{item.title}</div>
+            <div className="text-lg font-bold leading-snug line-clamp-2">{item.title}</div>
             {showSource && (
-              <div className="text-sm text-[var(--muted-foreground)] mt-1">
+              <div className="text-sm text-[var(--foreground)]/60 mt-1.5">
                 {item.source} &middot; {timeAgo(item.pubDate)}
               </div>
             )}
             {item.description && (
-              <div className="text-sm text-[var(--muted-foreground)] mt-1.5 line-clamp-2 leading-relaxed">
+              <div className="text-sm text-[var(--muted-foreground)] mt-2 line-clamp-2 leading-relaxed">
                 {getFirstSentence(item.description)}
               </div>
             )}

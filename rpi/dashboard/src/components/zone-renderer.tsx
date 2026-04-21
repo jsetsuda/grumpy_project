@@ -88,7 +88,7 @@ export function ZoneRenderer() {
     updateConfig({ zoneLayout: { ...zoneLayout, zones: newZones } })
   }, [zoneLayout, updateConfig])
 
-  function getRegionStyle(region: ZoneRegion): React.CSSProperties {
+  function getRegionStyle(region: ZoneRegion, allRegions: ZoneRegion[]): React.CSSProperties {
     const style: React.CSSProperties = {
       position: 'absolute',
     }
@@ -106,6 +106,18 @@ export function ZoneRenderer() {
     // Handle centering for regions that use left: 50%
     if (region.left === '50%') {
       style.transform = 'translateX(-50%)'
+    }
+
+    // Add subtle vertical separator between adjacent zones:
+    // If this region is right-anchored (has right: '0') and there are other regions, add a left border
+    // If this region is left-anchored (no right prop) and has a specific width, and there are right-anchored siblings, add a right border
+    const hasRightAnchored = allRegions.some(r => r.id !== region.id && r.right !== undefined)
+    const hasLeftAnchored = allRegions.some(r => r.id !== region.id && r.right === undefined && r.width !== undefined)
+
+    if (region.right !== undefined && hasLeftAnchored) {
+      style.borderLeft = '1px solid rgba(255,255,255,0.08)'
+    } else if (region.right === undefined && region.width !== undefined && hasRightAnchored) {
+      style.borderRight = '1px solid rgba(255,255,255,0.08)'
     }
 
     return style
@@ -243,11 +255,12 @@ export function ZoneRenderer() {
           if (!def) return null
 
           const WidgetComponent = def.component
+          const allRegions = template?.regions || zoneLayout.zones.map(z => z.customRegion).filter((r): r is ZoneRegion => r !== undefined)
 
           return (
             <div
               key={zone.regionId}
-              style={getRegionStyle(region)}
+              style={getRegionStyle(region, allRegions)}
             >
               <div className="w-full h-full overflow-hidden">
                 <WidgetComponent

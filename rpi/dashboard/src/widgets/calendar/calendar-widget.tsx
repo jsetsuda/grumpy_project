@@ -314,9 +314,9 @@ function CalendarHeader({ viewMode, selectedDate, onViewChange, onNavigate, week
   }
 
   return (
-    <div className="shrink-0 px-3 pt-3 pb-2 space-y-2">
+    <div className={`shrink-0 px-3 ${isLarge ? 'pt-4 pb-3 space-y-3' : 'pt-3 pb-2 space-y-2'}`}>
       {/* View switcher */}
-      <div className={`flex items-center gap-1 bg-[var(--muted)] rounded-lg ${isLarge ? 'p-1' : 'p-0.5'}`}>
+      <div className={`flex items-center gap-1 bg-[var(--muted)] rounded-lg ${isLarge ? 'p-1.5' : 'p-0.5'}`}>
         {(['upcoming', 'day', 'week', 'month'] as ViewMode[]).map(v => (
           <button
             key={v}
@@ -343,7 +343,7 @@ function CalendarHeader({ viewMode, selectedDate, onViewChange, onNavigate, week
           </button>
 
           <div className="flex items-center gap-2">
-            <span className={`${isLarge ? 'text-lg' : 'text-sm'} font-medium`}>{getHeaderLabel()}</span>
+            <span className={`${isLarge ? 'text-xl' : 'text-sm'} font-semibold`}>{getHeaderLabel()}</span>
             {!isToday(selectedDate) && (
               <button
                 onClick={() => onNavigate(new Date())}
@@ -730,8 +730,8 @@ function SelectedDayEvents({ events, date, formatTime, onEventClick, isLarge }: 
   const dayEvents = events.filter(e => e.start < dayEnd && e.end > dayStart)
 
   return (
-    <div className="shrink-0 border-t border-[var(--border)] mt-2 pt-2">
-      <div className={`${isLarge ? 'text-sm' : 'text-xs'} font-medium text-[var(--muted-foreground)] mb-1.5 px-1`}>
+    <div className={`shrink-0 border-t border-[var(--border)] ${isLarge ? 'mt-3 pt-3' : 'mt-2 pt-2'}`}>
+      <div className={`${isLarge ? 'text-base' : 'text-xs'} font-semibold text-[var(--muted-foreground)] mb-2 px-1`}>
         {isToday(date) ? 'Today' : isTomorrow(date) ? 'Tomorrow' : format(date, 'EEEE, MMM d')}
         {dayEvents.length > 0 && <span className="ml-1 text-[var(--foreground)]">({dayEvents.length})</span>}
       </div>
