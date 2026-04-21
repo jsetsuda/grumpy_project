@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { Sunrise, Sunset, Droplets, Wind, Thermometer, Sun } from 'lucide-react'
-import { fetchWeather, getWeatherInfo, type WeatherData, type HourlyForecast, type DailyForecast } from './weather-api'
+import { getWeatherInfo, type WeatherData, type HourlyForecast, type DailyForecast } from './weather-api'
+import { getWeather } from '@/lib/weather-cache'
 import type { WidgetProps } from '../types'
 
 export type DisplayMode = 'auto' | 'compact' | 'standard' | 'detailed' | 'hourly'
@@ -98,7 +99,7 @@ export function WeatherWidget({ config: rawConfig, onConfigChange }: WidgetProps
 
     async function load() {
       try {
-        const data = await fetchWeather(config.lat, config.lon, config.units, config.forecastDays)
+        const data = await getWeather(config.lat, config.lon, config.units, config.forecastDays)
         if (!cancelled) {
           setWeather(data)
           setError(null)

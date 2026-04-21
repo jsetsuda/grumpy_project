@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
-import { fetchWeather, getWeatherInfo, type WeatherData } from '@/widgets/weather/weather-api'
+import { getWeatherInfo, type WeatherData } from '@/widgets/weather/weather-api'
+import { getWeather } from '@/lib/weather-cache'
 
 interface TopBarWeatherProps {
   lat: number
@@ -19,7 +20,7 @@ export function TopBarWeather({ lat, lon, units, mode, forecastDays }: TopBarWea
 
     async function load() {
       try {
-        const data = await fetchWeather(lat, lon, units, 7)
+        const data = await getWeather(lat, lon, units, 7)
         if (!cancelled) setWeather(data)
       } catch { /* ignore */ }
     }
