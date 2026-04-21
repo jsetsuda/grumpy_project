@@ -215,8 +215,8 @@ export function ZoneRenderer() {
           pointerEvents: inSlideshow ? 'none' : 'auto',
         }}
       >
-        {template && zoneLayout && zoneLayout.zones.map(zone => {
-          const region = template.regions.find(r => r.id === zone.regionId)
+        {zoneLayout && zoneLayout.zones.map(zone => {
+          const region = zone.customRegion || template?.regions.find(r => r.id === zone.regionId)
           if (!region) return null
 
           const def = registry.get(zone.widgetType)

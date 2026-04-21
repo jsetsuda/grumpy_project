@@ -183,6 +183,44 @@ export const zoneTemplates: ZoneTemplate[] = [
   },
 ]
 
+// Custom template — empty, user places their own zones
+export const customTemplate: ZoneTemplate = {
+  id: 'custom',
+  name: 'Custom',
+  description: 'Place and size your own widgets freely on the screen',
+  regions: [],
+}
+
+// Include custom in the full list
+zoneTemplates.push(customTemplate)
+
 export function getTemplate(id: string): ZoneTemplate | undefined {
   return zoneTemplates.find(t => t.id === id)
+}
+
+// Default widget assignments per template
+export const templatePresets: Record<string, Record<string, string>> = {
+  'full-overlay': {
+    'top-left': 'clock',
+    'top-right': 'weather',
+    'left-panel': 'calendar',
+    'bottom-right': 'todo',
+  },
+  'left-panel': {
+    'left-panel': 'calendar',
+    'top-right': 'weather',
+  },
+  'split': {
+    'left-half': 'calendar',
+    'right-half': 'ha-entities',
+  },
+  'header-content': {
+    'header': 'clock',
+    'left-content': 'calendar',
+    'right-content': 'weather',
+  },
+  'minimal': {
+    'center-top': 'clock',
+    'bottom-center': 'weather',
+  },
 }

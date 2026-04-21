@@ -32,4 +32,6 @@ export interface ZoneInstance {
   regionId: string
   widgetType: string
   widgetConfig: Record<string, unknown>
+  // Custom positioning (only used with 'custom' template)
+  customRegion?: ZoneRegion
 }
