@@ -2876,18 +2876,82 @@ function StreamingSettings({ config, onChange }: { config: Record<string, any>; 
   )
 }
 
+type CameraSourceType = 'unifi' | 'snapshot-url' | 'mjpeg' | 'ha-camera' | 'frigate'
+
+interface CameraSourceEntry {
+  id: string
+  name: string
+  enabled: boolean
+  sourceType: CameraSourceType
+  snapshotUrl?: string
+  mjpegUrl?: string
+  haEntityId?: string
+  haUrl?: string
+  haToken?: string
+  frigateUrl?: string
+  frigateCameraName?: string
+  unifiHost?: string
+  unifiCameraId?: string
+}
+
+const SOURCE_TYPE_LABELS: Record<CameraSourceType, string> = {
+  'unifi': 'UniFi Protect',
+  'snapshot-url': 'Snapshot URL',
+  'mjpeg': 'MJPEG Stream',
+  'ha-camera': 'Home Assistant',
+  'frigate': 'Frigate',
+}
+
+const SOURCE_TYPE_COLORS: Record<CameraSourceType, string> = {
+  'unifi': 'bg-blue-500/20 text-blue-300',
+  'snapshot-url': 'bg-green-500/20 text-green-300',
+  'mjpeg': 'bg-purple-500/20 text-purple-300',
+  'ha-camera': 'bg-cyan-500/20 text-cyan-300',
+  'frigate': 'bg-orange-500/20 text-orange-300',
+}
+
 function CamerasSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
   const [connecting, setConnecting] = useState(false)
   const [connectError, setConnectError] = useState('')
+  const [addingType, setAddingType] = useState<CameraSourceType | null>(null)
+  const [browsingHA, setBrowsingHA] = useState(false)
+  const [haEntities, setHaEntities] = useState<Array<{ entity_id: string; name: string }>>([])
 
   const host = config.host || ''
   const username = config.username || ''
   const password = config.password || ''
-  const cameras: Array<{ id: string; name: string; enabled: boolean }> = config.cameras || []
+  const cameras: CameraSourceEntry[] = (config.cameras || []).map((c: any) => ({
+    ...c,
+    sourceType: c.sourceType || 'unifi',
+  }))
   const refreshInterval = config.refreshInterval || 5
   const layout = config.layout || 'grid'
+  const gridColumns = config.gridColumns || 0
+  const gridGap = config.gridGap ?? 0
 
-  async function handleConnect() {
+  function updateCamera(id: string, updates: Partial<CameraSourceEntry>) {
+    const updated = cameras.map(c => c.id === id ? { ...c, ...updates } : c)
+    onChange({ cameras: updated })
+  }
+
+  function deleteCamera(id: string) {
+    onChange({ cameras: cameras.filter(c => c.id !== id) })
+  }
+
+  function addCamera(type: CameraSourceType) {
+    const newCam: CameraSourceEntry = {
+      id: `cam-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: `New ${SOURCE_TYPE_LABELS[type]} Camera`,
+      enabled: true,
+      sourceType: type,
+      unifiHost: type === 'unifi' ? host : undefined,
+    }
+    onChange({ cameras: [...cameras, newCam] })
+    setAddingType(null)
+  }
+
+  // UniFi auto-discover
+  async function handleUnifiConnect() {
     if (!host || !username || !password) {
       setConnectError('Host, username, and password are required')
       return
@@ -2895,7 +2959,6 @@ function CamerasSettings({ config, onChange }: { config: Record<string, any>; on
     setConnecting(true)
     setConnectError('')
     try {
-      // Login
       const loginRes = await fetch('/api/unifi-proxy/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2907,7 +2970,6 @@ function CamerasSettings({ config, onChange }: { config: Record<string, any>; on
         setConnecting(false)
         return
       }
-      // Fetch bootstrap
       const bsRes = await fetch(`/api/unifi-proxy/bootstrap?host=${encodeURIComponent(host.replace(/\/$/, ''))}`)
       if (!bsRes.ok) {
         setConnectError('Failed to fetch camera list')
@@ -2919,14 +2981,18 @@ function CamerasSettings({ config, onChange }: { config: Record<string, any>; on
         id: c.id,
         name: c.name || c.id,
       }))
-      // Merge with existing config — preserve enabled state for already-known cameras
-      const existingMap = new Map(cameras.map(c => [c.id, c]))
-      const merged = cams.map(c => ({
-        id: c.id,
-        name: c.name,
-        enabled: existingMap.get(c.id)?.enabled ?? true,
+      // Merge discovered UniFi cameras with existing, preserve non-UniFi cameras
+      const existingUnifi = new Map(cameras.filter(c => c.sourceType === 'unifi').map(c => [c.unifiCameraId || c.id, c]))
+      const nonUnifi = cameras.filter(c => c.sourceType !== 'unifi')
+      const mergedUnifi = cams.map(c => ({
+        id: existingUnifi.get(c.id)?.id || c.id,
+        name: existingUnifi.get(c.id)?.name || c.name,
+        enabled: existingUnifi.get(c.id)?.enabled ?? true,
+        sourceType: 'unifi' as const,
+        unifiHost: host.replace(/\/$/, ''),
+        unifiCameraId: c.id,
       }))
-      onChange({ cameras: merged })
+      onChange({ cameras: [...mergedUnifi, ...nonUnifi] })
     } catch (e) {
       setConnectError(`Connection error: ${e}`)
     } finally {
@@ -2934,9 +3000,47 @@ function CamerasSettings({ config, onChange }: { config: Record<string, any>; on
     }
   }
 
+  // HA camera browse
+  async function handleBrowseHA(haUrl: string, haToken: string) {
+    setBrowsingHA(true)
+    try {
+      const res = await fetch(`/api/ha-proxy?url=${encodeURIComponent(`${haUrl}/api/states`)}`, {
+        headers: { Authorization: `Bearer ${haToken}` },
+      })
+      if (!res.ok) throw new Error('Failed to fetch HA states')
+      const states = await res.json()
+      const cameraEntities = (states as any[])
+        .filter((s: any) => s.entity_id.startsWith('camera.'))
+        .map((s: any) => ({
+          entity_id: s.entity_id,
+          name: s.attributes?.friendly_name || s.entity_id,
+        }))
+      setHaEntities(cameraEntities)
+    } catch {
+      setHaEntities([])
+    } finally {
+      setBrowsingHA(false)
+    }
+  }
+
+  function addHACamera(entityId: string, name: string, haUrl: string, haToken: string) {
+    const newCam: CameraSourceEntry = {
+      id: `ha-${entityId}-${Date.now()}`,
+      name,
+      enabled: true,
+      sourceType: 'ha-camera',
+      haEntityId: entityId,
+      haUrl,
+      haToken,
+    }
+    onChange({ cameras: [...cameras, newCam] })
+  }
+
   return (
     <div>
-      <SettingsField label="UniFi Protect Host URL">
+      {/* --- UniFi Protect Section --- */}
+      <div className="text-xs font-medium text-[var(--muted-foreground)] mb-1">UniFi Protect Auto-Discover</div>
+      <SettingsField label="Host URL">
         <TextInput
           value={host}
           onChange={v => onChange({ host: v })}
@@ -2960,7 +3064,7 @@ function CamerasSettings({ config, onChange }: { config: Record<string, any>; on
       </SettingsField>
       <div className="mt-3">
         <button
-          onClick={handleConnect}
+          onClick={handleUnifiConnect}
           disabled={connecting}
           className="w-full px-3 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md text-sm font-medium min-h-[44px] disabled:opacity-50"
         >
@@ -2971,49 +3075,244 @@ function CamerasSettings({ config, onChange }: { config: Record<string, any>; on
         )}
       </div>
 
-      {cameras.length > 0 && (
-        <>
-          <div className="mt-4 text-xs font-medium text-[var(--muted-foreground)]">Cameras ({cameras.filter(c => c.enabled).length}/{cameras.length} enabled)</div>
-          <div className="mt-1 space-y-1">
-            {cameras.map(cam => (
-              <Toggle
-                key={cam.id}
-                checked={cam.enabled}
-                onChange={v => {
-                  const updated = cameras.map(c => c.id === cam.id ? { ...c, enabled: v } : c)
-                  onChange({ cameras: updated })
-                }}
-                label={cam.name}
-              />
-            ))}
+      {/* --- Add Camera --- */}
+      <div className="mt-5 pt-4 border-t border-[var(--border)]">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-medium text-[var(--muted-foreground)]">
+            Cameras ({cameras.filter(c => c.enabled).length}/{cameras.length} enabled)
           </div>
-        </>
+          <div className="relative">
+            <button
+              onClick={() => setAddingType(addingType ? null : 'snapshot-url')}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md font-medium min-h-[32px]"
+            >
+              <Plus size={12} /> Add Camera
+            </button>
+            {addingType !== null && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-lg py-1 min-w-[180px]">
+                {(Object.keys(SOURCE_TYPE_LABELS) as CameraSourceType[]).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => addCamera(type)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--muted)] transition-colors"
+                  >
+                    {SOURCE_TYPE_LABELS[type]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Camera list */}
+        <div className="space-y-2">
+          {cameras.map(cam => (
+            <CameraSettingsCard
+              key={cam.id}
+              cam={cam}
+              onUpdate={updates => updateCamera(cam.id, updates)}
+              onDelete={() => deleteCamera(cam.id)}
+              onBrowseHA={handleBrowseHA}
+              browsingHA={browsingHA}
+              haEntities={haEntities}
+              onAddHACamera={addHACamera}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* --- Grid & Display Settings --- */}
+      <div className="mt-5 pt-4 border-t border-[var(--border)]">
+        <SettingsField label="Refresh Interval">
+          <SelectInput
+            value={String(refreshInterval)}
+            onChange={v => onChange({ refreshInterval: Number(v) })}
+            options={[
+              { value: '1', label: '1 second' },
+              { value: '2', label: '2 seconds' },
+              { value: '5', label: '5 seconds' },
+              { value: '10', label: '10 seconds' },
+              { value: '30', label: '30 seconds' },
+            ]}
+          />
+        </SettingsField>
+
+        <SettingsField label="Layout">
+          <SelectInput
+            value={layout}
+            onChange={v => onChange({ layout: v })}
+            options={[
+              { value: 'grid', label: 'Grid (all cameras)' },
+              { value: 'single', label: 'Single (one large + thumbnails)' },
+            ]}
+          />
+        </SettingsField>
+
+        <SettingsField label="Grid Columns">
+          <SelectInput
+            value={String(gridColumns)}
+            onChange={v => onChange({ gridColumns: Number(v) })}
+            options={[
+              { value: '0', label: 'Auto (calculated)' },
+              { value: '1', label: '1 column' },
+              { value: '2', label: '2 columns' },
+              { value: '3', label: '3 columns' },
+              { value: '4', label: '4 columns' },
+              { value: '5', label: '5 columns' },
+              { value: '6', label: '6 columns' },
+            ]}
+          />
+        </SettingsField>
+
+        <SettingsField label="Grid Gap">
+          <SelectInput
+            value={String(gridGap)}
+            onChange={v => onChange({ gridGap: Number(v) })}
+            options={[
+              { value: '0', label: 'None (CCTV look)' },
+              { value: '2', label: '2px' },
+              { value: '4', label: '4px' },
+            ]}
+          />
+        </SettingsField>
+      </div>
+    </div>
+  )
+}
+
+function CameraSettingsCard({
+  cam,
+  onUpdate,
+  onDelete,
+  onBrowseHA,
+  browsingHA,
+  haEntities,
+}: {
+  cam: CameraSourceEntry
+  onUpdate: (updates: Partial<CameraSourceEntry>) => void
+  onDelete: () => void
+  onBrowseHA: (haUrl: string, haToken: string) => void
+  browsingHA: boolean
+  haEntities: Array<{ entity_id: string; name: string }>
+  onAddHACamera: (entityId: string, name: string, haUrl: string, haToken: string) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="bg-[var(--muted)] rounded-md overflow-hidden">
+      {/* Header row */}
+      <div className="flex items-center gap-2 px-3 py-2 min-h-[44px]">
+        <button onClick={() => setExpanded(!expanded)} className="text-[var(--muted-foreground)] shrink-0">
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate">{cam.name}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${SOURCE_TYPE_COLORS[cam.sourceType]}`}>
+              {SOURCE_TYPE_LABELS[cam.sourceType]}
+            </span>
+          </div>
+        </div>
+
+        {/* Enable/disable toggle */}
+        <div
+          onClick={() => onUpdate({ enabled: !cam.enabled })}
+          className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer shrink-0 ${cam.enabled ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}`}
+        >
+          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${cam.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+        </div>
+
+        <button
+          onClick={onDelete}
+          className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors shrink-0 p-1"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+
+      {/* Expanded settings */}
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2 border-t border-[var(--border)]">
+          <SettingsField label="Name">
+            <TextInput value={cam.name} onChange={v => onUpdate({ name: v })} placeholder="Camera name" />
+          </SettingsField>
+
+          {cam.sourceType === 'unifi' && (
+            <>
+              <SettingsField label="UniFi Host">
+                <TextInput value={cam.unifiHost || ''} onChange={v => onUpdate({ unifiHost: v })} placeholder="https://192.168.1.1" />
+              </SettingsField>
+              <SettingsField label="Camera ID">
+                <TextInput value={cam.unifiCameraId || ''} onChange={v => onUpdate({ unifiCameraId: v })} placeholder="Camera ID from UniFi" />
+              </SettingsField>
+            </>
+          )}
+
+          {cam.sourceType === 'snapshot-url' && (
+            <SettingsField label="Snapshot URL">
+              <TextInput value={cam.snapshotUrl || ''} onChange={v => onUpdate({ snapshotUrl: v })} placeholder="https://camera.local/snapshot.jpg" />
+            </SettingsField>
+          )}
+
+          {cam.sourceType === 'mjpeg' && (
+            <SettingsField label="MJPEG URL">
+              <TextInput value={cam.mjpegUrl || ''} onChange={v => onUpdate({ mjpegUrl: v })} placeholder="https://camera.local/mjpeg" />
+            </SettingsField>
+          )}
+
+          {cam.sourceType === 'ha-camera' && (
+            <>
+              <SettingsField label="HA URL">
+                <TextInput value={cam.haUrl || ''} onChange={v => onUpdate({ haUrl: v })} placeholder="http://homeassistant.local:8123" />
+              </SettingsField>
+              <SettingsField label="HA Token">
+                <TextInput value={cam.haToken || ''} onChange={v => onUpdate({ haToken: v })} placeholder="Long-lived access token" type="password" />
+              </SettingsField>
+              <SettingsField label="Entity ID">
+                <TextInput value={cam.haEntityId || ''} onChange={v => onUpdate({ haEntityId: v })} placeholder="camera.front_door" />
+              </SettingsField>
+              {cam.haUrl && cam.haToken && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => onBrowseHA(cam.haUrl!, cam.haToken!)}
+                    disabled={browsingHA}
+                    className="flex items-center gap-1 px-2 py-1.5 text-xs bg-[var(--card)] border border-[var(--border)] rounded-md hover:bg-[var(--muted)] transition-colors min-h-[32px]"
+                  >
+                    <Search size={12} />
+                    {browsingHA ? 'Browsing...' : 'Browse HA Cameras'}
+                  </button>
+                  {haEntities.length > 0 && (
+                    <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                      {haEntities.map(ent => (
+                        <button
+                          key={ent.entity_id}
+                          onClick={() => onUpdate({ haEntityId: ent.entity_id, name: ent.name })}
+                          className="w-full text-left px-2 py-1 text-xs rounded hover:bg-[var(--card)] transition-colors"
+                        >
+                          <span className="font-medium">{ent.name}</span>
+                          <span className="text-[var(--muted-foreground)] ml-1">({ent.entity_id})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {cam.sourceType === 'frigate' && (
+            <>
+              <SettingsField label="Frigate URL">
+                <TextInput value={cam.frigateUrl || ''} onChange={v => onUpdate({ frigateUrl: v })} placeholder="http://frigate.local:5000" />
+              </SettingsField>
+              <SettingsField label="Camera Name">
+                <TextInput value={cam.frigateCameraName || ''} onChange={v => onUpdate({ frigateCameraName: v })} placeholder="front_door" />
+              </SettingsField>
+            </>
+          )}
+        </div>
       )}
-
-      <SettingsField label="Refresh Interval">
-        <SelectInput
-          value={String(refreshInterval)}
-          onChange={v => onChange({ refreshInterval: Number(v) })}
-          options={[
-            { value: '1', label: '1 second' },
-            { value: '2', label: '2 seconds' },
-            { value: '5', label: '5 seconds' },
-            { value: '10', label: '10 seconds' },
-            { value: '30', label: '30 seconds' },
-          ]}
-        />
-      </SettingsField>
-
-      <SettingsField label="Layout">
-        <SelectInput
-          value={layout}
-          onChange={v => onChange({ layout: v })}
-          options={[
-            { value: 'grid', label: 'Grid (all cameras)' },
-            { value: 'single', label: 'Single (one large + thumbnails)' },
-          ]}
-        />
-      </SettingsField>
     </div>
   )
 }

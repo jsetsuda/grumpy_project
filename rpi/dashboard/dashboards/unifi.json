@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "id": "unifi",
+    "name": "Unifi",
+    "layoutMode": "grid",
+    "createdAt": "2026-04-21T23:09:43.806Z",
+    "updatedAt": "2026-04-21T23:19:08.384Z"
+  },
+  "config": {
+    "version": 1,
+    "theme": "midnight",
+    "backgroundMode": "solid",
+    "backgroundOverlay": 60,
+    "showTopBar": true,
+    "topBarFont": "system-ui",
+    "topBarSize": "large",
+    "topBarBold": false,
+    "topBarBackground": true,
+    "topBarScale": 100,
+    "topBarHeight": 60,
+    "widgetStartY": 90,
+    "topBarShadow": true,
+    "topBarShadowSize": 8,
+    "topBarShadowOpacity": 80,
+    "topBarWeather": true,
+    "topBarWeatherMode": "current",
+    "topBarForecastDays": 5,
+    "screensaverEnabled": true,
+    "screensaverTimeout": 300,
+    "widgetOpacity": 100,
+    "voiceEnabled": false,
+    "grid": {
+      "cols": 12,
+      "rowHeight": 80,
+      "margin": [
+        12,
+        12
+      ]
+    },
+    "widgets": [
+      {
+        "id": "cameras-mo98nc9p",
+        "type": "cameras",
+        "layout": {
+          "x": 1,
+          "y": null,
+          "w": 5,
+          "h": null
+        },
+        "config": {
+          "host": "https://192.168.5.10",
+          "username": "viewport",
+          "password": "REDACTED_UNIFI_PASSWORD",
+          "cameras": [
+            {
+              "id": "63cc64930075e903e40003ed",
+              "name": "CCI Outdoor Back East",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "63cc6493005be903e40003ec",
+              "name": "CCI Outdoor Side North",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "67cf2d3a01b6fb03e404a69a",
+              "name": "CCI Outdoor Side South",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "63cc649300a9e903e40003ef",
+              "name": "CCI Outdoor Back West",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "69330c5a01e76903e4a7ef4b",
+              "name": "CCI 3D Printing Room",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "672129ad02b22e03e40004f1",
+              "name": "CCI Shop AI 360",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "68e42344003a7703e40de5c8",
+              "name": "CCI Outdoor Front",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "6866d060001b1c03e46d7da0",
+              "name": "CCI Front Office",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "63cc64930163e903e40003f6",
+              "name": "CCI Shop Front Machines",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "63cc649300f9e903e40003f2",
+              "name": "CCI Shop Lathes",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "676315c5027d9d03e401f4a0",
+              "name": "CCI Server Room",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "63cc6493008ee903e40003ee",
+              "name": "CCI Shop East Door",
+              "enabled": true,
+              "sourceType": "unifi"
+            },
+            {
+              "id": "691b9720002f6903e47ffed0",
+              "name": "CCI Shop Back Door",
+              "enabled": true,
+              "sourceType": "unifi"
+            }
+          ],
+          "layout": "grid",
+          "selectedCamera": "68e42344003a7703e40de5c8"
+        }
+      }
+    ]
+  }
+}
