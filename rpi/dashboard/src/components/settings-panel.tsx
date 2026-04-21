@@ -344,6 +344,8 @@ export function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) 
       return <SystemStatusSettings config={widget.config} onChange={onConfigChange} />
     case 'analog-clock':
       return <AnalogClockSettings config={widget.config} onChange={onConfigChange} />
+    case 'streaming':
+      return <StreamingSettings config={widget.config} onChange={onConfigChange} />
     default:
       return <p className="text-sm text-[var(--muted-foreground)]">No settings available</p>
   }
@@ -2683,6 +2685,159 @@ function AnalogClockSettings({ config, onChange }: { config: Record<string, any>
       </SettingsField>
       <Toggle checked={config.showNumbers ?? true} onChange={v => onChange({ showNumbers: v })} label="Show numbers" />
       <Toggle checked={config.showSeconds ?? true} onChange={v => onChange({ showSeconds: v })} label="Show second hand" />
+    </div>
+  )
+}
+
+const STREAMING_DEFAULT_SERVICES = [
+  { id: 'netflix', name: 'Netflix', url: 'https://www.netflix.com/browse', icon: '\uD83C\uDFAC', color: '#E50914', enabled: true, openMode: 'overlay' as const },
+  { id: 'hulu', name: 'Hulu', url: 'https://www.hulu.com/hub/home', icon: '\uD83D\uDCFA', color: '#1CE783', enabled: true, openMode: 'overlay' as const },
+  { id: 'disney', name: 'Disney+', url: 'https://www.disneyplus.com/home', icon: '\u2728', color: '#113CCF', enabled: true, openMode: 'overlay' as const },
+  { id: 'prime', name: 'Prime Video', url: 'https://www.amazon.com/gp/video/storefront', icon: '\uD83D\uDCE6', color: '#00A8E1', enabled: true, openMode: 'overlay' as const },
+  { id: 'youtubetv', name: 'YouTube TV', url: 'https://tv.youtube.com', icon: '\uD83D\uDCE1', color: '#FF0000', enabled: true, openMode: 'overlay' as const },
+  { id: 'hbo', name: 'HBO Max', url: 'https://play.max.com', icon: '\uD83C\uDFAD', color: '#5822B4', enabled: true, openMode: 'overlay' as const },
+  { id: 'paramount', name: 'Paramount+', url: 'https://www.paramountplus.com', icon: '\u2B50', color: '#0064FF', enabled: true, openMode: 'overlay' as const },
+  { id: 'appletv', name: 'Apple TV+', url: 'https://tv.apple.com', icon: '\uD83C\uDF4E', color: '#000000', enabled: true, openMode: 'overlay' as const },
+  { id: 'peacock', name: 'Peacock', url: 'https://www.peacocktv.com', icon: '\uD83E\uDD9A', color: '#FFC300', enabled: true, openMode: 'overlay' as const },
+  { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com', icon: '\u25B6\uFE0F', color: '#FF0000', enabled: true, openMode: 'overlay' as const },
+  { id: 'twitch', name: 'Twitch', url: 'https://www.twitch.tv', icon: '\uD83C\uDFAE', color: '#9146FF', enabled: true, openMode: 'overlay' as const },
+  { id: 'spotify', name: 'Spotify', url: 'https://open.spotify.com', icon: '\uD83C\uDFB5', color: '#1DB954', enabled: true, openMode: 'overlay' as const },
+  { id: 'plex', name: 'Plex', url: '', icon: '\uD83C\uDF9E\uFE0F', color: '#E5A00D', enabled: false, openMode: 'overlay' as const },
+]
+
+function StreamingSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const services: Array<{ id: string; name: string; url: string; icon: string; color: string; enabled: boolean; openMode: 'overlay' | 'window' }> = config.services || STREAMING_DEFAULT_SERVICES
+  const [addingCustom, setAddingCustom] = useState(false)
+  const [customName, setCustomName] = useState('')
+  const [customUrl, setCustomUrl] = useState('')
+  const [customColor, setCustomColor] = useState('#666666')
+
+  const updateService = (id: string, updates: Record<string, unknown>) => {
+    const updated = services.map(s => s.id === id ? { ...s, ...updates } : s)
+    onChange({ services: updated })
+  }
+
+  const removeService = (id: string) => {
+    onChange({ services: services.filter(s => s.id !== id) })
+  }
+
+  const addCustomService = () => {
+    if (!customName.trim() || !customUrl.trim()) return
+    const id = 'custom-' + Date.now()
+    const newService = {
+      id,
+      name: customName.trim(),
+      url: customUrl.trim(),
+      icon: '\uD83C\uDF10',
+      color: customColor,
+      enabled: true,
+      openMode: 'overlay' as const,
+    }
+    onChange({ services: [...services, newService] })
+    setCustomName('')
+    setCustomUrl('')
+    setCustomColor('#666666')
+    setAddingCustom(false)
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-[var(--muted-foreground)] mb-3">
+        Enable/disable streaming services and configure how they open.
+      </p>
+
+      <div className="space-y-2 mb-4">
+        {services.map(service => (
+          <div key={service.id} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--muted)]/30">
+            <span className="text-lg w-8 text-center flex-shrink-0">{service.icon}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">{service.name}</div>
+              {service.id === 'plex' || service.id.startsWith('custom-') ? (
+                <input
+                  type="text"
+                  value={service.url}
+                  onChange={e => updateService(service.id, { url: e.target.value })}
+                  placeholder="Enter URL..."
+                  className="text-xs mt-1 w-full bg-[var(--muted)] text-[var(--foreground)] rounded px-2 py-1 outline-none"
+                />
+              ) : (
+                <div className="text-xs text-[var(--muted-foreground)] truncate">{service.url}</div>
+              )}
+            </div>
+            <select
+              value={service.openMode}
+              onChange={e => updateService(service.id, { openMode: e.target.value })}
+              className="text-xs bg-[var(--muted)] text-[var(--foreground)] rounded px-1 py-1 outline-none"
+            >
+              <option value="overlay">Overlay</option>
+              <option value="window">Window</option>
+            </select>
+            <button
+              onClick={() => updateService(service.id, { enabled: !service.enabled })}
+              className={`text-xs px-2 py-1 rounded min-w-[44px] min-h-[32px] ${service.enabled ? 'bg-green-600 text-white' : 'bg-[var(--muted)] text-[var(--muted-foreground)]'}`}
+            >
+              {service.enabled ? 'On' : 'Off'}
+            </button>
+            {service.id.startsWith('custom-') && (
+              <button
+                onClick={() => removeService(service.id)}
+                className="text-[var(--muted-foreground)] hover:text-red-500 p-1"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {addingCustom ? (
+        <div className="space-y-2 p-3 rounded-lg bg-[var(--muted)]/30">
+          <p className="text-sm font-medium">Add Custom Service</p>
+          <input
+            type="text"
+            value={customName}
+            onChange={e => setCustomName(e.target.value)}
+            placeholder="Service name"
+            className="w-full bg-[var(--muted)] text-[var(--foreground)] rounded px-3 py-2 text-sm outline-none"
+          />
+          <input
+            type="text"
+            value={customUrl}
+            onChange={e => setCustomUrl(e.target.value)}
+            placeholder="https://..."
+            className="w-full bg-[var(--muted)] text-[var(--foreground)] rounded px-3 py-2 text-sm outline-none"
+          />
+          <SettingsField label="Button Color">
+            <input
+              type="color"
+              value={customColor}
+              onChange={e => setCustomColor(e.target.value)}
+              className="w-8 h-8 rounded cursor-pointer"
+            />
+          </SettingsField>
+          <div className="flex gap-2">
+            <button
+              onClick={addCustomService}
+              className="flex-1 px-3 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded text-sm min-h-[44px]"
+            >
+              Add
+            </button>
+            <button
+              onClick={() => setAddingCustom(false)}
+              className="px-3 py-2 bg-[var(--muted)] text-[var(--foreground)] rounded text-sm min-h-[44px]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAddingCustom(true)}
+          className="flex items-center gap-1 text-sm text-[var(--primary)] hover:underline"
+        >
+          <Plus size={14} /> Add Custom Service
+        </button>
+      )}
     </div>
   )
 }

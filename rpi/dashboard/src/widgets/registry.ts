@@ -18,6 +18,7 @@ import { SystemStatusWidget } from './system-status/system-status-widget'
 import { AnalogClockWidget } from './analog-clock/analog-clock-widget'
 import { StreamWidget } from './stream/stream-widget'
 import { MediaPlayerWidget } from './media-player/media-player-widget'
+import { StreamingWidget } from './streaming/streaming-widget'
 
 const registry = new Map<string, WidgetDefinition>()
 
@@ -192,6 +193,15 @@ register({
   name: 'Media Player',
   description: 'Browse and control Plex, Jellyfin, or HA media players',
   component: MediaPlayerWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'streaming',
+  name: 'Streaming Services',
+  description: 'Launch streaming sites like Netflix, Hulu, Disney+ in a full-screen overlay',
+  component: StreamingWidget,
   defaultSize: { w: 4, h: 4 },
   minSize: { w: 3, h: 3 },
 })

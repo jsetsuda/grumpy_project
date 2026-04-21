@@ -115,6 +115,12 @@ export function matchVoiceCommand(transcript: string): VoiceCommandResult | null
     return { action: 'settings:open', params: {}, responseText: 'Opening settings' }
   }
 
+  // Streaming: "open netflix" / "launch hulu" / "close streaming"
+  {
+    const streamingMatch = parseStreamingCommand(text)
+    if (streamingMatch) return streamingMatch
+  }
+
   // Spotify: play [query] — must come last since it's a catch-all for "play ..."
   // (but not "play X on youtube" which is handled above)
   if (text.startsWith('play ') && !text.includes('on youtube') && !text.includes('on twitch')) {
@@ -212,6 +218,50 @@ function parseAlarmCommand(text: string): VoiceCommandResult | null {
       action: 'alarm:set',
       params: { time: timeStr },
       responseText: `Setting alarm for ${timeStr}`,
+    }
+  }
+
+  return null
+}
+
+const STREAMING_SERVICES: Array<{ id: string; names: string[] }> = [
+  { id: 'netflix', names: ['netflix'] },
+  { id: 'hulu', names: ['hulu'] },
+  { id: 'disney', names: ['disney', 'disney plus', 'disney+'] },
+  { id: 'prime', names: ['prime', 'prime video', 'amazon prime'] },
+  { id: 'youtubetv', names: ['youtube tv'] },
+  { id: 'hbo', names: ['hbo', 'hbo max', 'max'] },
+  { id: 'paramount', names: ['paramount', 'paramount plus', 'paramount+'] },
+  { id: 'appletv', names: ['apple tv', 'apple tv plus', 'apple tv+'] },
+  { id: 'peacock', names: ['peacock'] },
+  { id: 'youtube', names: ['youtube'] },
+  { id: 'twitch', names: ['twitch'] },
+  { id: 'spotify', names: ['spotify'] },
+  { id: 'plex', names: ['plex'] },
+]
+
+function parseStreamingCommand(text: string): VoiceCommandResult | null {
+  // Close streaming
+  if (text === 'close streaming' || text === 'close video' || text === 'close stream' || text === 'exit streaming') {
+    return { action: 'streaming:close', params: {}, responseText: 'Closing streaming overlay' }
+  }
+
+  // Open / launch service
+  for (const service of STREAMING_SERVICES) {
+    for (const name of service.names) {
+      if (
+        text === `open ${name}` ||
+        text === `launch ${name}` ||
+        text === `start ${name}` ||
+        text === `watch ${name}`
+      ) {
+        const displayName = name.charAt(0).toUpperCase() + name.slice(1)
+        return {
+          action: 'streaming:open',
+          params: { service: service.id },
+          responseText: `Opening ${displayName}`,
+        }
+      }
     }
   }
 
