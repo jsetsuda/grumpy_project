@@ -10,6 +10,7 @@ import { BackgroundLayer } from './background-layer'
 import { useTheme } from '@/hooks/use-theme'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import { TopBarWeather } from './topbar-weather'
+import { NowPlayingOverlay } from './now-playing-overlay'
 
 export function DashboardGrid() {
   const { config, updateWidgetConfig, updateAllLayouts } = useConfig()
@@ -73,6 +74,10 @@ export function DashboardGrid() {
   const topBarBold = config.topBarBold ?? false
   const topBarBg = config.topBarBackground ?? true
   const topBarSize = config.topBarSize || 'large'
+
+  // Get Spotify config from music widget for the now-playing overlay
+  const musicWidget = config.widgets.find(w => w.type === 'music')
+  const spotifyConfig = musicWidget?.config?.spotify as any
 
   const sizeClasses = {
     small: { time: 'text-2xl', date: 'text-base' },
@@ -170,6 +175,11 @@ export function DashboardGrid() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Now playing overlay — bottom left during slideshow */}
+      {inSlideshow && spotifyConfig?.refreshToken && (
+        <NowPlayingOverlay spotifyConfig={spotifyConfig} showBackground={topBarBg} />
       )}
 
       {/* Main dashboard (fades out during slideshow) */}
