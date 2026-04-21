@@ -30,6 +30,7 @@ export const DEFAULT_SERVICES: StreamingService[] = [
   { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com', icon: '\u25B6\uFE0F', color: '#FF0000', enabled: true, openMode: 'overlay' },
   { id: 'twitch', name: 'Twitch', url: 'https://www.twitch.tv', icon: '\uD83C\uDFAE', color: '#9146FF', enabled: true, openMode: 'overlay' },
   { id: 'spotify', name: 'Spotify', url: 'https://open.spotify.com', icon: '\uD83C\uDFB5', color: '#1DB954', enabled: true, openMode: 'overlay' },
+  { id: 'crunchyroll', name: 'Crunchyroll', url: 'https://www.crunchyroll.com', icon: '🍥', color: '#F47521', enabled: true, openMode: 'overlay' },
   { id: 'plex', name: 'Plex', url: '', icon: '\uD83C\uDF9E\uFE0F', color: '#E5A00D', enabled: false, openMode: 'overlay' },
 ]
 

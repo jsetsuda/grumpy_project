@@ -234,6 +234,7 @@ const STREAMING_SERVICES: Array<{ id: string; names: string[] }> = [
   { id: 'paramount', names: ['paramount', 'paramount plus', 'paramount+'] },
   { id: 'appletv', names: ['apple tv', 'apple tv plus', 'apple tv+'] },
   { id: 'peacock', names: ['peacock'] },
+  { id: 'crunchyroll', names: ['crunchyroll', 'crunchy roll'] },
   { id: 'youtube', names: ['youtube'] },
   { id: 'twitch', names: ['twitch'] },
   { id: 'spotify', names: ['spotify'] },
