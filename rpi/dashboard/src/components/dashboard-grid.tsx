@@ -7,6 +7,7 @@ import { registry } from '@/widgets/registry'
 import { WidgetFrame } from './widget-frame'
 import { SettingsPanel } from './settings-panel'
 import { BackgroundLayer } from './background-layer'
+import { registerVoiceHandler } from '@/lib/voice-command-actions'
 import { useTheme } from '@/hooks/use-theme'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import { TopBarWeather } from './topbar-weather'
@@ -14,7 +15,7 @@ import { NowPlayingOverlay } from './now-playing-overlay'
 import { VoiceOverlay } from './voice-overlay'
 
 export function DashboardGrid() {
-  const { config, updateWidgetConfig, updateAllLayouts } = useConfig()
+  const { config, updateConfig, updateWidgetConfig, updateAllLayouts } = useConfig()
   const [editMode, setEditMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [width, setWidth] = useState(window.innerWidth - 24)
@@ -103,6 +104,24 @@ export function DashboardGrid() {
     setManualSlideshow(false)
     wakeUp()
   }
+
+  // Register voice command handlers for dashboard actions
+  useEffect(() => {
+    const unregister = registerVoiceHandler(async (action, params) => {
+      switch (action) {
+        case 'slideshow:start': setManualSlideshow(true); return true
+        case 'slideshow:stop': exitSlideshow(); return true
+        case 'theme:set': updateConfig({ theme: params.theme as any }); return true
+        case 'settings:open': setSettingsOpen(true); return true
+        case 'weather:hourly': updateConfig({ topBarWeatherMode: 'hourly' }); return true
+        case 'weather:forecast': updateConfig({ topBarWeatherMode: 'forecast' }); return true
+        case 'weather:current': updateConfig({ topBarWeatherMode: 'current' }); return true
+        default: return false
+      }
+    })
+    return unregister
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <>

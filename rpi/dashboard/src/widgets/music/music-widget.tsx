@@ -10,6 +10,7 @@ import {
   search as spotifySearch, getDevices, transferPlayback, startPlayback,
   type SpotifyTrack, type SpotifyPlaylist, type SpotifyDevice, type SpotifySearchResults,
 } from './spotify-api'
+import { registerVoiceHandler } from '@/lib/voice-command-actions'
 import { useSpotifyPlayer } from './use-spotify-player'
 
 export interface MusicConfig {
@@ -279,6 +280,38 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     await fetch(url, { method, headers: { Authorization: `Bearer ${token}` } })
     setTimeout(fetchSpotifyNowPlaying, 500)
   }, [getToken])
+
+  // Register voice command handlers for Spotify controls
+  useEffect(() => {
+    const unregister = registerVoiceHandler(async (action, params) => {
+      switch (action) {
+        case 'spotify:pause': await spotifyCommand('pause'); return true
+        case 'spotify:resume': await spotifyCommand('play'); return true
+        case 'spotify:next': await spotifyCommand('next'); return true
+        case 'spotify:previous': await spotifyCommand('previous'); return true
+        case 'spotify:search': {
+          const token = await getToken()
+          if (!token) return false
+          try {
+            const results = await spotifySearch(token, params.query)
+            const topTrack = results.tracks?.items?.[0]
+            if (topTrack) {
+              const devData = await getDevices(token)
+              const active = devData.devices.find(d => d.is_active)
+              const deviceId = active?.id || localDeviceId || devData.devices[0]?.id
+              if (deviceId && !active) {
+                await transferPlayback(token, deviceId, false)
+              }
+              await startPlayback(token, { uris: [topTrack.uri], device_id: deviceId })
+            }
+            return true
+          } catch { return false }
+        }
+        default: return false
+      }
+    })
+    return unregister
+  }, [getToken, localDeviceId, spotifyCommand])
 
   // Browse data loading
   const loadBrowseData = useCallback(async (tab: BrowseTab) => {

@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { runAssistPipeline, type PipelineEvent } from '@/lib/ha-assist'
+import { matchVoiceCommand } from '@/lib/voice-commands'
+import { executeVoiceAction } from '@/lib/voice-command-actions'
 
 export type VoiceState = 'idle' | 'listening' | 'processing' | 'responding' | 'error'
 
@@ -94,10 +96,25 @@ export function useVoiceAssistant({ haUrl, haToken, pipelineId }: UseVoiceAssist
       {
         onEvent: (event: PipelineEvent) => {
           switch (event.type) {
-            case 'stt-end':
-              setTranscript(event.data.stt_output.text)
-              setState('processing')
+            case 'stt-end': {
+              const sttText = event.data.stt_output.text
+              setTranscript(sttText)
+              const localMatch = matchVoiceCommand(sttText)
+              if (localMatch) {
+                executeVoiceAction(localMatch.action, localMatch.params)
+                setResponse(localMatch.responseText)
+                setState('responding')
+                // Close the pipeline — we don't need HA's intent processing
+                if (closePipelineRef.current) {
+                  closePipelineRef.current()
+                  closePipelineRef.current = null
+                }
+                setTimeout(() => setState('idle'), 3000)
+              } else {
+                setState('processing')
+              }
               break
+            }
             case 'intent-end': {
               const speech = event.data.intent_output?.response?.speech?.plain?.speech
               if (speech) {
