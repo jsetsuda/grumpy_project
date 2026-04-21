@@ -202,6 +202,26 @@ export function ZoneRenderer() {
         </div>
       )}
 
+      {/* Always-visible floating settings button (even when top bar is off) */}
+      {!showTopBar && !inSlideshow && (
+        <div className="fixed top-3 right-3 z-50 flex gap-2">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            title="Settings"
+          >
+            <Settings size={18} />
+          </button>
+          <button
+            onClick={() => setZoneEditorOpen(true)}
+            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            title="Edit zones"
+          >
+            <Lock size={18} />
+          </button>
+        </div>
+      )}
+
       {/* Now playing overlay */}
       {inSlideshow && spotifyConfig?.refreshToken && (
         <NowPlayingOverlay spotifyConfig={spotifyConfig} showBackground={topBarBg} />

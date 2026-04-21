@@ -4,7 +4,7 @@
     "name": "Shop Office",
     "layoutMode": "zones",
     "createdAt": "2026-04-21T04:57:31.491Z",
-    "updatedAt": "2026-04-21T05:45:12.720Z"
+    "updatedAt": "2026-04-21T05:57:38.440Z"
   },
   "config": {
     "version": 1,
@@ -39,19 +39,8 @@
     },
     "widgets": [],
     "zoneLayout": {
-      "templateId": "left-panel",
-      "zones": [
-        {
-          "regionId": "left-panel",
-          "widgetType": "calendar",
-          "widgetConfig": {}
-        },
-        {
-          "regionId": "top-right",
-          "widgetType": "weather",
-          "widgetConfig": {}
-        }
-      ],
+      "templateId": "dakboard-classic",
+      "zones": [],
       "backgroundOverlay": 40
     }
   }

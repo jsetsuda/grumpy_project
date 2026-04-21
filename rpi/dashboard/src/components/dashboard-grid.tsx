@@ -137,15 +137,22 @@ export function DashboardGrid() {
         />
       )}
 
-      {/* Hidden settings button when top bar is off — appears on hover */}
+      {/* Always-visible floating settings button when top bar is off */}
       {!showTopBar && !inSlideshow && (
-        <div className="fixed top-0 right-0 z-50 p-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
+        <div className="fixed top-3 right-3 z-50 flex gap-2">
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2 rounded-lg bg-black/30 backdrop-blur-sm hover:bg-black/50 transition-colors"
+            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
             title="Settings"
           >
             <Settings size={18} />
+          </button>
+          <button
+            onClick={() => setEditMode(!editMode)}
+            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            title={editMode ? 'Lock layout' : 'Edit layout'}
+          >
+            {editMode ? <Unlock size={18} /> : <Lock size={18} />}
           </button>
         </div>
       )}
