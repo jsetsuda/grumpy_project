@@ -244,9 +244,10 @@ export function DashboardGrid() {
           </div>
         )}
 
-        {/* Settings panel */}
-        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>
+
+      {/* Settings panel — outside stacking contexts so it renders on top of everything */}
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   )
 }
