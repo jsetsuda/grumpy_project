@@ -305,7 +305,7 @@ export function DashboardGrid() {
 
       {/* Main dashboard (fades out during slideshow) */}
       <div
-        className="h-screen w-screen flex flex-col relative z-10 transition-opacity duration-1000"
+        className="h-screen w-screen flex flex-col relative z-10 transition-opacity duration-1000 overflow-hidden"
         style={{
           opacity: inSlideshow ? 0 : 1,
           pointerEvents: inSlideshow ? 'none' : 'auto',

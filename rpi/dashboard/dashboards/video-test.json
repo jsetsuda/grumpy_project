@@ -4,7 +4,7 @@
     "name": "Video Test",
     "layoutMode": "grid",
     "createdAt": "2026-04-21T18:21:04.552Z",
-    "updatedAt": "2026-04-21T18:22:45.404Z"
+    "updatedAt": "2026-04-21T22:14:12.397Z"
   },
   "config": {
     "version": 1,
@@ -48,6 +48,19 @@
           "h": 4
         },
         "config": {}
+      },
+      {
+        "id": "traffic-mo96kyze",
+        "type": "traffic",
+        "layout": {
+          "x": 0,
+          "y": null,
+          "w": 4,
+          "h": 3
+        },
+        "config": {
+          "apiKey": "AIzaSyCWUcc1ej9CUruBJLUegSzVodTN5oOJuOw"
+        }
       }
     ]
   }
