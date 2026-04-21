@@ -42,6 +42,19 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             backgroundPhotos={config.backgroundPhotos}
             backgroundOverlay={config.backgroundOverlay ?? 60}
             widgetOpacity={config.widgetOpacity ?? 100}
+            screensaverEnabled={config.screensaverEnabled ?? true}
+            screensaverTimeout={config.screensaverTimeout ?? 300}
+            onThemeChange={(t) => updateConfig({ theme: t })}
+            onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
+            onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
+            onOverlayChange={(o) => updateConfig({ backgroundOverlay: o })}
+            onWidgetOpacityChange={(o) => updateConfig({ widgetOpacity: o })}
+            onScreensaverEnabledChange={(v) => updateConfig({ screensaverEnabled: v })}
+            onScreensaverTimeoutChange={(v) => updateConfig({ screensaverTimeout: v })}
+          />
+
+          {/* Top Overlay section */}
+          <TopOverlaySettings
             showTopBar={config.showTopBar ?? true}
             topBarFont={config.topBarFont || 'system-ui'}
             topBarSize={config.topBarSize || 'large'}
@@ -50,8 +63,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             topBarWeather={config.topBarWeather ?? true}
             topBarWeatherMode={config.topBarWeatherMode || 'current'}
             topBarForecastDays={config.topBarForecastDays || 5}
-            screensaverEnabled={config.screensaverEnabled ?? true}
-            screensaverTimeout={config.screensaverTimeout ?? 300}
+            onShowTopBarChange={(v) => updateConfig({ showTopBar: v })}
             onTopBarFontChange={(v) => updateConfig({ topBarFont: v })}
             onTopBarSizeChange={(v) => updateConfig({ topBarSize: v as any })}
             onTopBarBoldChange={(v) => updateConfig({ topBarBold: v })}
@@ -59,14 +71,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             onTopBarWeatherChange={(v) => updateConfig({ topBarWeather: v })}
             onTopBarWeatherModeChange={(v) => updateConfig({ topBarWeatherMode: v as any })}
             onTopBarForecastDaysChange={(v) => updateConfig({ topBarForecastDays: v })}
-            onThemeChange={(t) => updateConfig({ theme: t })}
-            onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
-            onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
-            onOverlayChange={(o) => updateConfig({ backgroundOverlay: o })}
-            onWidgetOpacityChange={(o) => updateConfig({ widgetOpacity: o })}
-            onShowTopBarChange={(v) => updateConfig({ showTopBar: v })}
-            onScreensaverEnabledChange={(v) => updateConfig({ screensaverEnabled: v })}
-            onScreensaverTimeoutChange={(v) => updateConfig({ screensaverTimeout: v })}
           />
 
           {/* Widget list */}
@@ -602,29 +606,13 @@ interface ThemeBackgroundSettingsProps {
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
   widgetOpacity: number
-  showTopBar: boolean
-  topBarFont: string
-  topBarSize: string
-  topBarBold: boolean
-  topBarBackground: boolean
-  topBarWeather: boolean
-  topBarWeatherMode: string
-  topBarForecastDays: number
   screensaverEnabled: boolean
   screensaverTimeout: number
-  onTopBarFontChange: (font: string) => void
-  onTopBarSizeChange: (size: string) => void
-  onTopBarBoldChange: (bold: boolean) => void
-  onTopBarBackgroundChange: (bg: boolean) => void
-  onTopBarWeatherChange: (show: boolean) => void
-  onTopBarWeatherModeChange: (mode: string) => void
-  onTopBarForecastDaysChange: (days: 3 | 5 | 7) => void
   onThemeChange: (theme: ThemeName) => void
   onBackgroundModeChange: (mode: 'solid' | 'photo') => void
   onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
   onOverlayChange: (opacity: number) => void
   onWidgetOpacityChange: (opacity: number) => void
-  onShowTopBarChange: (show: boolean) => void
   onScreensaverEnabledChange: (enabled: boolean) => void
   onScreensaverTimeoutChange: (timeout: number) => void
 }
@@ -635,29 +623,13 @@ function ThemeBackgroundSettings({
   backgroundPhotos,
   backgroundOverlay,
   widgetOpacity,
-  showTopBar,
-  topBarFont,
-  topBarSize,
-  topBarBold,
-  topBarBackground,
-  topBarWeather,
-  topBarWeatherMode,
-  topBarForecastDays,
   screensaverEnabled,
   screensaverTimeout,
-  onTopBarFontChange,
-  onTopBarSizeChange,
-  onTopBarBoldChange,
-  onTopBarBackgroundChange,
-  onTopBarWeatherChange,
-  onTopBarWeatherModeChange,
-  onTopBarForecastDaysChange,
   onThemeChange,
   onBackgroundModeChange,
   onBackgroundPhotosChange,
   onOverlayChange,
   onWidgetOpacityChange,
-  onShowTopBarChange,
   onScreensaverEnabledChange,
   onScreensaverTimeoutChange,
 }: ThemeBackgroundSettingsProps) {
@@ -868,14 +840,92 @@ function ThemeBackgroundSettings({
           </div>
         </SettingsField>
 
-        {/* Top bar */}
+        {/* Screensaver settings */}
+        <Toggle
+          checked={screensaverEnabled}
+          onChange={onScreensaverEnabledChange}
+          label="Screensaver"
+        />
+        {screensaverEnabled && (
+          <SettingsField label="Screensaver timeout">
+            <SelectInput
+              value={String(screensaverTimeout)}
+              onChange={v => onScreensaverTimeoutChange(parseInt(v))}
+              options={[
+                { value: '60', label: '1 minute' },
+                { value: '120', label: '2 minutes' },
+                { value: '300', label: '5 minutes' },
+                { value: '600', label: '10 minutes' },
+                { value: '900', label: '15 minutes' },
+                { value: '1800', label: '30 minutes' },
+              ]}
+            />
+          </SettingsField>
+        )}
+      </div>}
+    </div>
+  )
+}
+
+// --- Top Overlay Settings ---
+
+interface TopOverlaySettingsProps {
+  showTopBar: boolean
+  topBarFont: string
+  topBarSize: string
+  topBarBold: boolean
+  topBarBackground: boolean
+  topBarWeather: boolean
+  topBarWeatherMode: string
+  topBarForecastDays: number
+  onShowTopBarChange: (show: boolean) => void
+  onTopBarFontChange: (font: string) => void
+  onTopBarSizeChange: (size: string) => void
+  onTopBarBoldChange: (bold: boolean) => void
+  onTopBarBackgroundChange: (bg: boolean) => void
+  onTopBarWeatherChange: (show: boolean) => void
+  onTopBarWeatherModeChange: (mode: string) => void
+  onTopBarForecastDaysChange: (days: 3 | 5 | 7) => void
+}
+
+function TopOverlaySettings({
+  showTopBar,
+  topBarFont,
+  topBarSize,
+  topBarBold,
+  topBarBackground,
+  topBarWeather,
+  topBarWeatherMode,
+  topBarForecastDays,
+  onShowTopBarChange,
+  onTopBarFontChange,
+  onTopBarSizeChange,
+  onTopBarBoldChange,
+  onTopBarBackgroundChange,
+  onTopBarWeatherChange,
+  onTopBarWeatherModeChange,
+  onTopBarForecastDaysChange,
+}: TopOverlaySettingsProps) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+      >
+        {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className="flex-1 text-sm font-medium">Top Overlay</span>
+      </button>
+
+      {expanded && <div className="p-3 pt-0 border-t border-[var(--border)] space-y-2">
         <Toggle
           checked={showTopBar}
           onChange={onShowTopBarChange}
-          label="Show top bar (clock, settings, lock)"
+          label="Show top bar"
         />
         {showTopBar && (
-          <div className="ml-4 space-y-2 mt-2">
+          <>
             <SettingsField label="Font">
               <SelectInput
                 value={topBarFont}
@@ -912,15 +962,15 @@ function ThemeBackgroundSettings({
             <Toggle
               checked={topBarBackground}
               onChange={onTopBarBackgroundChange}
-              label="Background card behind clock"
+              label="Background card"
             />
             <Toggle
               checked={topBarWeather}
               onChange={onTopBarWeatherChange}
-              label="Show weather in top bar"
+              label="Show weather"
             />
             {topBarWeather && (
-              <SettingsField label="Top bar weather display">
+              <SettingsField label="Weather display mode">
                 <SelectInput
                   value={topBarWeatherMode}
                   onChange={onTopBarWeatherModeChange}
@@ -945,30 +995,7 @@ function ThemeBackgroundSettings({
                 />
               </SettingsField>
             )}
-          </div>
-        )}
-
-        {/* Screensaver settings */}
-        <Toggle
-          checked={screensaverEnabled}
-          onChange={onScreensaverEnabledChange}
-          label="Screensaver"
-        />
-        {screensaverEnabled && (
-          <SettingsField label="Screensaver timeout">
-            <SelectInput
-              value={String(screensaverTimeout)}
-              onChange={v => onScreensaverTimeoutChange(parseInt(v))}
-              options={[
-                { value: '60', label: '1 minute' },
-                { value: '120', label: '2 minutes' },
-                { value: '300', label: '5 minutes' },
-                { value: '600', label: '10 minutes' },
-                { value: '900', label: '15 minutes' },
-                { value: '1800', label: '30 minutes' },
-              ]}
-            />
-          </SettingsField>
+          </>
         )}
       </div>}
     </div>
