@@ -3,6 +3,23 @@ import { X, Check, Plus, Trash2, Wand2, ChevronDown, ChevronRight } from 'lucide
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WidgetSettings } from './settings-panel'
+import { Component, type ReactNode, type ErrorInfo } from 'react'
+
+class SafeWidgetSettings extends Component<{ children: ReactNode }, { hasError: boolean; error?: string }> {
+  state = { hasError: false, error: undefined as string | undefined }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message }
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Zone widget settings error:', error, info)
+  }
+  render() {
+    if (this.state.hasError) {
+      return <p className="text-xs text-[var(--destructive)] p-2">Settings error: {this.state.error}</p>
+    }
+    return this.props.children
+  }
+}
 import { zoneTemplates, getTemplate, templatePresets } from '@/config/zone-templates'
 import type { ZoneLayoutConfig, ZoneInstance, ZoneRegion } from '@/config/zone-types'
 
@@ -227,10 +244,12 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
                           </button>
                           {isExpanded && (
                             <div className="px-3 pb-3">
-                              <WidgetSettings
-                                widget={{ id: region.id, type: zone!.widgetType, layout: { x: 0, y: 0, w: 4, h: 4 }, config: zone!.widgetConfig }}
-                                onConfigChange={(partial) => handleZoneConfigChange(region.id, partial)}
-                              />
+                              <SafeWidgetSettings>
+                                <WidgetSettings
+                                  widget={{ id: region.id, type: zone!.widgetType, layout: { x: 0, y: 0, w: 4, h: 4 }, config: zone!.widgetConfig }}
+                                  onConfigChange={(partial) => handleZoneConfigChange(region.id, partial)}
+                                />
+                              </SafeWidgetSettings>
                             </div>
                           )}
                         </>
@@ -302,10 +321,12 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
                           Widget Settings
                         </button>
                         {expandedZone === zone.regionId && (
-                          <WidgetSettings
-                            widget={{ id: zone.regionId, type: zone.widgetType, layout: { x: 0, y: 0, w: 4, h: 4 }, config: zone.widgetConfig }}
-                            onConfigChange={(partial) => handleZoneConfigChange(zone.regionId, partial)}
-                          />
+                          <SafeWidgetSettings>
+                            <WidgetSettings
+                              widget={{ id: zone.regionId, type: zone.widgetType, layout: { x: 0, y: 0, w: 4, h: 4 }, config: zone.widgetConfig }}
+                              onConfigChange={(partial) => handleZoneConfigChange(zone.regionId, partial)}
+                            />
+                          </SafeWidgetSettings>
                         )}
                       </>
                     )}
