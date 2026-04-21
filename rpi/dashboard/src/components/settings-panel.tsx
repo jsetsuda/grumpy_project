@@ -323,6 +323,14 @@ export function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) 
       return <CountdownSettings config={widget.config} onChange={onConfigChange} />
     case 'youtube':
       return <YouTubeSettings config={widget.config} onChange={onConfigChange} />
+    case 'habits':
+      return <HabitsSettings config={widget.config} onChange={onConfigChange} />
+    case 'notes':
+      return <NotesSettings config={widget.config} onChange={onConfigChange} />
+    case 'system-status':
+      return <SystemStatusSettings config={widget.config} onChange={onConfigChange} />
+    case 'analog-clock':
+      return <AnalogClockSettings config={widget.config} onChange={onConfigChange} />
     default:
       return <p className="text-sm text-[var(--muted-foreground)]">No settings available</p>
   }
@@ -1436,7 +1444,7 @@ function GrocerySettings({ config, onChange }: { config: Record<string, any>; on
 }
 
 function CountdownSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
-  const events: Array<{ id: string; name: string; date: string; icon?: string; color?: string; recurring?: boolean }> = config.events || []
+  const events: Array<{ id: string; name: string; date: string; icon?: string; color?: string; recurring?: boolean; eventType?: string; birthYear?: number }> = config.events || []
 
   function addEvent() {
     const newEvent = {
@@ -1445,12 +1453,21 @@ function CountdownSettings({ config, onChange }: { config: Record<string, any>; 
       date: new Date().toISOString().split('T')[0],
       color: '#3b82f6',
       recurring: false,
+      eventType: 'event' as const,
     }
     onChange({ events: [...events, newEvent] })
   }
 
   function updateEvent(index: number, field: string, value: unknown) {
-    const updated = events.map((e, i) => i === index ? { ...e, [field]: value } : e)
+    const updated = events.map((e, i) => {
+      if (i !== index) return e
+      const next = { ...e, [field]: value }
+      // Auto-set recurring when switching to birthday/anniversary
+      if (field === 'eventType' && (value === 'birthday' || value === 'anniversary')) {
+        next.recurring = true
+      }
+      return next
+    })
     onChange({ events: updated })
   }
 
@@ -1469,6 +1486,17 @@ function CountdownSettings({ config, onChange }: { config: Record<string, any>; 
                 <Trash2 size={14} />
               </button>
             </div>
+            <SettingsField label="Type">
+              <SelectInput
+                value={event.eventType || 'event'}
+                onChange={v => updateEvent(i, 'eventType', v)}
+                options={[
+                  { value: 'event', label: 'Event' },
+                  { value: 'birthday', label: 'Birthday' },
+                  { value: 'anniversary', label: 'Anniversary' },
+                ]}
+              />
+            </SettingsField>
             <div className="flex gap-2">
               <div className="flex-1">
                 <TextInput value={event.date} onChange={v => updateEvent(i, 'date', v)} placeholder="YYYY-MM-DD" type="date" />
@@ -1487,6 +1515,16 @@ function CountdownSettings({ config, onChange }: { config: Record<string, any>; 
                 className="w-8 h-8 rounded cursor-pointer"
               />
             </div>
+            {(event.eventType === 'birthday' || event.eventType === 'anniversary') && (
+              <SettingsField label={event.eventType === 'birthday' ? 'Birth Year (for age)' : 'Start Year (for counting)'}>
+                <TextInput
+                  value={String(event.birthYear || '')}
+                  onChange={v => updateEvent(i, 'birthYear', v ? parseInt(v) || undefined : undefined)}
+                  placeholder="e.g. 1990"
+                  type="number"
+                />
+              </SettingsField>
+            )}
             <Toggle checked={event.recurring ?? false} onChange={v => updateEvent(i, 'recurring', v)} label="Recurring (annual)" />
           </div>
         ))}
@@ -2122,6 +2160,129 @@ function VoiceAssistantSettings({
           </>
         )}
       </div>}
+    </div>
+  )
+}
+
+// --- New widget settings ---
+
+function HabitsSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const habits: Array<{ id: string; name: string; icon?: string }> = config.habits || []
+
+  function addHabit() {
+    const newHabit = {
+      id: Date.now().toString(36),
+      name: '',
+      icon: '',
+    }
+    onChange({ habits: [...habits, newHabit] })
+  }
+
+  function updateHabit(index: number, field: string, value: string) {
+    const updated = habits.map((h, i) => i === index ? { ...h, [field]: value } : h)
+    onChange({ habits: updated })
+  }
+
+  function removeHabit(index: number) {
+    onChange({ habits: habits.filter((_, i) => i !== index) })
+  }
+
+  return (
+    <div>
+      <div className="space-y-2">
+        {habits.map((habit, i) => (
+          <div key={habit.id} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={habit.icon || ''}
+              onChange={e => updateHabit(i, 'icon', e.target.value)}
+              placeholder="🏃"
+              className="w-10 bg-[var(--muted)] text-center rounded-md text-sm outline-none py-2"
+            />
+            <div className="flex-1">
+              <TextInput value={habit.name} onChange={v => updateHabit(i, 'name', v)} placeholder="Habit name" />
+            </div>
+            <button onClick={() => removeHabit(i)} className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={addHabit}
+        className="mt-2 flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+      >
+        <Plus size={14} /> Add habit
+      </button>
+
+      {(config.history && Object.keys(config.history).length > 0) && (
+        <button
+          onClick={() => onChange({ history: {} })}
+          className="mt-2 flex items-center gap-1 text-xs text-[var(--destructive)] hover:opacity-80 transition-opacity"
+        >
+          <Trash2 size={12} /> Clear history
+        </button>
+      )}
+    </div>
+  )
+}
+
+function NotesSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  return (
+    <div>
+      <SettingsField label="Font Size">
+        <SelectInput
+          value={config.fontSize || 'medium'}
+          onChange={v => onChange({ fontSize: v })}
+          options={[
+            { value: 'small', label: 'Small' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'large', label: 'Large' },
+          ]}
+        />
+      </SettingsField>
+      <p className="text-xs text-[var(--muted-foreground)] mt-2">
+        Tap the widget to edit. Supports **bold** and - list items.
+      </p>
+      {config.content && (
+        <button
+          onClick={() => onChange({ content: '' })}
+          className="mt-2 flex items-center gap-1 text-xs text-[var(--destructive)] hover:opacity-80 transition-opacity"
+        >
+          <Trash2 size={12} /> Clear note
+        </button>
+      )}
+    </div>
+  )
+}
+
+function SystemStatusSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  return (
+    <div>
+      <Toggle checked={config.showUptime ?? true} onChange={v => onChange({ showUptime: v })} label="Show tab uptime" />
+      <Toggle checked={config.showMemory ?? true} onChange={v => onChange({ showMemory: v })} label="Show memory (Chrome only)" />
+      <Toggle checked={config.showNetwork ?? true} onChange={v => onChange({ showNetwork: v })} label="Show network status" />
+      <Toggle checked={config.showScreen ?? true} onChange={v => onChange({ showScreen: v })} label="Show screen info" />
+    </div>
+  )
+}
+
+function AnalogClockSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  return (
+    <div>
+      <SettingsField label="Style">
+        <SelectInput
+          value={config.style || 'classic'}
+          onChange={v => onChange({ style: v })}
+          options={[
+            { value: 'classic', label: 'Classic' },
+            { value: 'minimal', label: 'Minimal' },
+          ]}
+        />
+      </SettingsField>
+      <Toggle checked={config.showNumbers ?? true} onChange={v => onChange({ showNumbers: v })} label="Show numbers" />
+      <Toggle checked={config.showSeconds ?? true} onChange={v => onChange({ showSeconds: v })} label="Show second hand" />
     </div>
   )
 }

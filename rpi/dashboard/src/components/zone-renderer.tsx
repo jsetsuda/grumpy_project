@@ -229,8 +229,9 @@ export function ZoneRenderer() {
 
       {/* Zone regions */}
       <div
-        className="fixed inset-0 z-10 transition-opacity duration-1000"
+        className="fixed left-0 right-0 bottom-0 z-10 transition-opacity duration-1000"
         style={{
+          top: showTopBar ? `${config.widgetStartY ?? 90}px` : '0',
           opacity: inSlideshow ? 0 : 1,
           pointerEvents: inSlideshow ? 'none' : 'auto',
         }}

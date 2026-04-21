@@ -12,6 +12,10 @@ import { GroceryWidget } from './grocery/grocery-widget'
 import { CountdownWidget } from './countdown/countdown-widget'
 import { NewsWidget } from './news/news-widget'
 import { YouTubeWidget } from './youtube/youtube-widget'
+import { HabitsWidget } from './habits/habits-widget'
+import { NotesWidget } from './notes/notes-widget'
+import { SystemStatusWidget } from './system-status/system-status-widget'
+import { AnalogClockWidget } from './analog-clock/analog-clock-widget'
 
 const registry = new Map<string, WidgetDefinition>()
 
@@ -134,6 +138,42 @@ register({
   component: YouTubeWidget,
   defaultSize: { w: 4, h: 4 },
   minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'habits',
+  name: 'Habit Tracker',
+  description: 'Daily habit checkboxes with streaks and weekly view',
+  component: HabitsWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'notes',
+  name: 'Quick Notes',
+  description: 'Simple text notes for leaving messages on the dashboard',
+  component: NotesWidget,
+  defaultSize: { w: 4, h: 3 },
+  minSize: { w: 2, h: 2 },
+})
+
+register({
+  type: 'system-status',
+  name: 'System Status',
+  description: 'Browser and connection status information',
+  component: SystemStatusWidget,
+  defaultSize: { w: 3, h: 3 },
+  minSize: { w: 2, h: 2 },
+})
+
+register({
+  type: 'analog-clock',
+  name: 'Analog Clock',
+  description: 'Analog clock face with configurable style',
+  component: AnalogClockWidget,
+  defaultSize: { w: 3, h: 3 },
+  minSize: { w: 2, h: 2 },
 })
 
 export { registry }
