@@ -4,6 +4,11 @@ import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
 import { GooglePhotosAuth } from '@/widgets/photos/google-photos-auth'
+import { MicrosoftAuth } from '@/widgets/todo/microsoft-auth'
+import { GoogleTasksAuth } from '@/widgets/todo/google-tasks-auth'
+import { getTodoistProjects, type TodoistProject } from '@/widgets/todo/todoist-api'
+import { getMicrosoftTaskLists, type MicrosoftTaskList } from '@/widgets/todo/microsoft-api'
+import { getGoogleTaskLists, type GoogleTaskList } from '@/widgets/todo/google-tasks-api'
 import type { WidgetInstance, BackgroundPhotosConfig } from '@/config/types'
 import { themes, themeNames, type ThemeName } from '@/config/themes'
 import { rssFeedsDb, rssCategories, type RssFeedEntry } from '@/lib/rss-feeds-db'
@@ -552,11 +557,212 @@ function CalendarSettings({ config, onChange }: { config: Record<string, any>; o
 }
 
 function TodoSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const provider = config.provider || 'local'
+  const todoist = config.todoist || {}
+  const microsoft = config.microsoft || {}
+  const google = config.google || {}
+
+  const [todoistProjects, setTodoistProjects] = useState<TodoistProject[]>([])
+  const [msLists, setMsLists] = useState<MicrosoftTaskList[]>([])
+  const [googleLists, setGoogleLists] = useState<GoogleTaskList[]>([])
+  const [listLoading, setListLoading] = useState(false)
+
+  // Fetch project/list options when provider config is ready
+  useEffect(() => {
+    if (provider === 'todoist' && todoist.apiToken) {
+      setListLoading(true)
+      getTodoistProjects(todoist.apiToken)
+        .then(setTodoistProjects)
+        .catch(() => {})
+        .finally(() => setListLoading(false))
+    }
+  }, [provider, todoist.apiToken])
+
+  useEffect(() => {
+    if (provider === 'microsoft' && microsoft.refreshToken && microsoft.clientId && microsoft.clientSecret) {
+      setListLoading(true)
+      getMicrosoftTaskLists(microsoft, (token: string, expiry: number) => {
+        onChange({ microsoft: { ...microsoft, accessToken: token, tokenExpiry: expiry } })
+      })
+        .then(setMsLists)
+        .catch(() => {})
+        .finally(() => setListLoading(false))
+    }
+  }, [provider, microsoft.refreshToken, microsoft.clientId, microsoft.clientSecret])
+
+  useEffect(() => {
+    if (provider === 'google' && google.refreshToken && google.clientId && google.clientSecret) {
+      setListLoading(true)
+      getGoogleTaskLists(google, (token: string, expiry: number) => {
+        onChange({ google: { ...google, accessToken: token, tokenExpiry: expiry } })
+      })
+        .then(setGoogleLists)
+        .catch(() => {})
+        .finally(() => setListLoading(false))
+    }
+  }, [provider, google.refreshToken, google.clientId, google.clientSecret])
+
   return (
     <div>
       <SettingsField label="List title">
         <TextInput value={config.title || 'To Do'} onChange={v => onChange({ title: v })} placeholder="To Do" />
       </SettingsField>
+
+      <SettingsField label="Provider">
+        <SelectInput
+          value={provider}
+          onChange={v => onChange({ provider: v })}
+          options={[
+            { value: 'local', label: 'Local (stored on device)' },
+            { value: 'todoist', label: 'Todoist' },
+            { value: 'microsoft', label: 'Microsoft To Do' },
+            { value: 'google', label: 'Google Tasks' },
+          ]}
+        />
+      </SettingsField>
+
+      {provider === 'todoist' && (
+        <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">
+            Get your API token from Settings &gt; Integrations &gt; Developer in Todoist.
+          </p>
+          <SettingsField label="API Token">
+            <TextInput
+              value={todoist.apiToken || ''}
+              onChange={v => onChange({ todoist: { ...todoist, apiToken: v } })}
+              type="password"
+              placeholder="Todoist API Token"
+            />
+          </SettingsField>
+          {todoist.apiToken && (
+            <SettingsField label="Project (optional)">
+              {listLoading ? (
+                <p className="text-xs text-[var(--muted-foreground)]">Loading projects...</p>
+              ) : (
+                <SelectInput
+                  value={todoist.projectId || ''}
+                  onChange={v => onChange({ todoist: { ...todoist, projectId: v || undefined } })}
+                  options={[
+                    { value: '', label: 'All projects' },
+                    ...todoistProjects.map(p => ({ value: p.id, label: p.name })),
+                  ]}
+                />
+              )}
+            </SettingsField>
+          )}
+        </div>
+      )}
+
+      {provider === 'microsoft' && (
+        <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">
+            Create an Azure AD app at portal.azure.com. Set redirect URI to{' '}
+            <code className="text-xs">http://127.0.0.1:5173/microsoft-callback</code>
+          </p>
+          <SettingsField label="Client ID">
+            <TextInput
+              value={microsoft.clientId || ''}
+              onChange={v => onChange({ microsoft: { ...microsoft, clientId: v } })}
+              placeholder="Azure App Client ID"
+            />
+          </SettingsField>
+          <SettingsField label="Client Secret">
+            <TextInput
+              value={microsoft.clientSecret || ''}
+              onChange={v => onChange({ microsoft: { ...microsoft, clientSecret: v } })}
+              type="password"
+              placeholder="Azure App Client Secret"
+            />
+          </SettingsField>
+          {microsoft.clientId && microsoft.clientSecret && !microsoft.refreshToken && (
+            <MicrosoftAuth
+              clientId={microsoft.clientId}
+              clientSecret={microsoft.clientSecret}
+              onAuthorized={(refreshToken) => onChange({ microsoft: { ...microsoft, refreshToken } })}
+            />
+          )}
+          <SettingsField label="Refresh Token">
+            <TextInput
+              value={microsoft.refreshToken || ''}
+              onChange={v => onChange({ microsoft: { ...microsoft, refreshToken: v } })}
+              type="password"
+              placeholder="Microsoft Refresh Token"
+            />
+          </SettingsField>
+          {microsoft.refreshToken && (
+            <SettingsField label="Task List (optional)">
+              {listLoading ? (
+                <p className="text-xs text-[var(--muted-foreground)]">Loading lists...</p>
+              ) : (
+                <SelectInput
+                  value={microsoft.listId || ''}
+                  onChange={v => onChange({ microsoft: { ...microsoft, listId: v || undefined } })}
+                  options={[
+                    { value: '', label: 'Default list' },
+                    ...msLists.map(l => ({ value: l.id, label: l.displayName })),
+                  ]}
+                />
+              )}
+            </SettingsField>
+          )}
+        </div>
+      )}
+
+      {provider === 'google' && (
+        <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">
+            Use Google Cloud Console to create OAuth credentials. Set redirect URI to{' '}
+            <code className="text-xs">http://127.0.0.1:5173/google-callback</code>.
+            Enable the Google Tasks API.
+          </p>
+          <SettingsField label="Client ID">
+            <TextInput
+              value={google.clientId || ''}
+              onChange={v => onChange({ google: { ...google, clientId: v } })}
+              placeholder="Google Client ID"
+            />
+          </SettingsField>
+          <SettingsField label="Client Secret">
+            <TextInput
+              value={google.clientSecret || ''}
+              onChange={v => onChange({ google: { ...google, clientSecret: v } })}
+              type="password"
+              placeholder="Google Client Secret"
+            />
+          </SettingsField>
+          {google.clientId && google.clientSecret && !google.refreshToken && (
+            <GoogleTasksAuth
+              clientId={google.clientId}
+              clientSecret={google.clientSecret}
+              onAuthorized={(refreshToken) => onChange({ google: { ...google, refreshToken } })}
+            />
+          )}
+          <SettingsField label="Refresh Token">
+            <TextInput
+              value={google.refreshToken || ''}
+              onChange={v => onChange({ google: { ...google, refreshToken: v } })}
+              type="password"
+              placeholder="Google Refresh Token"
+            />
+          </SettingsField>
+          {google.refreshToken && (
+            <SettingsField label="Task List (optional)">
+              {listLoading ? (
+                <p className="text-xs text-[var(--muted-foreground)]">Loading lists...</p>
+              ) : (
+                <SelectInput
+                  value={google.taskListId || ''}
+                  onChange={v => onChange({ google: { ...google, taskListId: v || undefined } })}
+                  options={[
+                    { value: '', label: 'Default list' },
+                    ...googleLists.map(l => ({ value: l.id, label: l.title })),
+                  ]}
+                />
+              )}
+            </SettingsField>
+          )}
+        </div>
+      )}
     </div>
   )
 }

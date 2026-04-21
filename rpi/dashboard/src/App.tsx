@@ -3,6 +3,7 @@ import { DashboardGrid } from '@/components/dashboard-grid'
 import { ZoneRenderer } from '@/components/zone-renderer'
 import { SpotifyCallback } from '@/widgets/music/spotify-callback'
 import { GoogleCallback } from '@/widgets/photos/google-callback'
+import { MicrosoftCallback } from '@/widgets/todo/microsoft-callback'
 import { DashboardManager } from '@/pages/manage'
 
 function DashboardRouter() {
@@ -23,6 +24,10 @@ export default function App() {
 
   if (window.location.pathname === '/google-callback') {
     return <GoogleCallback />
+  }
+
+  if (window.location.pathname === '/microsoft-callback') {
+    return <MicrosoftCallback />
   }
 
   if (window.location.pathname === '/manage') {

@@ -357,6 +357,48 @@ function configApiPlugin(): Plugin {
         }
       })
 
+      server.middlewares.use('/api/microsoft/token', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405
+          res.end('Method not allowed')
+          return
+        }
+
+        const body = JSON.parse(await readBody(req))
+        const { code, clientId, clientSecret, redirectUri, refreshToken } = body
+
+        try {
+          const params: Record<string, string> = {
+            client_id: clientId,
+            client_secret: clientSecret,
+          }
+
+          if (refreshToken) {
+            params.grant_type = 'refresh_token'
+            params.refresh_token = refreshToken
+            params.scope = 'Tasks.ReadWrite offline_access'
+          } else {
+            params.grant_type = 'authorization_code'
+            params.code = code
+            params.redirect_uri = redirectUri
+            params.scope = 'Tasks.ReadWrite offline_access'
+          }
+
+          const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(params),
+          })
+
+          const data = await tokenRes.json()
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(data))
+        } catch {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: 'Microsoft token exchange failed' }))
+        }
+      })
+
       // Proxy for HA API calls (forwards Authorization header, bypasses CORS)
       server.middlewares.use('/api/ha-proxy', async (req, res) => {
         const parsedUrl = new URL(req.url || '', 'http://localhost')
@@ -375,7 +417,7 @@ function configApiPlugin(): Plugin {
 
           const fetchOptions: RequestInit = { method: req.method || 'GET', headers }
 
-          if (req.method === 'POST') {
+          if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'PUT') {
             fetchOptions.body = await readBody(req)
             headers['Content-Type'] = 'application/json'
           }
