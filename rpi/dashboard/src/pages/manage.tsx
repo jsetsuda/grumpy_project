@@ -494,15 +494,86 @@ export function DashboardManager() {
 
             {/* Calendar */}
             <CredentialCard
-              title="Calendar"
+              title="Calendar (iCal)"
               status={(credentials as any).calendar?.sources?.length ? `${(credentials as any).calendar.sources.length} source(s)` : 'not set'}
               fields={[]}
               note="Calendar sources are managed per-widget in dashboard settings."
             />
 
+            {/* Todoist */}
+            <CredentialCard
+              title="Todoist"
+              status={(credentials as any).todoist?.apiToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'API Token', value: (credentials as any).todoist?.apiToken || '', placeholder: 'From todoist.com/prefs/integrations', type: 'password', onChange: (v) => updateCredentials(['todoist', 'apiToken'], v) },
+              ]}
+            />
+
+            {/* Microsoft */}
+            <CredentialCard
+              title="Microsoft (To Do)"
+              status={(credentials as any).microsoft?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: (credentials as any).microsoft?.clientId || '', placeholder: 'Azure AD Client ID', onChange: (v) => updateCredentials(['microsoft', 'clientId'], v) },
+                { label: 'Client Secret', value: (credentials as any).microsoft?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: (credentials as any).microsoft?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'refreshToken'], v) },
+              ]}
+            />
+
+            {/* Google Tasks */}
+            <CredentialCard
+              title="Google Tasks"
+              status={(credentials as any).googleTasks?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: (credentials as any).googleTasks?.clientId || '', placeholder: 'Google Client ID', onChange: (v) => updateCredentials(['googleTasks', 'clientId'], v) },
+                { label: 'Client Secret', value: (credentials as any).googleTasks?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: (credentials as any).googleTasks?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'refreshToken'], v) },
+              ]}
+            />
+
+            {/* YouTube */}
+            <CredentialCard
+              title="YouTube"
+              status={(credentials as any).youtube?.apiKey ? 'configured' : 'not set'}
+              fields={[
+                { label: 'API Key', value: (credentials as any).youtube?.apiKey || '', placeholder: 'YouTube Data API v3 Key', type: 'password', onChange: (v) => updateCredentials(['youtube', 'apiKey'], v) },
+              ]}
+            />
+
+            {/* Plex */}
+            <CredentialCard
+              title="Plex"
+              status={(credentials as any).plex?.token ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Server URL', value: (credentials as any).plex?.serverUrl || '', placeholder: 'http://plex.local:32400', onChange: (v) => updateCredentials(['plex', 'serverUrl'], v) },
+                { label: 'Token', value: (credentials as any).plex?.token || '', placeholder: 'X-Plex-Token', type: 'password', onChange: (v) => updateCredentials(['plex', 'token'], v) },
+              ]}
+            />
+
+            {/* Jellyfin */}
+            <CredentialCard
+              title="Jellyfin"
+              status={(credentials as any).jellyfin?.apiKey ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Server URL', value: (credentials as any).jellyfin?.serverUrl || '', placeholder: 'http://jellyfin.local:8096', onChange: (v) => updateCredentials(['jellyfin', 'serverUrl'], v) },
+                { label: 'API Key', value: (credentials as any).jellyfin?.apiKey || '', placeholder: 'Jellyfin API Key', type: 'password', onChange: (v) => updateCredentials(['jellyfin', 'apiKey'], v) },
+                { label: 'User ID', value: (credentials as any).jellyfin?.userId || '', placeholder: 'Jellyfin User ID', onChange: (v) => updateCredentials(['jellyfin', 'userId'], v) },
+              ]}
+            />
+
+            {/* Immich */}
+            <CredentialCard
+              title="Immich"
+              status={(credentials as any).immich?.apiKey ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Server URL', value: (credentials as any).immich?.serverUrl || '', placeholder: 'http://immich.local:2283', onChange: (v) => updateCredentials(['immich', 'serverUrl'], v) },
+                { label: 'API Key', value: (credentials as any).immich?.apiKey || '', placeholder: 'Immich API Key', type: 'password', onChange: (v) => updateCredentials(['immich', 'apiKey'], v) },
+              ]}
+            />
+
             {/* Custom credentials */}
             {Object.entries(credentials as any).filter(([k]) =>
-              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar'].includes(k)
+              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar', 'todoist', 'microsoft', 'googleTasks', 'youtube', 'plex', 'jellyfin', 'immich'].includes(k)
             ).map(([key, value]) => (
               <CredentialCard
                 key={key}
@@ -726,6 +797,63 @@ const CREDENTIAL_TEMPLATES: Array<{
     fields: [
       { key: 'url', label: 'iCal URL', placeholder: 'https://calendar.google.com/calendar/ical/...' },
       { key: 'name', label: 'Calendar Name', placeholder: 'My Calendar' },
+    ],
+  },
+  {
+    key: 'todoist',
+    label: 'Todoist',
+    fields: [
+      { key: 'apiToken', label: 'API Token', type: 'password', placeholder: 'From todoist.com/prefs/integrations' },
+    ],
+  },
+  {
+    key: 'microsoft',
+    label: 'Microsoft (To Do / Azure AD)',
+    fields: [
+      { key: 'clientId', label: 'Client ID', placeholder: 'Azure AD Client ID' },
+      { key: 'clientSecret', label: 'Client Secret', type: 'password', placeholder: 'Azure AD Client Secret' },
+      { key: 'refreshToken', label: 'Refresh Token', type: 'password', placeholder: 'Microsoft Refresh Token' },
+    ],
+  },
+  {
+    key: 'googleTasks',
+    label: 'Google Tasks',
+    fields: [
+      { key: 'clientId', label: 'Client ID', placeholder: 'Google Client ID' },
+      { key: 'clientSecret', label: 'Client Secret', type: 'password', placeholder: 'Google Client Secret' },
+      { key: 'refreshToken', label: 'Refresh Token', type: 'password', placeholder: 'Google Refresh Token' },
+    ],
+  },
+  {
+    key: 'youtube',
+    label: 'YouTube',
+    fields: [
+      { key: 'apiKey', label: 'Data API v3 Key', type: 'password', placeholder: 'YouTube API Key' },
+    ],
+  },
+  {
+    key: 'plex',
+    label: 'Plex',
+    fields: [
+      { key: 'serverUrl', label: 'Server URL', placeholder: 'http://plex.local:32400' },
+      { key: 'token', label: 'X-Plex-Token', type: 'password', placeholder: 'Plex token' },
+    ],
+  },
+  {
+    key: 'jellyfin',
+    label: 'Jellyfin',
+    fields: [
+      { key: 'serverUrl', label: 'Server URL', placeholder: 'http://jellyfin.local:8096' },
+      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Jellyfin API Key' },
+      { key: 'userId', label: 'User ID', placeholder: 'Jellyfin User ID' },
+    ],
+  },
+  {
+    key: 'immich',
+    label: 'Immich',
+    fields: [
+      { key: 'serverUrl', label: 'Server URL', placeholder: 'http://immich.local:2283' },
+      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Immich API Key' },
     ],
   },
 ]

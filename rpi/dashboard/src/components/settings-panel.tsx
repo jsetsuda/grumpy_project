@@ -59,6 +59,32 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
   if (widgetType === 'traffic') {
     if (creds.googleMaps?.apiKey) config.apiKey = creds.googleMaps.apiKey
   }
+  if (widgetType === 'todo') {
+    const c = creds as any
+    if (c.todoist?.apiToken) {
+      config.provider = 'todoist'
+      config.todoist = { ...c.todoist }
+    } else if (c.microsoft?.refreshToken) {
+      config.provider = 'microsoft'
+      config.microsoft = { ...c.microsoft }
+    } else if (c.googleTasks?.refreshToken) {
+      config.provider = 'google'
+      config.google = { ...c.googleTasks }
+    }
+  }
+  if (widgetType === 'youtube') {
+    if ((creds as any).youtube?.apiKey) config.apiKey = (creds as any).youtube.apiKey
+  }
+  if (widgetType === 'media-player') {
+    const c = creds as any
+    if (c.plex?.token) {
+      config.provider = 'plex'
+      config.plex = { ...c.plex }
+    } else if (c.jellyfin?.apiKey) {
+      config.provider = 'jellyfin'
+      config.jellyfin = { ...c.jellyfin }
+    }
+  }
   return config
 }
 
