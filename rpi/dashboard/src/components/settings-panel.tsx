@@ -37,9 +37,17 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
     }
   }
   if (widgetType === 'photos') {
-    if (creds.google?.clientId) {
+    if ((creds as any).icloud?.sharedAlbumUrl) {
+      config.provider = 'icloud'
+      config.icloud = { ...(creds as any).icloud }
+    } else if (creds.google?.clientId) {
       config.provider = 'google'
       config.google = { ...creds.google }
+    }
+  }
+  if (widgetType === 'calendar') {
+    if ((creds as any).calendar?.sources) {
+      config.sources = (creds as any).calendar.sources
     }
   }
   if (widgetType === 'traffic') {
