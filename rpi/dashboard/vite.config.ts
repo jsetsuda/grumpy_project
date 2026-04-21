@@ -8,6 +8,7 @@ import fs from 'fs'
 const CONFIG_PATH = path.resolve(__dirname, 'config.json')
 const DASHBOARDS_DIR = path.resolve(__dirname, 'dashboards')
 const DEVICES_PATH = path.resolve(__dirname, 'devices.json')
+const CREDENTIALS_PATH = path.resolve(__dirname, 'credentials.json')
 
 function ensureDashboardsDir(): void {
   if (!fs.existsSync(DASHBOARDS_DIR)) {
@@ -144,6 +145,25 @@ function configApiPlugin(): Plugin {
             res.end(JSON.stringify({ ok: true }))
             return
           }
+
+          // PATCH /api/dashboards/:id — partial meta update (rename)
+          if (segments.length === 1 && req.method === 'PATCH') {
+            if (!fs.existsSync(filePath)) {
+              res.statusCode = 404
+              res.end(JSON.stringify({ error: 'Dashboard not found' }))
+              return
+            }
+            const body = JSON.parse(await readBody(req))
+            const existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+            if (body.name !== undefined) {
+              existing.meta.name = body.name
+            }
+            existing.meta.updatedAt = new Date().toISOString()
+            fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf-8')
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(existing.meta))
+            return
+          }
         }
 
         next()
@@ -167,6 +187,33 @@ function configApiPlugin(): Plugin {
         if (req.method === 'POST') {
           const body = await readBody(req)
           fs.writeFileSync(DEVICES_PATH, body, 'utf-8')
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ ok: true }))
+          return
+        }
+
+        res.statusCode = 405
+        res.end('Method not allowed')
+      })
+
+      // --- Credentials API ---
+
+      server.middlewares.use('/api/credentials', async (req, res) => {
+        if (req.method === 'GET') {
+          if (fs.existsSync(CREDENTIALS_PATH)) {
+            const data = fs.readFileSync(CREDENTIALS_PATH, 'utf-8')
+            res.setHeader('Content-Type', 'application/json')
+            res.end(data)
+          } else {
+            res.setHeader('Content-Type', 'application/json')
+            res.end('{}')
+          }
+          return
+        }
+
+        if (req.method === 'POST') {
+          const body = await readBody(req)
+          fs.writeFileSync(CREDENTIALS_PATH, body, 'utf-8')
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ ok: true }))
           return
@@ -381,7 +428,7 @@ export default defineConfig({
     host: true,
     port: 5173,
     watch: {
-      ignored: ['**/dashboards/**', '**/devices.json', '**/config.json'],
+      ignored: ['**/dashboards/**', '**/devices.json', '**/config.json', '**/credentials.json'],
     },
   },
 })

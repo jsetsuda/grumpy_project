@@ -7,17 +7,68 @@ import { GooglePhotosAuth } from '@/widgets/photos/google-photos-auth'
 import type { WidgetInstance, BackgroundPhotosConfig } from '@/config/types'
 import { themes, themeNames, type ThemeName } from '@/config/themes'
 
+interface SharedCredentials {
+  homeAssistant?: { url: string; token: string }
+  spotify?: { clientId: string; clientSecret: string; refreshToken: string }
+  google?: { clientId: string; clientSecret: string; refreshToken: string }
+  googleMaps?: { apiKey: string }
+}
+
+async function fetchCredentials(): Promise<SharedCredentials> {
+  try {
+    const res = await fetch('/api/credentials')
+    if (res.ok) return await res.json()
+  } catch {
+    // ignore
+  }
+  return {}
+}
+
+function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials): Record<string, unknown> {
+  const config: Record<string, unknown> = {}
+  if (widgetType === 'ha-entities' || widgetType === 'scenes') {
+    if (creds.homeAssistant?.url) config.haUrl = creds.homeAssistant.url
+    if (creds.homeAssistant?.token) config.haToken = creds.homeAssistant.token
+  }
+  if (widgetType === 'music') {
+    if (creds.spotify) {
+      config.provider = 'spotify'
+      config.spotify = { ...creds.spotify }
+    }
+  }
+  if (widgetType === 'photos') {
+    if (creds.google?.clientId) {
+      config.provider = 'google'
+      config.google = { ...creds.google }
+    }
+  }
+  if (widgetType === 'traffic') {
+    if (creds.googleMaps?.apiKey) config.apiKey = creds.googleMaps.apiKey
+  }
+  return config
+}
+
 interface SettingsPanelProps {
   open: boolean
   onClose: () => void
+  onOpenZoneEditor?: () => void
 }
 
-export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { config, updateConfig, updateWidgetConfig, addWidget, removeWidget } = useConfig()
+export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanelProps) {
+  const { config, dashboardMeta, updateConfig, updateWidgetConfig, addWidget, removeWidget } = useConfig()
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null)
   const [showAddWidget, setShowAddWidget] = useState(false)
+  const [cachedCredentials, setCachedCredentials] = useState<SharedCredentials | null>(null)
+
+  useEffect(() => {
+    if (open && !cachedCredentials) {
+      fetchCredentials().then(setCachedCredentials)
+    }
+  }, [open, cachedCredentials])
 
   if (!open) return null
+
+  const isZoneMode = dashboardMeta?.layoutMode === 'zones' || !!config.zoneLayout
 
   return (
     <div className="fixed inset-0 z-[100] flex">
@@ -42,6 +93,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           >
             Dashboard Manager
           </a>
+
+          {/* Zone Layout button (for zone-mode dashboards) */}
+          {isZoneMode && onOpenZoneEditor && (
+            <button
+              onClick={() => { onClose(); onOpenZoneEditor() }}
+              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg bg-[var(--muted)] border border-[var(--border)] text-sm font-medium hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] transition-colors"
+            >
+              Edit Zone Layout
+            </button>
+          )}
 
           {/* Theme & Background section */}
           <ThemeBackgroundSettings
@@ -151,11 +212,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <button
                   key={def.type}
                   onClick={() => {
+                    const prefilledConfig = cachedCredentials
+                      ? applyCredentialsToWidget(def.type, cachedCredentials)
+                      : {}
                     const newWidget: WidgetInstance = {
                       id: `${def.type}-${Date.now().toString(36)}`,
                       type: def.type,
                       layout: { x: 0, y: Infinity, w: def.defaultSize.w, h: def.defaultSize.h },
-                      config: {},
+                      config: prefilledConfig,
                     }
                     addWidget(newWidget)
                     setShowAddWidget(false)

@@ -257,7 +257,7 @@ export function ZoneRenderer() {
       <ZoneEditor open={zoneEditorOpen} onClose={() => setZoneEditorOpen(false)} />
 
       {/* Settings panel */}
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} onOpenZoneEditor={() => setZoneEditorOpen(true)} />
     </>
   )
 }
