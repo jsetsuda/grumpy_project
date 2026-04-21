@@ -170,6 +170,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
+  // Don't render children until config is loaded — prevents layout flash/jumping
+  if (!loaded) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-[var(--background)]">
+        <div className="text-[var(--muted-foreground)] text-sm">Loading...</div>
+      </div>
+    )
+  }
+
   return (
     <ConfigContext.Provider value={{ config, dashboardId, dashboardMeta, updateConfig, updateWidgetConfig, updateWidgetLayout, updateAllLayouts, addWidget, removeWidget }}>
       {children}
