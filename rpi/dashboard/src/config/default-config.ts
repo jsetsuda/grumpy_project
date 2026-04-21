@@ -10,6 +10,7 @@ export const defaultConfig: DashboardConfig = {
   topBarSize: 'large',
   topBarBold: false,
   topBarBackground: true,
+  topBarHeight: 90,
   topBarShadow: true,
   topBarShadowSize: 8,
   topBarShadowOpacity: 80,

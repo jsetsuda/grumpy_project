@@ -33,6 +33,7 @@ export interface DashboardConfig {
   topBarSize: 'small' | 'medium' | 'large' | 'xlarge'
   topBarBold: boolean
   topBarBackground: boolean
+  topBarHeight: number // px
   topBarShadow: boolean
   topBarShadowSize: number // 1-20
   topBarShadowOpacity: number // 0-100
