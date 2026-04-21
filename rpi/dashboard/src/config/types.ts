@@ -28,6 +28,7 @@ export interface DashboardConfig {
   backgroundMode: 'solid' | 'photo'
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
+  showTopBar: boolean
   screensaverEnabled: boolean
   screensaverTimeout: number // seconds
   widgetOpacity: number // 0-100

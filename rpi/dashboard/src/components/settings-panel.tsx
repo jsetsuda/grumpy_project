@@ -42,6 +42,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             backgroundPhotos={config.backgroundPhotos}
             backgroundOverlay={config.backgroundOverlay ?? 60}
             widgetOpacity={config.widgetOpacity ?? 100}
+            showTopBar={config.showTopBar ?? true}
             screensaverEnabled={config.screensaverEnabled ?? true}
             screensaverTimeout={config.screensaverTimeout ?? 300}
             onThemeChange={(t) => updateConfig({ theme: t })}
@@ -49,6 +50,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
             onOverlayChange={(o) => updateConfig({ backgroundOverlay: o })}
             onWidgetOpacityChange={(o) => updateConfig({ widgetOpacity: o })}
+            onShowTopBarChange={(v) => updateConfig({ showTopBar: v })}
             onScreensaverEnabledChange={(v) => updateConfig({ screensaverEnabled: v })}
             onScreensaverTimeoutChange={(v) => updateConfig({ screensaverTimeout: v })}
           />
@@ -586,6 +588,7 @@ interface ThemeBackgroundSettingsProps {
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
   widgetOpacity: number
+  showTopBar: boolean
   screensaverEnabled: boolean
   screensaverTimeout: number
   onThemeChange: (theme: ThemeName) => void
@@ -593,6 +596,7 @@ interface ThemeBackgroundSettingsProps {
   onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
   onOverlayChange: (opacity: number) => void
   onWidgetOpacityChange: (opacity: number) => void
+  onShowTopBarChange: (show: boolean) => void
   onScreensaverEnabledChange: (enabled: boolean) => void
   onScreensaverTimeoutChange: (timeout: number) => void
 }
@@ -603,6 +607,7 @@ function ThemeBackgroundSettings({
   backgroundPhotos,
   backgroundOverlay,
   widgetOpacity,
+  showTopBar,
   screensaverEnabled,
   screensaverTimeout,
   onThemeChange,
@@ -610,6 +615,7 @@ function ThemeBackgroundSettings({
   onBackgroundPhotosChange,
   onOverlayChange,
   onWidgetOpacityChange,
+  onShowTopBarChange,
   onScreensaverEnabledChange,
   onScreensaverTimeoutChange,
 }: ThemeBackgroundSettingsProps) {
@@ -819,6 +825,13 @@ function ThemeBackgroundSettings({
             <span>Opaque</span>
           </div>
         </SettingsField>
+
+        {/* Top bar */}
+        <Toggle
+          checked={showTopBar}
+          onChange={onShowTopBarChange}
+          label="Show top bar (clock, settings, lock)"
+        />
 
         {/* Screensaver settings */}
         <Toggle

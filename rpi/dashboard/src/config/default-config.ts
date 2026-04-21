@@ -5,6 +5,7 @@ export const defaultConfig: DashboardConfig = {
   theme: 'midnight',
   backgroundMode: 'solid',
   backgroundOverlay: 60,
+  showTopBar: true,
   screensaverEnabled: true,
   screensaverTimeout: 300,
   widgetOpacity: 100,

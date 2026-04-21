@@ -23,7 +23,7 @@ export function DashboardGrid() {
     config.screensaverEnabled ?? true,
   )
 
-  // Clock for screensaver
+  // Clock (shared between top bar and screensaver)
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
@@ -54,6 +54,8 @@ export function DashboardGrid() {
     updateAllLayouts(newLayout.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
   }, [editMode, updateAllLayouts])
 
+  const showTopBar = config.showTopBar ?? true
+
   return (
     <>
       {config.backgroundMode === 'photo' && config.backgroundPhotos && (
@@ -64,10 +66,10 @@ export function DashboardGrid() {
         />
       )}
 
-      {/* Screensaver overlay — always-visible clock + home button */}
+      {/* Screensaver overlay */}
       {isIdle && (
         <div className="fixed inset-0 z-20 pointer-events-none">
-          {/* Clock — always visible top-left */}
+          {/* Clock — top-left */}
           <div className="absolute top-4 left-4 text-white drop-shadow-lg">
             <div className="text-4xl font-light tracking-tight">
               {format(now, 'h:mm a')}
@@ -86,71 +88,91 @@ export function DashboardGrid() {
           </button>
         </div>
       )}
-    <div
-      className="h-screen w-screen p-3 relative z-10 transition-opacity duration-1000"
-      style={{ opacity: isIdle ? 0 : 1, pointerEvents: isIdle ? 'none' : 'auto' }}
-    >
-      {/* Toolbar */}
-      <div className="absolute top-3 right-3 z-50 flex gap-2">
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--accent)] transition-colors"
-          title="Settings"
-        >
-          <Settings size={18} />
-        </button>
-        <button
-          onClick={() => setEditMode(!editMode)}
-          className="p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:bg-[var(--accent)] transition-colors"
-          title={editMode ? 'Lock layout' : 'Edit layout'}
-        >
-          {editMode ? <Unlock size={18} /> : <Lock size={18} />}
-        </button>
-      </div>
 
-      <GridLayout
-        width={width}
-        layout={layout}
-        gridConfig={{
-          cols: config.grid.cols,
-          rowHeight: config.grid.rowHeight,
-          margin: config.grid.margin,
-        }}
-        dragConfig={{ enabled: editMode }}
-        resizeConfig={{ enabled: editMode }}
-        onLayoutChange={onLayoutChange}
-        autoSize
-        className="layout"
+      {/* Main dashboard */}
+      <div
+        className="h-screen w-screen flex flex-col relative z-10 transition-opacity duration-1000"
+        style={{ opacity: isIdle ? 0 : 1, pointerEvents: isIdle ? 'none' : 'auto' }}
       >
-        {config.widgets.map(widget => {
-          const def = registry.get(widget.type)
-          if (!def) return <div key={widget.id} />
-
-          const WidgetComponent = def.component
-
-          return (
-            <div key={widget.id}>
-              <WidgetFrame>
-                <WidgetComponent
-                  id={widget.id}
-                  config={widget.config}
-                  onConfigChange={(partial) => updateWidgetConfig(widget.id, partial)}
-                />
-              </WidgetFrame>
+        {/* Top Bar */}
+        {showTopBar && (
+          <div className="flex items-center justify-between px-4 py-2 shrink-0 z-50">
+            {/* Left: Clock/Date */}
+            <div className="flex items-center gap-3">
+              <div className="text-lg font-light tracking-tight text-[var(--foreground)]">
+                {format(now, 'h:mm a')}
+              </div>
+              <div className="text-sm text-[var(--muted-foreground)]">
+                {format(now, 'EEEE, MMM d')}
+              </div>
             </div>
-          )
-        })}
-      </GridLayout>
 
-      {editMode && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--card)] border border-[var(--border)] rounded-lg px-4 py-2 text-sm text-[var(--muted-foreground)]">
-          Drag and resize widgets · Tap the lock to save
+            {/* Right: Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors"
+                title="Settings"
+              >
+                <Settings size={18} />
+              </button>
+              <button
+                onClick={() => setEditMode(!editMode)}
+                className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors"
+                title={editMode ? 'Lock layout' : 'Edit layout'}
+              >
+                {editMode ? <Unlock size={18} /> : <Lock size={18} />}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Widget Grid */}
+        <div className="flex-1 px-3 pb-3 overflow-hidden">
+          <GridLayout
+            width={width}
+            layout={layout}
+            gridConfig={{
+              cols: config.grid.cols,
+              rowHeight: config.grid.rowHeight,
+              margin: config.grid.margin,
+            }}
+            dragConfig={{ enabled: editMode }}
+            resizeConfig={{ enabled: editMode }}
+            onLayoutChange={onLayoutChange}
+            autoSize
+            className="layout"
+          >
+            {config.widgets.map(widget => {
+              const def = registry.get(widget.type)
+              if (!def) return <div key={widget.id} />
+
+              const WidgetComponent = def.component
+
+              return (
+                <div key={widget.id}>
+                  <WidgetFrame>
+                    <WidgetComponent
+                      id={widget.id}
+                      config={widget.config}
+                      onConfigChange={(partial) => updateWidgetConfig(widget.id, partial)}
+                    />
+                  </WidgetFrame>
+                </div>
+              )
+            })}
+          </GridLayout>
         </div>
-      )}
 
-      {/* Settings panel */}
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-    </div>
+        {editMode && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--card)] border border-[var(--border)] rounded-lg px-4 py-2 text-sm text-[var(--muted-foreground)] z-50">
+            Drag and resize widgets · Tap the lock to save
+          </div>
+        )}
+
+        {/* Settings panel */}
+        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      </div>
     </>
   )
 }
