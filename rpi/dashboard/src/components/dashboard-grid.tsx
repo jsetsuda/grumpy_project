@@ -82,7 +82,7 @@ export function DashboardGrid() {
             <div className="text-5xl font-light tracking-tight text-[var(--foreground)]">
               {format(now, 'h:mm a')}
             </div>
-            <div className="text-lg text-[var(--muted-foreground)]">
+            <div className="text-3xl text-[var(--muted-foreground)]">
               {format(now, 'EEEE, MMMM d')}
             </div>
           </div>
