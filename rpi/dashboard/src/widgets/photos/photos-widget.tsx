@@ -150,13 +150,33 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
       // Extract token from URL like https://www.icloud.com/sharedalbum/#TOKEN
       const token = albumUrl.includes('#') ? albumUrl.split('#')[1] : albumUrl
 
-      // First, get the webstream metadata to determine the partition server
-      const streamUrl = `https://p01-sharedstreams.icloud.com/${token}/sharedstreams/webstream`
-      const res = await fetch(`/api/proxy?url=${encodeURIComponent(streamUrl)}`, {
+      // First try p01, handle 330 redirect to correct partition
+      let host = 'p01-sharedstreams.icloud.com'
+      let streamUrl = `https://${host}/${token}/sharedstreams/webstream`
+      let res = await fetch(`/api/proxy?url=${encodeURIComponent(streamUrl)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ streamCtag: null }),
       })
+
+      // Handle iCloud's custom 330 redirect
+      if (!res.ok) {
+        const text = await res.text()
+        try {
+          const redirect = JSON.parse(text)
+          if (redirect['X-Apple-MMe-Host']) {
+            host = redirect['X-Apple-MMe-Host']
+            streamUrl = `https://${host}/${token}/sharedstreams/webstream`
+            res = await fetch(`/api/proxy?url=${encodeURIComponent(streamUrl)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ streamCtag: null }),
+            })
+          }
+        } catch {
+          throw new Error(`iCloud shared album: ${res.status}`)
+        }
+      }
 
       if (!res.ok) throw new Error(`iCloud shared album: ${res.status}`)
       const data = await res.json()
@@ -174,7 +194,7 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
             , derivatives[0])
 
             if (largest?.checksum) {
-              const assetUrl = `https://p01-sharedstreams.icloud.com/${token}/sharedstreams/asset/${largest.checksum}?derivativeKey=${largest.checksum}`
+              const assetUrl = `https://${host}/${token}/sharedstreams/asset/${largest.checksum}?derivativeKey=${largest.checksum}`
               photos_list.push({
                 id: photo.photoGuid || photo.batchGuid || String(photos_list.length),
                 url: `/api/proxy?url=${encodeURIComponent(assetUrl)}`,

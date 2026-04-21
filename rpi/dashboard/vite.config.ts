@@ -120,12 +120,8 @@ function configApiPlugin(): Plugin {
           }
 
           const proxyRes = await fetch(url, fetchOptions)
-          if (!proxyRes.ok) {
-            res.statusCode = proxyRes.status
-            res.end(`Upstream error: ${proxyRes.status}`)
-            return
-          }
           const text = await proxyRes.text()
+          res.statusCode = proxyRes.status
           res.setHeader('Content-Type', proxyRes.headers.get('content-type') || 'text/plain')
           res.end(text)
         } catch (e) {

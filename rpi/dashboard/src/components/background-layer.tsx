@@ -106,12 +106,35 @@ export function BackgroundLayer({ config, overlay }: BackgroundLayerProps) {
     try {
       const albumUrl = config.icloud!.sharedAlbumUrl.trim()
       const token = albumUrl.includes('#') ? albumUrl.split('#')[1] : albumUrl
-      const streamUrl = `https://p01-sharedstreams.icloud.com/${token}/sharedstreams/webstream`
-      const res = await fetch(`/api/proxy?url=${encodeURIComponent(streamUrl)}`, {
+
+      // First try p01, handle 330 redirect to correct partition
+      let host = 'p01-sharedstreams.icloud.com'
+      let streamUrl = `https://${host}/${token}/sharedstreams/webstream`
+      let res = await fetch(`/api/proxy?url=${encodeURIComponent(streamUrl)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ streamCtag: null }),
       })
+
+      // Handle iCloud's custom 330 redirect
+      if (!res.ok) {
+        const text = await res.text()
+        try {
+          const redirect = JSON.parse(text)
+          if (redirect['X-Apple-MMe-Host']) {
+            host = redirect['X-Apple-MMe-Host']
+            streamUrl = `https://${host}/${token}/sharedstreams/webstream`
+            res = await fetch(`/api/proxy?url=${encodeURIComponent(streamUrl)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ streamCtag: null }),
+            })
+          }
+        } catch {
+          return
+        }
+      }
+
       if (!res.ok) return
       const data = await res.json()
       const photosList: PhotoItem[] = []
@@ -123,7 +146,7 @@ export function BackgroundLayer({ config, overlay }: BackgroundLayerProps) {
               (parseInt(a.width || '0') > parseInt(b.width || '0')) ? a : b
             , derivatives[0])
             if (largest?.checksum) {
-              const assetUrl = `https://p01-sharedstreams.icloud.com/${token}/sharedstreams/asset/${largest.checksum}?derivativeKey=${largest.checksum}`
+              const assetUrl = `https://${host}/${token}/sharedstreams/asset/${largest.checksum}?derivativeKey=${largest.checksum}`
               photosList.push({
                 id: photo.photoGuid || photo.batchGuid || String(photosList.length),
                 url: `/api/proxy?url=${encodeURIComponent(assetUrl)}`,
