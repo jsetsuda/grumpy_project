@@ -8,6 +8,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Pre-define the callback so the Spotify SDK doesn't error
+      // The actual handler is set by use-spotify-player.ts when it mounts
+      window.onSpotifyWebPlaybackSDKReady = function() {
+        // SDK ready — if our player hook hasn't set a real handler yet,
+        // store a flag so it knows the SDK is already loaded
+        window._spotifySDKReady = true;
+      };
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
   </body>

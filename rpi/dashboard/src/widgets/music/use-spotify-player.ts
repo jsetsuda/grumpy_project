@@ -154,6 +154,9 @@ export function useSpotifyPlayer({ getToken, enabled, deviceName = 'Grumpy Dashb
 
     if (window.Spotify) {
       initPlayer()
+    } else if ((window as any)._spotifySDKReady) {
+      // SDK already fired the callback before we mounted — check again
+      setTimeout(() => { if (window.Spotify) initPlayer() }, 100)
     } else {
       window.onSpotifyWebPlaybackSDKReady = initPlayer
     }

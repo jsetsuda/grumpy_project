@@ -37,7 +37,9 @@ export function HaEntitiesWidget({ config }: WidgetProps<HaEntitiesConfig>) {
     let msgId = 1
 
     function connect() {
-      const wsUrl = haUrl.replace(/^http/, 'ws') + '/api/websocket'
+      // Use our Vite proxy to avoid mixed content (HTTPS page → ws:// HA)
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${proto}//${window.location.host}/api/ha-ws?url=${encodeURIComponent(haUrl + '/api/websocket')}`
       socket = new WebSocket(wsUrl)
 
       socket.onopen = () => {

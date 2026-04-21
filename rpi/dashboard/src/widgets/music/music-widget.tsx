@@ -155,10 +155,10 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     }
   }, [nowPlaying])
 
-  // Fetch last played on mount if nothing is currently playing
+  // Fetch last played on mount if nothing is currently playing (delay to avoid 429)
   useEffect(() => {
     if (!nowPlaying && !lastPlayed && config.spotify?.refreshToken) {
-      (async () => {
+      const timer = setTimeout(async () => {
         const token = await getToken()
         if (!token) return
         try {
@@ -176,7 +176,8 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             })
           }
         } catch { /* ignore */ }
-      })()
+      }, 3000)
+      return () => clearTimeout(timer)
     }
   }, [config.spotify?.refreshToken])
 

@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
 import fs from 'fs'
+import http from 'http'
+import net from 'net'
 
 const CONFIG_PATH = path.resolve(__dirname, 'config.json')
 const DASHBOARDS_DIR = path.resolve(__dirname, 'dashboards')
@@ -48,6 +50,64 @@ function configApiPlugin(): Plugin {
   return {
     name: 'config-api',
     configureServer(server) {
+      // WebSocket proxy for HA connections (avoids mixed content HTTPS → ws://)
+      server.httpServer?.on('upgrade', (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
+        const url = new URL(req.url || '', 'http://localhost')
+        if (!url.pathname.startsWith('/api/ha-ws')) return
+
+        const targetUrl = url.searchParams.get('url')
+        if (!targetUrl) {
+          socket.destroy()
+          return
+        }
+
+        // Parse the target and create a TCP connection to HA
+        const target = new URL(targetUrl)
+        const targetPort = parseInt(target.port) || 8123
+        const targetHost = target.hostname
+
+        const proxy = net.createConnection({ host: targetHost, port: targetPort }, () => {
+          // Send the upgrade request to HA
+          const reqPath = target.pathname
+          const headers = [
+            `GET ${reqPath} HTTP/1.1`,
+            `Host: ${targetHost}:${targetPort}`,
+            'Upgrade: websocket',
+            'Connection: Upgrade',
+            `Sec-WebSocket-Key: ${req.headers['sec-websocket-key']}`,
+            `Sec-WebSocket-Version: ${req.headers['sec-websocket-version']}`,
+          ]
+          if (req.headers['sec-websocket-protocol']) {
+            headers.push(`Sec-WebSocket-Protocol: ${req.headers['sec-websocket-protocol']}`)
+          }
+          proxy.write(headers.join('\r\n') + '\r\n\r\n')
+          if (head.length) proxy.write(head)
+        })
+
+        // Once HA responds with the upgrade, pipe both ways
+        let headersParsed = false
+        proxy.on('data', (chunk: Buffer) => {
+          if (!headersParsed) {
+            const str = chunk.toString()
+            if (str.includes('\r\n\r\n')) {
+              headersParsed = true
+              // Forward the full response (including upgrade headers) to the client
+              socket.write(chunk)
+              // Now pipe bidirectionally
+              proxy.pipe(socket)
+              socket.pipe(proxy)
+            } else {
+              socket.write(chunk)
+            }
+          }
+        })
+
+        proxy.on('error', () => socket.destroy())
+        socket.on('error', () => proxy.destroy())
+        proxy.on('close', () => socket.destroy())
+        socket.on('close', () => proxy.destroy())
+      })
+
       // Ensure dashboards dir exists on first request
       let initialized = false
       server.middlewares.use((_req, _res, next) => {

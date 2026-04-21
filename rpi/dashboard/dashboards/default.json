@@ -4,7 +4,7 @@
     "name": "Default",
     "layoutMode": "grid",
     "createdAt": "2026-04-21T03:50:10.169Z",
-    "updatedAt": "2026-04-21T05:10:19.108Z"
+    "updatedAt": "2026-04-21T05:19:59.031Z"
   },
   "config": {
     "version": 1,
@@ -83,7 +83,7 @@
             "clientSecret": "REDACTED_SPOTIFY_CLIENT_SECRET",
             "refreshToken": "REDACTED_SPOTIFY_REFRESH_TOKEN",
             "accessToken": "REDACTED_SPOTIFY_ACCESS_TOKEN",
-            "tokenExpiry": 1776748690874
+            "tokenExpiry": 1776752293871
           }
         }
       },
