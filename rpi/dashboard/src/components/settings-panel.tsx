@@ -85,6 +85,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             onTopBarForecastDaysChange={(v) => updateConfig({ topBarForecastDays: v })}
           />
 
+          {/* Voice Assistant section */}
+          <VoiceAssistantSettings
+            voiceEnabled={config.voiceEnabled ?? true}
+            voicePipelineId={config.voicePipelineId || ''}
+            onVoiceEnabledChange={(v) => updateConfig({ voiceEnabled: v })}
+            onVoicePipelineIdChange={(v) => updateConfig({ voicePipelineId: v || undefined })}
+          />
+
           {/* Widget list */}
           {config.widgets.map(widget => {
             const def = registry.get(widget.type)
@@ -1090,6 +1098,59 @@ function TopOverlaySettings({
                 />
               </SettingsField>
             )}
+          </>
+        )}
+      </div>}
+    </div>
+  )
+}
+
+// --- Voice Assistant Settings ---
+
+interface VoiceAssistantSettingsProps {
+  voiceEnabled: boolean
+  voicePipelineId: string
+  onVoiceEnabledChange: (enabled: boolean) => void
+  onVoicePipelineIdChange: (id: string) => void
+}
+
+function VoiceAssistantSettings({
+  voiceEnabled,
+  voicePipelineId,
+  onVoiceEnabledChange,
+  onVoicePipelineIdChange,
+}: VoiceAssistantSettingsProps) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+      >
+        {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className="flex-1 text-sm font-medium">Voice Assistant</span>
+      </button>
+
+      {expanded && <div className="p-3 pt-0 border-t border-[var(--border)] space-y-2">
+        <Toggle
+          checked={voiceEnabled}
+          onChange={onVoiceEnabledChange}
+          label="Enable voice assistant"
+        />
+        {voiceEnabled && (
+          <>
+            <p className="text-xs text-[var(--muted-foreground)] mt-2">
+              Requires a Home Assistant Entities widget with URL and token configured.
+              Uses HA Assist pipeline for voice commands.
+            </p>
+            <SettingsField label="Pipeline ID (optional)">
+              <TextInput
+                value={voicePipelineId}
+                onChange={onVoicePipelineIdChange}
+                placeholder="Leave blank for default pipeline"
+              />
+            </SettingsField>
           </>
         )}
       </div>}

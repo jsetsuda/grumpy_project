@@ -22,6 +22,7 @@ export const defaultConfig: DashboardConfig = {
   screensaverEnabled: true,
   screensaverTimeout: 300,
   widgetOpacity: 100,
+  voiceEnabled: true,
   grid: {
     cols: 12,
     rowHeight: 80,

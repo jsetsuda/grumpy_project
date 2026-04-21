@@ -50,6 +50,8 @@ export interface DashboardConfig {
     rowHeight: number
     margin: [number, number]
   }
+  voiceEnabled: boolean
+  voicePipelineId?: string
   widgets: WidgetInstance[]
 }
 

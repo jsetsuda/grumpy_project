@@ -11,6 +11,7 @@ import { useTheme } from '@/hooks/use-theme'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import { TopBarWeather } from './topbar-weather'
 import { NowPlayingOverlay } from './now-playing-overlay'
+import { VoiceOverlay } from './voice-overlay'
 
 export function DashboardGrid() {
   const { config, updateWidgetConfig, updateAllLayouts } = useConfig()
@@ -78,6 +79,11 @@ export function DashboardGrid() {
   // Get Spotify config from music widget for the now-playing overlay
   const musicWidget = config.widgets.find(w => w.type === 'music')
   const spotifyConfig = musicWidget?.config?.spotify as any
+
+  // Get HA config from the first ha-entities widget for voice assistant
+  const haWidget = config.widgets.find(w => w.type === 'ha-entities')
+  const haUrl = haWidget?.config?.haUrl as string | undefined
+  const haToken = haWidget?.config?.haToken as string | undefined
 
   const sizeClasses = {
     small: { time: 'text-2xl', date: 'text-base' },
@@ -250,6 +256,17 @@ export function DashboardGrid() {
         )}
 
       </div>
+
+      {/* Voice overlay — bottom right */}
+      {(config.voiceEnabled ?? true) && haUrl && haToken && (
+        <VoiceOverlay
+          haUrl={haUrl}
+          haToken={haToken}
+          pipelineId={config.voicePipelineId}
+          showBackground={topBarBg}
+          onInteraction={wakeUp}
+        />
+      )}
 
       {/* Settings panel — outside stacking contexts so it renders on top of everything */}
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
