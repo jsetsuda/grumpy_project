@@ -206,6 +206,14 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
     }
   }
 
+  function goNext() {
+    setCurrentIndex(prev => (prev + 1) % photos.length)
+  }
+
+  function goPrev() {
+    setCurrentIndex(prev => (prev - 1 + photos.length) % photos.length)
+  }
+
   if (provider === 'none' || photos.length === 0) return null
 
   const current = photos[currentIndex]
@@ -222,6 +230,23 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
         className="absolute inset-0 transition-opacity duration-1000"
         style={{ backgroundColor: `rgba(0, 0, 0, ${fullscreen ? 0 : overlay / 100})` }}
       />
+      {/* Screensaver controls */}
+      {fullscreen && photos.length > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); goPrev() }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors z-10 min-w-[48px] min-h-[48px] flex items-center justify-center"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); goNext() }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors z-10 min-w-[48px] min-h-[48px] flex items-center justify-center"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </>
+      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { GridLayout, type LayoutItem, type Layout } from 'react-grid-layout'
-import { Lock, Unlock, Settings } from 'lucide-react'
+import { Lock, Unlock, Settings, Home } from 'lucide-react'
+import { format } from 'date-fns'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WidgetFrame } from './widget-frame'
@@ -17,10 +18,17 @@ export function DashboardGrid() {
 
   useTheme(config.theme || 'midnight')
 
-  const isIdle = useIdleTimer(
+  const { isIdle, wakeUp } = useIdleTimer(
     (config.screensaverTimeout ?? 300) * 1000,
     config.screensaverEnabled ?? true,
   )
+
+  // Clock for screensaver
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     const onResize = () => setWidth(window.innerWidth - 24)
@@ -54,6 +62,29 @@ export function DashboardGrid() {
           overlay={config.backgroundOverlay ?? 60}
           fullscreen={isIdle}
         />
+      )}
+
+      {/* Screensaver overlay — always-visible clock + home button */}
+      {isIdle && (
+        <div className="fixed inset-0 z-20 pointer-events-none">
+          {/* Clock — always visible top-left */}
+          <div className="absolute top-4 left-4 text-white drop-shadow-lg">
+            <div className="text-4xl font-light tracking-tight">
+              {format(now, 'h:mm a')}
+            </div>
+            <div className="text-sm text-white/70 mt-0.5">
+              {format(now, 'EEEE, MMMM d')}
+            </div>
+          </div>
+
+          {/* Home button — top right */}
+          <button
+            onClick={(e) => { e.stopPropagation(); wakeUp() }}
+            className="absolute top-4 right-4 p-3 rounded-full bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors pointer-events-auto min-w-[48px] min-h-[48px] flex items-center justify-center"
+          >
+            <Home size={22} />
+          </button>
+        </div>
       )}
     <div
       className="h-screen w-screen p-3 relative z-10 transition-opacity duration-1000"
