@@ -219,11 +219,11 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
   const current = photos[currentIndex]
 
   return (
-    <div className="fixed inset-0 z-0">
+    <div className="fixed inset-0 z-0 bg-[var(--background)]">
       <img
         src={current.url}
         alt=""
-        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-2000"
+        className="absolute inset-0 w-full h-full object-contain transition-opacity duration-2000"
       />
       {/* Dark overlay for readability */}
       <div
