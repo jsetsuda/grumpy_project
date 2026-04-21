@@ -18,13 +18,13 @@ The Pi is a **thin client**. It:
 - USB microphone (or ReSpeaker HAT)
 - Speakers (USB, 3.5mm, or touchscreen-integrated)
 
-## Contents (planned)
+## Contents
 
 ```
 rpi/
-├── dashboard/       React + Vite + Tailwind dashboard app
-├── provisioning/    Kiosk setup scripts, autostart config
-└── README.md        This file
+├── dashboard/    Source code + production server + Docker
+├── kiosk/        RPi kiosk container + setup script
+└── README.md     This file
 ```
 
 ## Dashboard (Phase 3)

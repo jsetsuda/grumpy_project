@@ -1,0 +1,16 @@
+name: grumpy-dashboard
+
+services:
+  dashboard:
+    build: .
+    container_name: grumpy-dashboard
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5173}:${PORT:-5173}"
+    volumes:
+      - ./dashboards:/app/dashboards
+      - ./devices.json:/app/devices.json
+      - ./credentials.json:/app/credentials.json
+    environment:
+      - PORT=${PORT:-5173}
+      - TLS=${TLS:-true}

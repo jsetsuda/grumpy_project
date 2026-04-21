@@ -1,0 +1,22 @@
+name: grumpy-kiosk
+
+services:
+  kiosk:
+    build: .
+    container_name: grumpy-kiosk
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - DASHBOARD_URL=${DASHBOARD_URL:-https://192.168.5.118:5173}
+      - DEVICE_NAME=${DEVICE_NAME:-pi-unnamed}
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /run/user/1000/pulse:/run/user/1000/pulse
+      - /dev/snd:/dev/snd
+      - /dev/dri:/dev/dri
+    devices:
+      - /dev/snd
+      - /dev/dri
