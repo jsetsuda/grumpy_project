@@ -332,6 +332,10 @@ export function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) 
       return <CountdownSettings config={widget.config} onChange={onConfigChange} />
     case 'youtube':
       return <YouTubeSettings config={widget.config} onChange={onConfigChange} />
+    case 'stream':
+      return <StreamSettings config={widget.config} onChange={onConfigChange} />
+    case 'media-player':
+      return <MediaPlayerSettings config={widget.config} onChange={onConfigChange} />
     case 'habits':
       return <HabitsSettings config={widget.config} onChange={onConfigChange} />
     case 'notes':
@@ -1775,6 +1779,153 @@ function YouTubeSettings({ config, onChange }: { config: Record<string, any>; on
         onChange={v => onChange({ autoplay: v })}
         label="Autoplay videos"
       />
+      <Toggle
+        checked={config.autoplayNext === true}
+        onChange={v => onChange({ autoplayNext: v })}
+        label="Auto-play next from queue"
+      />
+    </div>
+  )
+}
+
+function StreamSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  return (
+    <div>
+      <SettingsField label="Provider">
+        <SelectInput
+          value={config.provider || 'url'}
+          onChange={v => onChange({ provider: v })}
+          options={[
+            { value: 'url', label: 'Direct URL (MP4, WebM, HLS)' },
+            { value: 'twitch', label: 'Twitch' },
+            { value: 'camera', label: 'Camera Feed' },
+          ]}
+        />
+      </SettingsField>
+      {(config.provider === 'twitch') ? (
+        <SettingsField label="Twitch Channel">
+          <TextInput
+            value={config.twitch?.channel || ''}
+            onChange={v => onChange({ twitch: { channel: v } })}
+            placeholder="channel_name"
+          />
+        </SettingsField>
+      ) : (
+        <SettingsField label="Stream URL">
+          <TextInput
+            value={config.url || ''}
+            onChange={v => onChange({ url: v || undefined })}
+            placeholder={config.provider === 'camera' ? 'http://camera-ip/stream' : 'https://example.com/stream.m3u8'}
+          />
+        </SettingsField>
+      )}
+      <SettingsField label="Title (optional)">
+        <TextInput
+          value={config.title || ''}
+          onChange={v => onChange({ title: v || undefined })}
+          placeholder="My Stream"
+        />
+      </SettingsField>
+      <Toggle
+        checked={config.autoplay !== false}
+        onChange={v => onChange({ autoplay: v })}
+        label="Autoplay"
+      />
+      <Toggle
+        checked={config.muted !== false}
+        onChange={v => onChange({ muted: v })}
+        label="Start muted"
+      />
+    </div>
+  )
+}
+
+function MediaPlayerSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  return (
+    <div>
+      <SettingsField label="Provider">
+        <SelectInput
+          value={config.provider || 'none'}
+          onChange={v => onChange({ provider: v })}
+          options={[
+            { value: 'none', label: 'Not configured' },
+            { value: 'plex', label: 'Plex' },
+            { value: 'jellyfin', label: 'Jellyfin' },
+            { value: 'ha-media', label: 'HA Media Player' },
+          ]}
+        />
+      </SettingsField>
+      {config.provider === 'plex' && (
+        <>
+          <SettingsField label="Plex Server URL">
+            <TextInput
+              value={config.plex?.serverUrl || ''}
+              onChange={v => onChange({ plex: { ...config.plex, serverUrl: v } })}
+              placeholder="http://192.168.1.x:32400"
+            />
+          </SettingsField>
+          <SettingsField label="Plex Token">
+            <TextInput
+              value={config.plex?.token || ''}
+              onChange={v => onChange({ plex: { ...config.plex, token: v } })}
+              placeholder="X-Plex-Token"
+              type="password"
+            />
+          </SettingsField>
+        </>
+      )}
+      {config.provider === 'jellyfin' && (
+        <>
+          <SettingsField label="Jellyfin Server URL">
+            <TextInput
+              value={config.jellyfin?.serverUrl || ''}
+              onChange={v => onChange({ jellyfin: { ...config.jellyfin, serverUrl: v } })}
+              placeholder="http://192.168.1.x:8096"
+            />
+          </SettingsField>
+          <SettingsField label="API Key">
+            <TextInput
+              value={config.jellyfin?.apiKey || ''}
+              onChange={v => onChange({ jellyfin: { ...config.jellyfin, apiKey: v } })}
+              placeholder="API key"
+              type="password"
+            />
+          </SettingsField>
+          <SettingsField label="User ID (optional)">
+            <TextInput
+              value={config.jellyfin?.userId || ''}
+              onChange={v => onChange({ jellyfin: { ...config.jellyfin, userId: v || undefined } })}
+              placeholder="User ID"
+            />
+          </SettingsField>
+        </>
+      )}
+      {config.provider === 'ha-media' && (
+        <>
+          <SettingsField label="Home Assistant URL">
+            <TextInput
+              value={config.haMedia?.haUrl || ''}
+              onChange={v => onChange({ haMedia: { ...config.haMedia, haUrl: v } })}
+              placeholder="http://homeassistant.local:8123"
+            />
+          </SettingsField>
+          <SettingsField label="HA Token">
+            <TextInput
+              value={config.haMedia?.haToken || ''}
+              onChange={v => onChange({ haMedia: { ...config.haMedia, haToken: v } })}
+              placeholder="Long-lived access token"
+              type="password"
+            />
+          </SettingsField>
+          <SettingsField label="Media Player Entity">
+            <TextInput
+              value={config.haMedia?.entityId || ''}
+              onChange={v => onChange({ haMedia: { ...config.haMedia, entityId: v } })}
+              placeholder="media_player.living_room_tv"
+            />
+          </SettingsField>
+        </>
+      )}
     </div>
   )
 }

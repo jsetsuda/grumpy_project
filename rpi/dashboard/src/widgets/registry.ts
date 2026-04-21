@@ -16,6 +16,8 @@ import { HabitsWidget } from './habits/habits-widget'
 import { NotesWidget } from './notes/notes-widget'
 import { SystemStatusWidget } from './system-status/system-status-widget'
 import { AnalogClockWidget } from './analog-clock/analog-clock-widget'
+import { StreamWidget } from './stream/stream-widget'
+import { MediaPlayerWidget } from './media-player/media-player-widget'
 
 const registry = new Map<string, WidgetDefinition>()
 
@@ -174,6 +176,24 @@ register({
   component: AnalogClockWidget,
   defaultSize: { w: 3, h: 3 },
   minSize: { w: 2, h: 2 },
+})
+
+register({
+  type: 'stream',
+  name: 'Stream / IPTV',
+  description: 'Play video streams, Twitch, camera feeds, and direct URLs',
+  component: StreamWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'media-player',
+  name: 'Media Player',
+  description: 'Browse and control Plex, Jellyfin, or HA media players',
+  component: MediaPlayerWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
 })
 
 export { registry }

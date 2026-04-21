@@ -4,14 +4,14 @@
     "name": "Shop Office",
     "layoutMode": "zones",
     "createdAt": "2026-04-21T04:57:31.491Z",
-    "updatedAt": "2026-04-21T16:44:47.595Z"
+    "updatedAt": "2026-04-21T16:52:24.365Z"
   },
   "config": {
     "version": 1,
     "theme": "ocean",
     "backgroundMode": "photo",
     "backgroundOverlay": 44,
-    "showTopBar": true,
+    "showTopBar": false,
     "topBarFont": "system-ui",
     "topBarSize": "large",
     "topBarBold": false,
@@ -39,10 +39,27 @@
     },
     "widgets": [],
     "zoneLayout": {
-      "templateId": "dakboard-classic",
+      "templateId": "full-overlay",
       "zones": [
         {
-          "regionId": "main-calendar",
+          "regionId": "top-left",
+          "widgetType": "clock",
+          "widgetConfig": {}
+        },
+        {
+          "regionId": "top-right",
+          "widgetType": "weather",
+          "widgetConfig": {
+            "lat": 42.3314,
+            "lon": -83.0458,
+            "units": "imperial",
+            "displayMode": "auto",
+            "forecastDays": 5,
+            "showFeelsLike": true
+          }
+        },
+        {
+          "regionId": "left-panel",
           "widgetType": "calendar",
           "widgetConfig": {
             "sources": [
@@ -51,39 +68,14 @@
                 "name": "Jason"
               }
             ],
-            "maxEvents": 15,
-            "defaultView": "month",
-            "timeFormat": "12h",
-            "weekStartsOn": 0,
-            "showWeekends": true
+            "maxEvents": 12,
+            "defaultView": "upcoming"
           }
         },
         {
-          "regionId": "right-sidebar",
-          "widgetType": "news",
-          "widgetConfig": {
-            "feeds": [
-              {
-                "url": "https://feeds.bbci.co.uk/news/rss.xml",
-                "name": "BBC News"
-              },
-              {
-                "url": "https://techcrunch.com/feed/",
-                "name": "TechCrunch"
-              },
-              {
-                "url": "https://feeds.npr.org/1001/rss.xml",
-                "name": "NPR News"
-              },
-              {
-                "url": "https://feeds.bloomberg.com/markets/news.rss",
-                "name": "Bloomberg"
-              }
-            ],
-            "maxItems": 15,
-            "rotateInterval": 10,
-            "showSource": true
-          }
+          "regionId": "bottom-right",
+          "widgetType": "todo",
+          "widgetConfig": {}
         }
       ],
       "backgroundOverlay": 40

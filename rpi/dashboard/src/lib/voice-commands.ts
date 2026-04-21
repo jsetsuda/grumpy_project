@@ -41,6 +41,18 @@ export function matchVoiceCommand(transcript: string): VoiceCommandResult | null
     }
   }
 
+  // Twitch: "play [channel] on twitch" / "watch [channel] on twitch" / "twitch [channel]"
+  {
+    const twitchOnMatch = text.match(/^(?:play|watch)\s+(.+?)\s+on\s+twitch$/)
+    if (twitchOnMatch) {
+      return { action: 'stream:twitch', params: { channel: twitchOnMatch[1] }, responseText: `Opening ${twitchOnMatch[1]} on Twitch` }
+    }
+    const twitchMatch = text.match(/^twitch\s+(.+)$/)
+    if (twitchMatch) {
+      return { action: 'stream:twitch', params: { channel: twitchMatch[1] }, responseText: `Opening ${twitchMatch[1]} on Twitch` }
+    }
+  }
+
   // Spotify: pause
   if (text === 'pause' || text === 'pause music' || text === 'stop music') {
     return { action: 'spotify:pause', params: {}, responseText: 'Pausing music' }
@@ -105,7 +117,7 @@ export function matchVoiceCommand(transcript: string): VoiceCommandResult | null
 
   // Spotify: play [query] — must come last since it's a catch-all for "play ..."
   // (but not "play X on youtube" which is handled above)
-  if (text.startsWith('play ') && !text.includes('on youtube')) {
+  if (text.startsWith('play ') && !text.includes('on youtube') && !text.includes('on twitch')) {
     const query = text.slice(5).trim()
     if (query && query !== 'music') {
       return { action: 'spotify:search', params: { query }, responseText: `Playing ${query}` }
