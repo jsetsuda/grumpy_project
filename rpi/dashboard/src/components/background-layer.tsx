@@ -227,19 +227,20 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
         style={{ filter: fullscreen ? 'none' : `brightness(${1 - overlay / 100})` }}
       />
       {/* Screensaver controls */}
+      {/* Large touch areas for prev/next — fill most of the screen height, avoid top bar and now-playing */}
       {fullscreen && photos.length > 1 && (
         <>
           <button
             onClick={(e) => { e.stopPropagation(); goPrev() }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors z-10 min-w-[48px] min-h-[48px] flex items-center justify-center"
+            className="absolute left-0 top-[100px] bottom-[100px] w-[15%] flex items-center justify-center text-white/60 hover:text-white hover:bg-black/10 transition-colors z-10"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); goNext() }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors z-10 min-w-[48px] min-h-[48px] flex items-center justify-center"
+            className="absolute right-0 top-[100px] bottom-[100px] w-[15%] flex items-center justify-center text-white/60 hover:text-white hover:bg-black/10 transition-colors z-10"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </>
       )}
