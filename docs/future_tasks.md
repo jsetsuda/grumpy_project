@@ -16,7 +16,15 @@ Items to revisit when time allows or blockers are resolved.
 
 - **Photo widget: Google Photos support** — Currently supports Immich and local folder. Google Photos API requires OAuth.
 
-- **HA entity widget: auto-discover entities** — Currently requires manually entering entity IDs. Could query HA for available entities and show a picker.
+- **HA entity widget: auto-discover entities** — Currently requires manually entering entity IDs. Could query HA for available entities and show a picker. ✅ DONE
+
+## Voice
+
+- **Custom Piper voice training** — Use Piper's training toolkit to create a custom "Grumpy" voice. Needs ~30-60 min of clean audio recordings + the 3090 for training. Produces an .onnx model to drop into `backend/data/piper/`. Two approaches:
+  1. Fine-tune/clone an existing voice (easier, less data needed)
+  2. Train from scratch using full VITS pipeline (more data, fully custom)
+  - Training repo: https://github.com/rhasspy/piper (see training docs)
+  - Runs on the backend VM's 3090
 
 ## Infrastructure
 

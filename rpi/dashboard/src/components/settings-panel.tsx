@@ -89,8 +89,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           <VoiceAssistantSettings
             voiceEnabled={config.voiceEnabled ?? true}
             voicePipelineId={config.voicePipelineId || ''}
+            voiceTtsVoice={config.voiceTtsVoice || ''}
             onVoiceEnabledChange={(v) => updateConfig({ voiceEnabled: v })}
             onVoicePipelineIdChange={(v) => updateConfig({ voicePipelineId: v || undefined })}
+            onVoiceTtsVoiceChange={(v) => updateConfig({ voiceTtsVoice: v || undefined })}
           />
 
           {/* Widget list */}
@@ -1289,17 +1291,51 @@ function TopOverlaySettings({
 interface VoiceAssistantSettingsProps {
   voiceEnabled: boolean
   voicePipelineId: string
+  voiceTtsVoice: string
   onVoiceEnabledChange: (enabled: boolean) => void
   onVoicePipelineIdChange: (id: string) => void
+  onVoiceTtsVoiceChange: (voice: string) => void
 }
+
+const PIPER_VOICES = [
+  { value: '', label: 'Default (pipeline setting)' },
+  { value: 'en_US-lessac-medium', label: 'Lessac (US, Medium)' },
+  { value: 'en_US-lessac-high', label: 'Lessac (US, High)' },
+  { value: 'en_US-ryan-medium', label: 'Ryan (US, Medium)' },
+  { value: 'en_US-ryan-high', label: 'Ryan (US, High)' },
+  { value: 'en_US-amy-medium', label: 'Amy (US, Medium)' },
+  { value: 'en_US-joe-medium', label: 'Joe (US, Medium)' },
+  { value: 'en_US-kathleen-low', label: 'Kathleen (US, Low)' },
+  { value: 'en_GB-alba-medium', label: 'Alba (GB, Medium)' },
+  { value: 'custom', label: 'Custom...' },
+]
 
 function VoiceAssistantSettings({
   voiceEnabled,
   voicePipelineId,
+  voiceTtsVoice,
   onVoiceEnabledChange,
   onVoicePipelineIdChange,
+  onVoiceTtsVoiceChange,
 }: VoiceAssistantSettingsProps) {
   const [expanded, setExpanded] = useState(false)
+  const isCustomVoice = voiceTtsVoice !== '' && !PIPER_VOICES.some(v => v.value === voiceTtsVoice)
+  const [showCustomInput, setShowCustomInput] = useState(isCustomVoice)
+
+  const handleVoiceSelect = (value: string) => {
+    if (value === 'custom') {
+      setShowCustomInput(true)
+      // Don't clear the current value if it's already custom
+      if (!isCustomVoice) {
+        onVoiceTtsVoiceChange('')
+      }
+    } else {
+      setShowCustomInput(false)
+      onVoiceTtsVoiceChange(value)
+    }
+  }
+
+  const selectValue = showCustomInput ? 'custom' : voiceTtsVoice
 
   return (
     <div className="border border-[var(--border)] rounded-lg overflow-hidden">
@@ -1330,6 +1366,27 @@ function VoiceAssistantSettings({
                 placeholder="Leave blank for default pipeline"
               />
             </SettingsField>
+            <SettingsField label="TTS Voice">
+              <SelectInput
+                value={selectValue}
+                onChange={handleVoiceSelect}
+                options={PIPER_VOICES}
+              />
+            </SettingsField>
+            {showCustomInput && (
+              <SettingsField label="Custom voice name">
+                <TextInput
+                  value={voiceTtsVoice}
+                  onChange={onVoiceTtsVoiceChange}
+                  placeholder="e.g. en_US-lessac-medium"
+                />
+              </SettingsField>
+            )}
+            <p className="text-xs text-[var(--muted-foreground)] mt-2">
+              To change the TTS voice, set it in your HA Assist pipeline settings
+              (Settings &rarr; Voice assistants &rarr; your pipeline &rarr; Text-to-speech).
+              You can create multiple pipelines with different voices and select them by Pipeline ID above.
+            </p>
           </>
         )}
       </div>}

@@ -52,6 +52,7 @@ export interface DashboardConfig {
   }
   voiceEnabled: boolean
   voicePipelineId?: string
+  voiceTtsVoice?: string
   widgets: WidgetInstance[]
 }
 
