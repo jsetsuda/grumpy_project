@@ -257,7 +257,7 @@ interface WidgetSettingsProps {
   onConfigChange: (config: Partial<Record<string, unknown>>) => void
 }
 
-function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) {
+export function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) {
   switch (widget.type) {
     case 'clock':
       return <ClockSettings config={widget.config} onChange={onConfigChange} />
