@@ -67,8 +67,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             onTopBarFontChange={(v) => updateConfig({ topBarFont: v })}
             onTopBarSizeChange={(v) => updateConfig({ topBarSize: v as any })}
             onTopBarBoldChange={(v) => updateConfig({ topBarBold: v })}
-            topBarHeight={config.topBarHeight ?? 90}
+            topBarHeight={config.topBarHeight ?? 60}
+            widgetStartY={config.widgetStartY ?? 90}
             onTopBarHeightChange={(v) => updateConfig({ topBarHeight: v })}
+            onWidgetStartYChange={(v) => updateConfig({ widgetStartY: v })}
             onTopBarBackgroundChange={(v) => updateConfig({ topBarBackground: v })}
             topBarShadow={config.topBarShadow ?? true}
             topBarShadowSize={config.topBarShadowSize ?? 8}
@@ -883,6 +885,7 @@ interface TopOverlaySettingsProps {
   topBarSize: string
   topBarBold: boolean
   topBarHeight: number
+  widgetStartY: number
   topBarBackground: boolean
   topBarShadow: boolean
   topBarShadowSize: number
@@ -895,6 +898,7 @@ interface TopOverlaySettingsProps {
   onTopBarSizeChange: (size: string) => void
   onTopBarBoldChange: (bold: boolean) => void
   onTopBarHeightChange: (height: number) => void
+  onWidgetStartYChange: (y: number) => void
   onTopBarBackgroundChange: (bg: boolean) => void
   onTopBarShadowChange: (show: boolean) => void
   onTopBarShadowSizeChange: (size: number) => void
@@ -910,6 +914,7 @@ function TopOverlaySettings({
   topBarSize,
   topBarBold,
   topBarHeight,
+  widgetStartY,
   topBarBackground,
   topBarShadow,
   topBarShadowSize,
@@ -922,6 +927,7 @@ function TopOverlaySettings({
   onTopBarSizeChange,
   onTopBarBoldChange,
   onTopBarHeightChange,
+  onWidgetStartYChange,
   onTopBarBackgroundChange,
   onTopBarShadowChange,
   onTopBarShadowSizeChange,
@@ -981,10 +987,20 @@ function TopOverlaySettings({
             <SettingsField label={`Top bar height (${topBarHeight}px)`}>
               <input
                 type="range"
-                min="50"
-                max="150"
+                min="40"
+                max="120"
                 value={topBarHeight}
                 onChange={e => onTopBarHeightChange(parseInt(e.target.value))}
+                className="w-full accent-[var(--primary)]"
+              />
+            </SettingsField>
+            <SettingsField label={`Widget start height (${widgetStartY}px)`}>
+              <input
+                type="range"
+                min="50"
+                max="200"
+                value={widgetStartY}
+                onChange={e => onWidgetStartYChange(parseInt(e.target.value))}
                 className="w-full accent-[var(--primary)]"
               />
             </SettingsField>

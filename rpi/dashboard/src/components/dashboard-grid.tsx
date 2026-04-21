@@ -110,7 +110,10 @@ export function DashboardGrid() {
 
       {/* Top Bar — always visible, persists over slideshow */}
       {showTopBar && (
-        <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 py-3 z-50">
+        <div
+          className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 z-50"
+          style={{ height: `${config.topBarHeight ?? 60}px` }}
+        >
           {/* Left: Clock/Date */}
           <div
             className={`flex items-center gap-4 px-4 py-2 rounded-2xl ${topBarBg ? 'bg-black/30 backdrop-blur-sm' : ''}`}
@@ -195,7 +198,7 @@ export function DashboardGrid() {
         style={{
           opacity: inSlideshow ? 0 : 1,
           pointerEvents: inSlideshow ? 'none' : 'auto',
-          paddingTop: showTopBar ? `${config.topBarHeight ?? 90}px` : '0',
+          paddingTop: showTopBar ? `${config.widgetStartY ?? 90}px` : '0',
         }}
       >
         {/* Widget Grid */}
