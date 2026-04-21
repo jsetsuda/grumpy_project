@@ -48,14 +48,52 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
     }
   }
 
-  function handleAutoAssign() {
+  async function handleAutoAssign() {
     const preset = templatePresets[selectedTemplateId]
     if (!preset || !selectedTemplate) return
-    const newZones: ZoneInstance[] = selectedTemplate.regions.map(region => ({
-      regionId: region.id,
-      widgetType: preset[region.id] || '',
-      widgetConfig: {},
-    }))
+
+    // Fetch central credentials to pre-populate widget configs
+    let creds: Record<string, any> = {}
+    try {
+      const res = await fetch('/api/credentials')
+      if (res.ok) creds = await res.json()
+    } catch { /* ignore */ }
+
+    const newZones: ZoneInstance[] = selectedTemplate.regions.map(region => {
+      const widgetType = preset[region.id] || ''
+      const widgetConfig: Record<string, unknown> = {}
+
+      // Auto-populate from credentials
+      if (widgetType === 'calendar' && creds.calendar?.sources) {
+        widgetConfig.sources = creds.calendar.sources
+        widgetConfig.maxEvents = 12
+        widgetConfig.defaultView = 'upcoming'
+      }
+      if (widgetType === 'weather') {
+        widgetConfig.lat = 42.3314
+        widgetConfig.lon = -83.0458
+        widgetConfig.units = 'imperial'
+        widgetConfig.displayMode = 'auto'
+        widgetConfig.forecastDays = 5
+        widgetConfig.showFeelsLike = true
+      }
+      if (widgetType === 'ha-entities' || widgetType === 'scenes') {
+        if (creds.homeAssistant?.url) widgetConfig.haUrl = creds.homeAssistant.url
+        if (creds.homeAssistant?.token) widgetConfig.haToken = creds.homeAssistant.token
+      }
+      if (widgetType === 'news') {
+        widgetConfig.feeds = [
+          { url: 'https://feeds.bbci.co.uk/news/rss.xml', name: 'BBC News' },
+          { url: 'https://techcrunch.com/feed/', name: 'TechCrunch' },
+          { url: 'https://feeds.npr.org/1001/rss.xml', name: 'NPR News' },
+        ]
+        widgetConfig.maxItems = 10
+        widgetConfig.rotateInterval = 15
+        widgetConfig.showSource = true
+      }
+
+      return { regionId: region.id, widgetType, widgetConfig }
+    })
     setZones(newZones)
   }
 

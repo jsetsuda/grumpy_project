@@ -4,21 +4,21 @@
     "name": "Shop Office",
     "layoutMode": "zones",
     "createdAt": "2026-04-21T04:57:31.491Z",
-    "updatedAt": "2026-04-21T06:26:58.689Z"
+    "updatedAt": "2026-04-21T06:31:55.455Z"
   },
   "config": {
     "version": 1,
     "theme": "ocean",
     "backgroundMode": "photo",
-    "backgroundOverlay": 60,
-    "showTopBar": false,
+    "backgroundOverlay": 40,
+    "showTopBar": true,
     "topBarFont": "system-ui",
     "topBarSize": "large",
     "topBarBold": false,
     "topBarBackground": true,
     "topBarScale": 100,
     "topBarHeight": 60,
-    "widgetStartY": 90,
+    "widgetStartY": 80,
     "topBarShadow": true,
     "topBarShadowSize": 8,
     "topBarShadowOpacity": 80,
@@ -42,27 +42,58 @@
       "templateId": "dakboard-classic",
       "zones": [
         {
-          "regionId": "header-left",
-          "widgetType": "clock",
-          "widgetConfig": {}
-        },
-        {
-          "regionId": "header-right",
-          "widgetType": "weather",
-          "widgetConfig": {}
-        },
-        {
           "regionId": "main-calendar",
           "widgetType": "calendar",
-          "widgetConfig": {}
+          "widgetConfig": {
+            "sources": [
+              {
+                "url": "https://calendar.google.com/calendar/ical/jason.setsuda%40gmail.com/private-125d5d101482d2c85eaf31da31e6a967/basic.ics",
+                "name": "Jason"
+              }
+            ],
+            "maxEvents": 15,
+            "defaultView": "month",
+            "timeFormat": "12h",
+            "weekStartsOn": 0,
+            "showWeekends": true
+          }
         },
         {
           "regionId": "right-sidebar",
           "widgetType": "news",
-          "widgetConfig": {}
+          "widgetConfig": {
+            "feeds": [
+              {
+                "url": "https://feeds.bbci.co.uk/news/rss.xml",
+                "name": "BBC News"
+              },
+              {
+                "url": "https://techcrunch.com/feed/",
+                "name": "TechCrunch"
+              },
+              {
+                "url": "https://feeds.npr.org/1001/rss.xml",
+                "name": "NPR News"
+              },
+              {
+                "url": "https://feeds.bloomberg.com/markets/news.rss",
+                "name": "Bloomberg"
+              }
+            ],
+            "maxItems": 15,
+            "rotateInterval": 10,
+            "showSource": true
+          }
         }
       ],
       "backgroundOverlay": 40
+    },
+    "backgroundPhotos": {
+      "provider": "icloud",
+      "icloud": {
+        "sharedAlbumUrl": "https://www.icloud.com/sharedalbum/#B1hJtdOXmJfqRVS"
+      },
+      "interval": 30
     }
   }
 }
