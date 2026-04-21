@@ -33,6 +33,9 @@ export interface DashboardConfig {
   topBarSize: 'small' | 'medium' | 'large' | 'xlarge'
   topBarBold: boolean
   topBarBackground: boolean
+  topBarShadow: boolean
+  topBarShadowSize: number // 1-20
+  topBarShadowOpacity: number // 0-100
   topBarWeather: boolean
   topBarWeatherMode: 'current' | 'hourly' | 'forecast'
   topBarForecastDays: 3 | 5 | 7

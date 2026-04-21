@@ -68,6 +68,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             onTopBarSizeChange={(v) => updateConfig({ topBarSize: v as any })}
             onTopBarBoldChange={(v) => updateConfig({ topBarBold: v })}
             onTopBarBackgroundChange={(v) => updateConfig({ topBarBackground: v })}
+            topBarShadow={config.topBarShadow ?? true}
+            topBarShadowSize={config.topBarShadowSize ?? 8}
+            topBarShadowOpacity={config.topBarShadowOpacity ?? 80}
+            onTopBarShadowChange={(v) => updateConfig({ topBarShadow: v })}
+            onTopBarShadowSizeChange={(v) => updateConfig({ topBarShadowSize: v })}
+            onTopBarShadowOpacityChange={(v) => updateConfig({ topBarShadowOpacity: v })}
             onTopBarWeatherChange={(v) => updateConfig({ topBarWeather: v })}
             onTopBarWeatherModeChange={(v) => updateConfig({ topBarWeatherMode: v as any })}
             onTopBarForecastDaysChange={(v) => updateConfig({ topBarForecastDays: v })}
@@ -875,6 +881,9 @@ interface TopOverlaySettingsProps {
   topBarSize: string
   topBarBold: boolean
   topBarBackground: boolean
+  topBarShadow: boolean
+  topBarShadowSize: number
+  topBarShadowOpacity: number
   topBarWeather: boolean
   topBarWeatherMode: string
   topBarForecastDays: number
@@ -883,6 +892,9 @@ interface TopOverlaySettingsProps {
   onTopBarSizeChange: (size: string) => void
   onTopBarBoldChange: (bold: boolean) => void
   onTopBarBackgroundChange: (bg: boolean) => void
+  onTopBarShadowChange: (show: boolean) => void
+  onTopBarShadowSizeChange: (size: number) => void
+  onTopBarShadowOpacityChange: (opacity: number) => void
   onTopBarWeatherChange: (show: boolean) => void
   onTopBarWeatherModeChange: (mode: string) => void
   onTopBarForecastDaysChange: (days: 3 | 5 | 7) => void
@@ -894,6 +906,9 @@ function TopOverlaySettings({
   topBarSize,
   topBarBold,
   topBarBackground,
+  topBarShadow,
+  topBarShadowSize,
+  topBarShadowOpacity,
   topBarWeather,
   topBarWeatherMode,
   topBarForecastDays,
@@ -902,6 +917,9 @@ function TopOverlaySettings({
   onTopBarSizeChange,
   onTopBarBoldChange,
   onTopBarBackgroundChange,
+  onTopBarShadowChange,
+  onTopBarShadowSizeChange,
+  onTopBarShadowOpacityChange,
   onTopBarWeatherChange,
   onTopBarWeatherModeChange,
   onTopBarForecastDaysChange,
@@ -964,6 +982,35 @@ function TopOverlaySettings({
               onChange={onTopBarBackgroundChange}
               label="Background card"
             />
+            <Toggle
+              checked={topBarShadow}
+              onChange={onTopBarShadowChange}
+              label="Text shadow"
+            />
+            {topBarShadow && (
+              <>
+                <SettingsField label={`Shadow size (${topBarShadowSize}px)`}>
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={topBarShadowSize}
+                    onChange={e => onTopBarShadowSizeChange(parseInt(e.target.value))}
+                    className="w-full accent-[var(--primary)]"
+                  />
+                </SettingsField>
+                <SettingsField label={`Shadow opacity (${topBarShadowOpacity}%)`}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={topBarShadowOpacity}
+                    onChange={e => onTopBarShadowOpacityChange(parseInt(e.target.value))}
+                    className="w-full accent-[var(--primary)]"
+                  />
+                </SettingsField>
+              </>
+            )}
             <Toggle
               checked={topBarWeather}
               onChange={onTopBarWeatherChange}

@@ -86,6 +86,13 @@ export function DashboardGrid() {
     xlarge: { time: 'text-7xl', date: 'text-4xl' },
   }[topBarSize]
 
+  const topBarShadow = config.topBarShadow ?? true
+  const topBarShadowSize = config.topBarShadowSize ?? 8
+  const topBarShadowOpacity = config.topBarShadowOpacity ?? 80
+  const textShadowStyle = topBarShadow
+    ? `0 2px ${topBarShadowSize}px rgba(0,0,0,${topBarShadowOpacity / 100}), 0 1px ${Math.max(1, topBarShadowSize / 3)}px rgba(0,0,0,${topBarShadowOpacity / 150})`
+    : 'none'
+
   function exitSlideshow() {
     setManualSlideshow(false)
     wakeUp()
@@ -109,7 +116,7 @@ export function DashboardGrid() {
             className={`flex items-center gap-4 px-4 py-2 rounded-2xl ${topBarBg ? 'bg-black/30 backdrop-blur-sm' : ''}`}
             style={{
               fontFamily: topBarFont,
-              textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 1px 3px rgba(0,0,0,0.6)',
+              textShadow: textShadowStyle,
             }}
           >
             <div className={`${sizeClasses.time} ${topBarBold ? 'font-bold' : 'font-light'} tracking-tight text-[var(--foreground)]`}>
