@@ -486,6 +486,35 @@ export function DashboardManager() {
               fields={[]}
               note="Calendar sources are managed per-widget in dashboard settings."
             />
+
+            {/* Custom credentials */}
+            {Object.entries(credentials as any).filter(([k]) =>
+              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar'].includes(k)
+            ).map(([key, value]) => (
+              <CredentialCard
+                key={key}
+                title={key}
+                status="custom"
+                fields={Object.entries(value as Record<string, string>).map(([field, val]) => ({
+                  label: field,
+                  value: val || '',
+                  placeholder: field,
+                  onChange: (v: string) => updateCredentials([key, field], v),
+                }))}
+                onDelete={() => {
+                  const next = { ...credentials } as any
+                  delete next[key]
+                  setCredentials(next)
+                }}
+              />
+            ))}
+
+            {/* Add new credential */}
+            <AddCredentialCard onAdd={(name, fields) => {
+              const next = { ...credentials } as any
+              next[name] = fields
+              setCredentials(next)
+            }} />
           </div>
         </section>
 
@@ -579,11 +608,12 @@ interface CredentialField {
   onChange: (value: string) => void
 }
 
-function CredentialCard({ title, status, fields, note }: {
+function CredentialCard({ title, status, fields, note, onDelete }: {
   title: string
   status: string
   fields: CredentialField[]
   note?: string
+  onDelete?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const isConfigured = status !== 'not set'
@@ -598,7 +628,17 @@ function CredentialCard({ title, status, fields, note }: {
           <div className={`w-2 h-2 rounded-full ${isConfigured ? 'bg-green-500' : 'bg-gray-500'}`} />
           <span className="text-sm font-medium text-gray-200">{title}</span>
         </div>
-        <span className="text-xs text-gray-400">{status}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">{status}</span>
+          {onDelete && (
+            <button
+              onClick={e => { e.stopPropagation(); onDelete() }}
+              className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+            >
+              <span className="text-xs">✕</span>
+            </button>
+          )}
+        </div>
       </button>
 
       {expanded && (
@@ -618,6 +658,87 @@ function CredentialCard({ title, status, fields, note }: {
           {note && <p className="text-xs text-gray-400 mt-1">{note}</p>}
         </div>
       )}
+    </div>
+  )
+}
+
+function AddCredentialCard({ onAdd }: { onAdd: (name: string, fields: Record<string, string>) => void }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [fieldEntries, setFieldEntries] = useState<Array<{ key: string; value: string }>>([{ key: '', value: '' }])
+
+  function handleAdd() {
+    if (!name.trim()) return
+    const fields: Record<string, string> = {}
+    for (const entry of fieldEntries) {
+      if (entry.key.trim()) fields[entry.key.trim()] = entry.value
+    }
+    onAdd(name.trim(), fields)
+    setName('')
+    setFieldEntries([{ key: '', value: '' }])
+    setOpen(false)
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="bg-gray-800 rounded-lg border border-dashed border-gray-600 p-3 flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-200 hover:border-gray-400 transition-colors w-full"
+      >
+        + Add Credential
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-gray-800 rounded-lg border border-gray-700 p-3 space-y-2">
+      <div>
+        <label className="block text-xs text-gray-400 mb-1">Service Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="e.g., MyService"
+          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        />
+      </div>
+      {fieldEntries.map((entry, i) => (
+        <div key={i} className="flex gap-2">
+          <input
+            type="text"
+            value={entry.key}
+            onChange={e => {
+              const next = [...fieldEntries]
+              next[i] = { ...next[i], key: e.target.value }
+              setFieldEntries(next)
+            }}
+            placeholder="Field name"
+            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+          <input
+            type="text"
+            value={entry.value}
+            onChange={e => {
+              const next = [...fieldEntries]
+              next[i] = { ...next[i], value: e.target.value }
+              setFieldEntries(next)
+            }}
+            placeholder="Value"
+            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setFieldEntries([...fieldEntries, { key: '', value: '' }])}
+          className="text-xs text-gray-400 hover:text-gray-200"
+        >
+          + Add field
+        </button>
+        <div className="flex-1" />
+        <button onClick={() => setOpen(false)} className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Cancel</button>
+        <button onClick={handleAdd} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-medium">Add</button>
+      </div>
     </div>
   )
 }
