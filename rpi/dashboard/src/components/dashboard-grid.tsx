@@ -79,10 +79,10 @@ export function DashboardGrid() {
         <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 py-3 z-50">
           {/* Left: Clock/Date */}
           <div className="flex items-center gap-4" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 1px 3px rgba(0,0,0,0.6)' }}>
-            <div className="text-5xl font-light tracking-tight text-[var(--foreground)]">
+            <div className="text-5xl font-bold tracking-tight text-[var(--foreground)]">
               {format(now, 'h:mm a')}
             </div>
-            <div className="text-3xl text-[var(--muted-foreground)]">
+            <div className="text-3xl font-bold text-[var(--muted-foreground)]">
               {format(now, 'EEEE, MMMM d')}
             </div>
           </div>
