@@ -107,6 +107,19 @@ export function DashboardManager() {
         voiceEnabled: false,
         grid: { cols: 12, rowHeight: 80, margin: [12, 12] },
         widgets: [],
+        ...(newLayoutMode === 'zones' ? {
+          backgroundMode: 'photo',
+          zoneLayout: {
+            templateId: 'full-overlay',
+            zones: [
+              { regionId: 'top-left', widgetType: 'clock', widgetConfig: {} },
+              { regionId: 'top-right', widgetType: 'weather', widgetConfig: {} },
+              { regionId: 'left-panel', widgetType: 'calendar', widgetConfig: {} },
+              { regionId: 'bottom-right', widgetType: 'todo', widgetConfig: {} },
+            ],
+            backgroundOverlay: 40,
+          },
+        } : {}),
       },
     }
     await fetch(`/api/dashboards/${id}`, {
