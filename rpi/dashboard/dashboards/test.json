@@ -3,8 +3,8 @@
     "id": "test",
     "name": "Test",
     "layoutMode": "zones",
-    "createdAt": "2026-04-21T06:10:21.369Z",
-    "updatedAt": "2026-04-21T06:10:27.949Z"
+    "createdAt": "2026-04-21T15:56:43.253Z",
+    "updatedAt": "2026-04-21T15:57:03.853Z"
   },
   "config": {
     "version": 1,
@@ -39,27 +39,44 @@
     },
     "widgets": [],
     "zoneLayout": {
-      "templateId": "full-overlay",
+      "templateId": "dakboard-classic",
       "zones": [
         {
-          "regionId": "top-left",
-          "widgetType": "clock",
-          "widgetConfig": {}
-        },
-        {
-          "regionId": "top-right",
-          "widgetType": "weather",
-          "widgetConfig": {}
-        },
-        {
-          "regionId": "left-panel",
+          "regionId": "main-calendar",
           "widgetType": "calendar",
-          "widgetConfig": {}
+          "widgetConfig": {
+            "sources": [
+              {
+                "url": "https://calendar.google.com/calendar/ical/jason.setsuda%40gmail.com/private-125d5d101482d2c85eaf31da31e6a967/basic.ics",
+                "name": "Jason"
+              }
+            ],
+            "maxEvents": 12,
+            "defaultView": "upcoming"
+          }
         },
         {
-          "regionId": "bottom-right",
-          "widgetType": "todo",
-          "widgetConfig": {}
+          "regionId": "right-sidebar",
+          "widgetType": "news",
+          "widgetConfig": {
+            "feeds": [
+              {
+                "url": "https://feeds.bbci.co.uk/news/rss.xml",
+                "name": "BBC News"
+              },
+              {
+                "url": "https://techcrunch.com/feed/",
+                "name": "TechCrunch"
+              },
+              {
+                "url": "https://feeds.npr.org/1001/rss.xml",
+                "name": "NPR News"
+              }
+            ],
+            "maxItems": 10,
+            "rotateInterval": 15,
+            "showSource": true
+          }
         }
       ],
       "backgroundOverlay": 40
