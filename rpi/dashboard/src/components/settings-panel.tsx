@@ -173,6 +173,44 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             onVoiceTtsVoiceChange={(v) => updateConfig({ voiceTtsVoice: v || undefined })}
           />
 
+          {/* Zone widgets (when in zone mode) */}
+          {isZoneMode && config.zoneLayout?.zones && config.zoneLayout.zones.filter(z => z.widgetType).length > 0 && (
+            <>
+              <div className="text-xs font-medium text-[var(--muted-foreground)] mt-2">Zone Widgets</div>
+              {config.zoneLayout.zones.filter(z => z.widgetType).map(zone => {
+                const def = registry.get(zone.widgetType)
+                const zoneId = `zone-${zone.regionId}`
+                const isExpanded = expandedWidget === zoneId
+
+                return (
+                  <div key={zoneId} className="border border-[var(--border)] rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setExpandedWidget(isExpanded ? null : zoneId)}
+                      className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+                    >
+                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      <span className="flex-1 text-sm font-medium">{def?.name || zone.widgetType} — {zone.regionId}</span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="p-3 pt-0 border-t border-[var(--border)]">
+                        <WidgetSettings
+                          widget={{ id: zone.regionId, type: zone.widgetType, layout: { x: 0, y: 0, w: 4, h: 4 }, config: zone.widgetConfig }}
+                          onConfigChange={(partial) => {
+                            const updatedZones = config.zoneLayout!.zones.map(z =>
+                              z.regionId === zone.regionId ? { ...z, widgetConfig: { ...z.widgetConfig, ...partial } } : z
+                            )
+                            updateConfig({ zoneLayout: { ...config.zoneLayout!, zones: updatedZones } })
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </>
+          )}
+
           {/* Widget list */}
           {config.widgets.map(widget => {
             const def = registry.get(widget.type)
