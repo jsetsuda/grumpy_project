@@ -603,7 +603,7 @@ function HaEntitiesSettings({ config, onChange }: { config: Record<string, any>;
     setLoading(true)
     setFetchError(null)
     try {
-      const res = await fetch(`${haUrl}/api/states`, {
+      const res = await fetch(`/api/ha-proxy?url=${encodeURIComponent(`${haUrl}/api/states`)}`, {
         headers: { Authorization: `Bearer ${haToken}` },
       })
       if (!res.ok) {

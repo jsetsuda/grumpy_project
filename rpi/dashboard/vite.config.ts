@@ -91,6 +91,34 @@ function configApiPlugin(): Plugin {
         }
       })
 
+      // Proxy for HA API calls (forwards Authorization header, bypasses CORS)
+      server.middlewares.use('/api/ha-proxy', async (req, res) => {
+        const parsedUrl = new URL(req.url || '', 'http://localhost')
+        const url = parsedUrl.searchParams.get('url')
+        if (!url) {
+          res.statusCode = 400
+          res.end('Missing url parameter')
+          return
+        }
+
+        try {
+          const headers: Record<string, string> = {}
+          if (req.headers.authorization) {
+            headers['Authorization'] = req.headers.authorization as string
+          }
+
+          const proxyRes = await fetch(url, { headers })
+          const contentType = proxyRes.headers.get('content-type') || 'application/json'
+          res.statusCode = proxyRes.status
+          res.setHeader('Content-Type', contentType)
+          const text = await proxyRes.text()
+          res.end(text)
+        } catch (e) {
+          res.statusCode = 500
+          res.end(`HA proxy failed: ${e}`)
+        }
+      })
+
       // Proxy for fetching external URLs (iCal, etc.) to bypass CORS
       server.middlewares.use('/api/proxy', async (req, res) => {
         if (req.method !== 'GET' && req.method !== 'POST') {
