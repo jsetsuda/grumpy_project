@@ -510,7 +510,7 @@ export function DashboardManager() {
             ))}
 
             {/* Add new credential */}
-            <AddCredentialCard onAdd={(name, fields) => {
+            <AddCredentialCard existingKeys={Object.keys(credentials)} onAdd={(name, fields) => {
               const next = { ...credentials } as any
               next[name] = fields
               setCredentials(next)
@@ -662,20 +662,90 @@ function CredentialCard({ title, status, fields, note, onDelete }: {
   )
 }
 
-function AddCredentialCard({ onAdd }: { onAdd: (name: string, fields: Record<string, string>) => void }) {
+const CREDENTIAL_TEMPLATES: Array<{
+  key: string
+  label: string
+  fields: Array<{ key: string; label: string; type?: string; placeholder: string }>
+}> = [
+  {
+    key: 'homeAssistant',
+    label: 'Home Assistant',
+    fields: [
+      { key: 'url', label: 'URL', placeholder: 'http://homeassistant.local:8123' },
+      { key: 'token', label: 'Long-Lived Access Token', type: 'password', placeholder: 'HA access token' },
+    ],
+  },
+  {
+    key: 'spotify',
+    label: 'Spotify',
+    fields: [
+      { key: 'clientId', label: 'Client ID', placeholder: 'Spotify Client ID' },
+      { key: 'clientSecret', label: 'Client Secret', type: 'password', placeholder: 'Spotify Client Secret' },
+      { key: 'refreshToken', label: 'Refresh Token', type: 'password', placeholder: 'Spotify Refresh Token' },
+    ],
+  },
+  {
+    key: 'google',
+    label: 'Google Photos',
+    fields: [
+      { key: 'clientId', label: 'Client ID', placeholder: 'Google Client ID' },
+      { key: 'clientSecret', label: 'Client Secret', type: 'password', placeholder: 'Google Client Secret' },
+      { key: 'refreshToken', label: 'Refresh Token', type: 'password', placeholder: 'Google Refresh Token' },
+    ],
+  },
+  {
+    key: 'googleMaps',
+    label: 'Google Maps',
+    fields: [
+      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Google Maps API Key' },
+    ],
+  },
+  {
+    key: 'icloud',
+    label: 'iCloud Photos',
+    fields: [
+      { key: 'sharedAlbumUrl', label: 'Shared Album URL', placeholder: 'https://www.icloud.com/sharedalbum/#...' },
+    ],
+  },
+  {
+    key: 'calendar',
+    label: 'Calendar (iCal)',
+    fields: [
+      { key: 'url', label: 'iCal URL', placeholder: 'https://calendar.google.com/calendar/ical/...' },
+      { key: 'name', label: 'Calendar Name', placeholder: 'My Calendar' },
+    ],
+  },
+]
+
+function AddCredentialCard({ onAdd, existingKeys }: {
+  onAdd: (name: string, fields: Record<string, string>) => void
+  existingKeys: string[]
+}) {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [fieldEntries, setFieldEntries] = useState<Array<{ key: string; value: string }>>([{ key: '', value: '' }])
+  const [selected, setSelected] = useState('')
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
+  const [customName, setCustomName] = useState('')
+  const [customFields, setCustomFields] = useState<Array<{ key: string; value: string }>>([{ key: '', value: '' }])
+
+  // Filter out already-added credential types
+  const availableTemplates = CREDENTIAL_TEMPLATES.filter(t => !existingKeys.includes(t.key))
+  const selectedTemplate = CREDENTIAL_TEMPLATES.find(t => t.key === selected)
 
   function handleAdd() {
-    if (!name.trim()) return
-    const fields: Record<string, string> = {}
-    for (const entry of fieldEntries) {
-      if (entry.key.trim()) fields[entry.key.trim()] = entry.value
+    if (selected === 'custom') {
+      if (!customName.trim()) return
+      const fields: Record<string, string> = {}
+      for (const entry of customFields) {
+        if (entry.key.trim()) fields[entry.key.trim()] = entry.value
+      }
+      onAdd(customName.trim(), fields)
+    } else if (selectedTemplate) {
+      onAdd(selectedTemplate.key, fieldValues)
     }
-    onAdd(name.trim(), fields)
-    setName('')
-    setFieldEntries([{ key: '', value: '' }])
+    setSelected('')
+    setFieldValues({})
+    setCustomName('')
+    setCustomFields([{ key: '', value: '' }])
     setOpen(false)
   }
 
@@ -691,54 +761,79 @@ function AddCredentialCard({ onAdd }: { onAdd: (name: string, fields: Record<str
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 p-3 space-y-2">
+    <div className="bg-gray-800 rounded-lg border border-gray-700 p-3 space-y-3">
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Service Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="e.g., MyService"
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-        />
-      </div>
-      {fieldEntries.map((entry, i) => (
-        <div key={i} className="flex gap-2">
-          <input
-            type="text"
-            value={entry.key}
-            onChange={e => {
-              const next = [...fieldEntries]
-              next[i] = { ...next[i], key: e.target.value }
-              setFieldEntries(next)
-            }}
-            placeholder="Field name"
-            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-          />
-          <input
-            type="text"
-            value={entry.value}
-            onChange={e => {
-              const next = [...fieldEntries]
-              next[i] = { ...next[i], value: e.target.value }
-              setFieldEntries(next)
-            }}
-            placeholder="Value"
-            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-          />
-        </div>
-      ))}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setFieldEntries([...fieldEntries, { key: '', value: '' }])}
-          className="text-xs text-gray-400 hover:text-gray-200"
+        <label className="block text-xs text-gray-400 mb-1">Service Type</label>
+        <select
+          value={selected}
+          onChange={e => { setSelected(e.target.value); setFieldValues({}) }}
+          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
         >
-          + Add field
-        </button>
-        <div className="flex-1" />
-        <button onClick={() => setOpen(false)} className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Cancel</button>
-        <button onClick={handleAdd} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-medium">Add</button>
+          <option value="">Select a service...</option>
+          {availableTemplates.map(t => (
+            <option key={t.key} value={t.key}>{t.label}</option>
+          ))}
+          <option value="custom">Custom...</option>
+        </select>
       </div>
+
+      {/* Templated fields */}
+      {selectedTemplate && (
+        <div className="space-y-2">
+          {selectedTemplate.fields.map(field => (
+            <div key={field.key}>
+              <label className="block text-xs text-gray-400 mb-1">{field.label}</label>
+              <input
+                type={field.type || 'text'}
+                value={fieldValues[field.key] || ''}
+                onChange={e => setFieldValues({ ...fieldValues, [field.key]: e.target.value })}
+                placeholder={field.placeholder}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Custom fields */}
+      {selected === 'custom' && (
+        <div className="space-y-2">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Service Name</label>
+            <input
+              type="text"
+              value={customName}
+              onChange={e => setCustomName(e.target.value)}
+              placeholder="e.g., MyService"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          {customFields.map((entry, i) => (
+            <div key={i} className="flex gap-2">
+              <input
+                type="text" value={entry.key}
+                onChange={e => { const next = [...customFields]; next[i] = { ...next[i], key: e.target.value }; setCustomFields(next) }}
+                placeholder="Field name"
+                className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+              <input
+                type="text" value={entry.value}
+                onChange={e => { const next = [...customFields]; next[i] = { ...next[i], value: e.target.value }; setCustomFields(next) }}
+                placeholder="Value"
+                className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          ))}
+          <button onClick={() => setCustomFields([...customFields, { key: '', value: '' }])} className="text-xs text-gray-400 hover:text-gray-200">+ Add field</button>
+        </div>
+      )}
+
+      {selected && (
+        <div className="flex gap-2 justify-end">
+          <button onClick={() => { setOpen(false); setSelected('') }} className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs">Cancel</button>
+          <button onClick={handleAdd} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs font-medium">Add</button>
+        </div>
+      )}
     </div>
   )
 }
