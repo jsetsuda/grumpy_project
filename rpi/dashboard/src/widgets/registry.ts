@@ -6,6 +6,11 @@ import { TodoWidget } from './todo/todo-widget'
 import { MusicWidget } from './music/music-widget'
 import { PhotosWidget } from './photos/photos-widget'
 import { HaEntitiesWidget } from './ha-entities/ha-entities-widget'
+import { ScenesWidget } from './scenes/scenes-widget'
+import { TrafficWidget } from './traffic/traffic-widget'
+import { GroceryWidget } from './grocery/grocery-widget'
+import { CountdownWidget } from './countdown/countdown-widget'
+import { NewsWidget } from './news/news-widget'
 
 const registry = new Map<string, WidgetDefinition>()
 
@@ -74,6 +79,51 @@ register({
   component: HaEntitiesWidget,
   defaultSize: { w: 4, h: 4 },
   minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'scenes',
+  name: 'Quick Scenes',
+  description: 'Tappable buttons to trigger HA scenes, scripts, and automations',
+  component: ScenesWidget,
+  defaultSize: { w: 4, h: 3 },
+  minSize: { w: 2, h: 2 },
+})
+
+register({
+  type: 'traffic',
+  name: 'Traffic/Commute',
+  description: 'Real-time commute times to configured destinations',
+  component: TrafficWidget,
+  defaultSize: { w: 4, h: 3 },
+  minSize: { w: 3, h: 2 },
+})
+
+register({
+  type: 'grocery',
+  name: 'Grocery List',
+  description: 'Shared shopping list with categories and check-off',
+  component: GroceryWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'countdown',
+  name: 'Event Countdown',
+  description: 'Countdowns to important upcoming events and dates',
+  component: CountdownWidget,
+  defaultSize: { w: 4, h: 3 },
+  minSize: { w: 3, h: 2 },
+})
+
+register({
+  type: 'news',
+  name: 'News Headlines',
+  description: 'Top headlines from RSS feeds',
+  component: NewsWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 2 },
 })
 
 export { registry }

@@ -192,6 +192,16 @@ function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) {
       return <PhotosSettings config={widget.config} onChange={onConfigChange} />
     case 'ha-entities':
       return <HaEntitiesSettings config={widget.config} onChange={onConfigChange} />
+    case 'scenes':
+      return <ScenesSettings config={widget.config} onChange={onConfigChange} />
+    case 'traffic':
+      return <TrafficSettings config={widget.config} onChange={onConfigChange} />
+    case 'news':
+      return <NewsSettings config={widget.config} onChange={onConfigChange} />
+    case 'grocery':
+      return <GrocerySettings config={widget.config} onChange={onConfigChange} />
+    case 'countdown':
+      return <CountdownSettings config={widget.config} onChange={onConfigChange} />
     default:
       return <p className="text-sm text-[var(--muted-foreground)]">No settings available</p>
   }
@@ -795,6 +805,472 @@ function HaEntitiesSettings({ config, onChange }: { config: Record<string, any>;
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+const SCENE_ICONS = [
+  { value: 'home', label: '\u{1F3E0} Home' },
+  { value: 'moon', label: '\u{1F319} Moon' },
+  { value: 'tv', label: '\u{1F4FA} TV' },
+  { value: 'sun', label: '\u{2600}\u{FE0F} Sun' },
+  { value: 'car', label: '\u{1F697} Car' },
+  { value: 'lock', label: '\u{1F512} Lock' },
+  { value: 'bed', label: '\u{1F6CF}\u{FE0F} Bed' },
+  { value: 'coffee', label: '\u{2615} Coffee' },
+  { value: 'party', label: '\u{1F389} Party' },
+  { value: 'baby', label: '\u{1F476} Baby' },
+]
+
+const SCENE_COLORS = [
+  { value: '#3b82f6', label: 'Blue' },
+  { value: '#8b5cf6', label: 'Purple' },
+  { value: '#ec4899', label: 'Pink' },
+  { value: '#ef4444', label: 'Red' },
+  { value: '#f97316', label: 'Orange' },
+  { value: '#eab308', label: 'Yellow' },
+  { value: '#22c55e', label: 'Green' },
+  { value: '#14b8a6', label: 'Teal' },
+  { value: '#6b7280', label: 'Gray' },
+]
+
+const SCENE_DOMAIN_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'scene', label: 'Scenes' },
+  { value: 'script', label: 'Scripts' },
+  { value: 'automation', label: 'Automations' },
+] as const
+
+function ScenesSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const scenes: Array<{ name: string; entityId: string; icon: string; color: string }> = config.scenes || []
+  const [browseOpen, setBrowseOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
+  const [domainFilter, setDomainFilter] = useState<string>('all')
+  const [allStates, setAllStates] = useState<HaEntityState[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const fetchedRef = useRef(false)
+
+  const haUrl = config.haUrl || ''
+  const haToken = config.haToken || ''
+
+  const fetchStates = useCallback(async () => {
+    if (!haUrl || !haToken) {
+      setFetchError('Configure HA URL and token first')
+      return
+    }
+    setLoading(true)
+    setFetchError(null)
+    try {
+      const res = await fetch(`/api/ha-proxy?url=${encodeURIComponent(`${haUrl}/api/states`)}`, {
+        headers: { Authorization: `Bearer ${haToken}` },
+      })
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
+      const data: HaEntityState[] = await res.json()
+      setAllStates(data.filter(s => {
+        const domain = s.entity_id.split('.')[0]
+        return ['scene', 'script', 'automation'].includes(domain)
+      }))
+      fetchedRef.current = true
+    } catch (err: any) {
+      setFetchError(err.message || 'Failed to fetch entities')
+    } finally {
+      setLoading(false)
+    }
+  }, [haUrl, haToken])
+
+  useEffect(() => {
+    if (browseOpen && !fetchedRef.current) {
+      fetchStates()
+    }
+  }, [browseOpen, fetchStates])
+
+  const addedEntityIds = new Set(scenes.map(s => s.entityId))
+
+  const filteredResults = allStates.filter(s => {
+    if (addedEntityIds.has(s.entity_id)) return false
+    if (domainFilter !== 'all') {
+      const domain = s.entity_id.split('.')[0]
+      if (domain !== domainFilter) return false
+    }
+    if (searchText) {
+      const query = searchText.toLowerCase()
+      const friendlyName = (s.attributes.friendly_name || '').toLowerCase()
+      const entityId = s.entity_id.toLowerCase()
+      if (!friendlyName.includes(query) && !entityId.includes(query)) return false
+    }
+    return true
+  })
+
+  function addSceneFromBrowse(entity: HaEntityState) {
+    const friendlyName = entity.attributes.friendly_name || entity.entity_id.split('.')[1]
+    onChange({ scenes: [...scenes, { name: friendlyName, entityId: entity.entity_id, icon: 'home', color: '#3b82f6' }] })
+  }
+
+  function addScene() {
+    onChange({ scenes: [...scenes, { name: '', entityId: '', icon: 'home', color: '#3b82f6' }] })
+  }
+
+  function updateScene(index: number, field: string, value: string) {
+    const updated = scenes.map((s, i) => i === index ? { ...s, [field]: value } : s)
+    onChange({ scenes: updated })
+  }
+
+  function removeScene(index: number) {
+    onChange({ scenes: scenes.filter((_, i) => i !== index) })
+  }
+
+  return (
+    <div>
+      <SettingsField label="Home Assistant URL">
+        <TextInput value={config.haUrl || ''} onChange={v => onChange({ haUrl: v })} placeholder="http://homeassistant.local:8123" />
+      </SettingsField>
+      <SettingsField label="Long-Lived Access Token">
+        <TextInput value={config.haToken || ''} onChange={v => onChange({ haToken: v })} type="password" placeholder="HA access token" />
+      </SettingsField>
+
+      <div className="mt-3">
+        <label className="text-xs font-medium text-[var(--muted-foreground)]">Scenes</label>
+
+        {scenes.map((scene, i) => (
+          <div key={i} className="mt-2 p-2 bg-[var(--muted)] rounded-lg space-y-2">
+            <div className="flex items-center gap-2">
+              <TextInput value={scene.name} onChange={v => updateScene(i, 'name', v)} placeholder="Scene name" />
+              <button onClick={() => removeScene(i)} className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
+                <Trash2 size={14} />
+              </button>
+            </div>
+            <TextInput value={scene.entityId} onChange={v => updateScene(i, 'entityId', v)} placeholder="scene.movie_time" />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <SelectInput
+                  value={scene.icon || 'home'}
+                  onChange={v => updateScene(i, 'icon', v)}
+                  options={SCENE_ICONS}
+                />
+              </div>
+              <div className="flex-1">
+                <SelectInput
+                  value={scene.color || '#3b82f6'}
+                  onChange={v => updateScene(i, 'color', v)}
+                  options={SCENE_COLORS}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <button
+          onClick={addScene}
+          className="mt-2 flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        >
+          <Plus size={14} /> Add scene
+        </button>
+      </div>
+
+      {/* Browse Scenes Section */}
+      <div className="mt-4 border border-[var(--border)] rounded-lg overflow-hidden">
+        <button
+          onClick={() => setBrowseOpen(!browseOpen)}
+          className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+        >
+          {browseOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <Search size={14} />
+          <span className="flex-1 text-sm font-medium">Browse Scenes/Scripts/Automations</span>
+        </button>
+
+        {browseOpen && (
+          <div className="p-3 pt-0 border-t border-[var(--border)]">
+            <div className="mt-2">
+              <input
+                type="text"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                placeholder="Search..."
+                className="w-full bg-[var(--muted)] text-[var(--foreground)] rounded-md px-3 py-2 text-sm outline-none placeholder:text-[var(--muted-foreground)] focus:ring-1 focus:ring-[var(--ring)]"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-1 mt-2">
+              {SCENE_DOMAIN_FILTERS.map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => setDomainFilter(f.value)}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    domainFilter === f.value
+                      ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                      : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {loading && (
+              <p className="text-xs text-[var(--muted-foreground)] mt-2">Loading...</p>
+            )}
+            {fetchError && (
+              <div className="mt-2">
+                <p className="text-xs text-[var(--destructive)]">{fetchError}</p>
+                <button
+                  onClick={fetchStates}
+                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] mt-1 underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!loading && !fetchError && allStates.length > 0 && (
+              <div className="mt-2 max-h-[300px] overflow-y-auto border border-[var(--border)] rounded-md">
+                {filteredResults.length === 0 ? (
+                  <p className="text-xs text-[var(--muted-foreground)] p-3 text-center">No matching entities</p>
+                ) : (
+                  filteredResults.slice(0, 100).map(entity => (
+                    <div
+                      key={entity.entity_id}
+                      className="flex items-center gap-2 px-3 min-h-[44px] border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--muted)] transition-colors"
+                    >
+                      <div className="flex-1 min-w-0 py-2">
+                        <div className="text-sm font-medium truncate">
+                          {entity.attributes.friendly_name || entity.entity_id}
+                        </div>
+                        <div className="text-xs text-[var(--muted-foreground)] truncate">
+                          {entity.entity_id}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => addSceneFromBrowse(entity)}
+                        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] text-[var(--muted-foreground)] transition-colors"
+                        title="Add scene"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TrafficSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const destinations: Array<{ name: string; origin: string; destination: string }> = config.destinations || []
+
+  function addDestination() {
+    onChange({ destinations: [...destinations, { name: '', origin: '', destination: '' }] })
+  }
+
+  function updateDestination(index: number, field: string, value: string) {
+    const updated = destinations.map((d, i) => i === index ? { ...d, [field]: value } : d)
+    onChange({ destinations: updated })
+  }
+
+  function removeDestination(index: number) {
+    onChange({ destinations: destinations.filter((_, i) => i !== index) })
+  }
+
+  return (
+    <div>
+      <SettingsField label="Google Maps API Key">
+        <TextInput value={config.apiKey || ''} onChange={v => onChange({ apiKey: v })} type="password" placeholder="Google Maps API Key" />
+      </SettingsField>
+
+      <div className="mt-3">
+        <label className="text-xs font-medium text-[var(--muted-foreground)]">Destinations</label>
+        <p className="text-xs text-[var(--muted-foreground)] mt-1">
+          Add commute destinations with origin and destination addresses.
+        </p>
+
+        {destinations.map((dest, i) => (
+          <div key={i} className="mt-2 p-2 bg-[var(--muted)] rounded-lg space-y-2">
+            <div className="flex items-center gap-2">
+              <TextInput value={dest.name} onChange={v => updateDestination(i, 'name', v)} placeholder="Destination name" />
+              <button onClick={() => removeDestination(i)} className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
+                <Trash2 size={14} />
+              </button>
+            </div>
+            <TextInput value={dest.origin} onChange={v => updateDestination(i, 'origin', v)} placeholder="Origin address" />
+            <TextInput value={dest.destination} onChange={v => updateDestination(i, 'destination', v)} placeholder="Destination address" />
+          </div>
+        ))}
+
+        <button
+          onClick={addDestination}
+          className="mt-2 flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        >
+          <Plus size={14} /> Add destination
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function NewsSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const feeds: Array<{ url: string; name: string }> = config.feeds || []
+
+  function addFeed() {
+    onChange({ feeds: [...feeds, { url: '', name: `Feed ${feeds.length + 1}` }] })
+  }
+
+  function updateFeed(index: number, field: string, value: string) {
+    const updated = feeds.map((f, i) => i === index ? { ...f, [field]: value } : f)
+    onChange({ feeds: updated })
+  }
+
+  function removeFeed(index: number) {
+    onChange({ feeds: feeds.filter((_, i) => i !== index) })
+  }
+
+  return (
+    <div>
+      <SettingsField label="Max items to display">
+        <SelectInput
+          value={String(config.maxItems || 10)}
+          onChange={v => onChange({ maxItems: parseInt(v) })}
+          options={[
+            { value: '5', label: '5' },
+            { value: '10', label: '10' },
+            { value: '15', label: '15' },
+            { value: '20', label: '20' },
+          ]}
+        />
+      </SettingsField>
+
+      <SettingsField label="Rotation interval (seconds)">
+        <SelectInput
+          value={String(config.rotateInterval ?? 15)}
+          onChange={v => onChange({ rotateInterval: parseInt(v) })}
+          options={[
+            { value: '0', label: 'Off (no rotation)' },
+            { value: '10', label: '10 seconds' },
+            { value: '15', label: '15 seconds' },
+            { value: '30', label: '30 seconds' },
+            { value: '60', label: '60 seconds' },
+          ]}
+        />
+      </SettingsField>
+
+      <Toggle checked={config.showSource ?? true} onChange={v => onChange({ showSource: v })} label="Show source name" />
+
+      <div className="mt-3">
+        <label className="text-xs font-medium text-[var(--muted-foreground)]">RSS Feeds</label>
+        <p className="text-xs text-[var(--muted-foreground)] mt-1">
+          Add RSS or Atom feed URLs.
+        </p>
+
+        {feeds.map((feed, i) => (
+          <div key={i} className="mt-2 p-2 bg-[var(--muted)] rounded-lg space-y-2">
+            <div className="flex items-center gap-2">
+              <TextInput value={feed.name} onChange={v => updateFeed(i, 'name', v)} placeholder="Feed name (e.g. BBC News)" />
+              <button onClick={() => removeFeed(i)} className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
+                <Trash2 size={14} />
+              </button>
+            </div>
+            <TextInput value={feed.url} onChange={v => updateFeed(i, 'url', v)} placeholder="https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml" />
+          </div>
+        ))}
+
+        <button
+          onClick={addFeed}
+          className="mt-2 flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        >
+          <Plus size={14} /> Add feed
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function GrocerySettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  return (
+    <div>
+      <SettingsField label="List title">
+        <TextInput value={config.title || 'Grocery List'} onChange={v => onChange({ title: v })} placeholder="Grocery List" />
+      </SettingsField>
+      <Toggle checked={config.showCategories ?? true} onChange={v => onChange({ showCategories: v })} label="Show categories" />
+      <div className="mt-3">
+        <button
+          onClick={() => onChange({ items: [] })}
+          className="text-xs text-[var(--destructive)] hover:underline"
+        >
+          Clear all items
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CountdownSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const events: Array<{ id: string; name: string; date: string; icon?: string; color?: string; recurring?: boolean }> = config.events || []
+
+  function addEvent() {
+    const newEvent = {
+      id: Date.now().toString(36),
+      name: '',
+      date: new Date().toISOString().split('T')[0],
+      color: '#3b82f6',
+      recurring: false,
+    }
+    onChange({ events: [...events, newEvent] })
+  }
+
+  function updateEvent(index: number, field: string, value: unknown) {
+    const updated = events.map((e, i) => i === index ? { ...e, [field]: value } : e)
+    onChange({ events: updated })
+  }
+
+  function removeEvent(index: number) {
+    onChange({ events: events.filter((_, i) => i !== index) })
+  }
+
+  return (
+    <div>
+      <div className="space-y-3">
+        {events.map((event, i) => (
+          <div key={event.id} className="p-2 bg-[var(--muted)] rounded-lg space-y-2">
+            <div className="flex items-center gap-2">
+              <TextInput value={event.name} onChange={v => updateEvent(i, 'name', v)} placeholder="Event name" />
+              <button onClick={() => removeEvent(i)} className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
+                <Trash2 size={14} />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <TextInput value={event.date} onChange={v => updateEvent(i, 'date', v)} placeholder="YYYY-MM-DD" type="date" />
+              </div>
+              <input
+                type="text"
+                value={event.icon || ''}
+                onChange={e => updateEvent(i, 'icon', e.target.value)}
+                placeholder="🎉"
+                className="w-12 bg-[var(--background)] text-center rounded-md text-sm outline-none"
+              />
+              <input
+                type="color"
+                value={event.color || '#3b82f6'}
+                onChange={e => updateEvent(i, 'color', e.target.value)}
+                className="w-8 h-8 rounded cursor-pointer"
+              />
+            </div>
+            <Toggle checked={event.recurring ?? false} onChange={v => updateEvent(i, 'recurring', v)} label="Recurring (annual)" />
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={addEvent}
+        className="mt-2 flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+      >
+        <Plus size={14} /> Add event
+      </button>
     </div>
   )
 }
