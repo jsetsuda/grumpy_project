@@ -232,26 +232,45 @@ export function CalendarWidget({ config }: WidgetProps<CalendarConfig>) {
           />
         )}
         {viewMode === 'week' && (
-          <WeekView
-            events={allEvents}
-            date={selectedDate}
-            weekStartsOn={weekStartsOn}
-            showWeekends={showWeekends}
-            formatTime={formatTime}
-            onEventClick={setSelectedEvent}
-            onDayClick={(d) => { setSelectedDate(d); setViewMode('day') }}
-            isLarge={isLarge}
-          />
+          <>
+            <WeekView
+              events={allEvents}
+              date={selectedDate}
+              weekStartsOn={weekStartsOn}
+              showWeekends={showWeekends}
+              formatTime={formatTime}
+              onEventClick={setSelectedEvent}
+              onDayClick={(d) => setSelectedDate(d)}
+              isLarge={isLarge}
+            />
+            <SelectedDayEvents
+              events={allEvents}
+              date={selectedDate}
+              formatTime={formatTime}
+              onEventClick={setSelectedEvent}
+              isLarge={isLarge}
+            />
+          </>
         )}
         {viewMode === 'month' && (
-          <MonthView
-            events={allEvents}
-            date={selectedDate}
-            weekStartsOn={weekStartsOn}
-            showWeekends={showWeekends}
-            onDayClick={(d) => { setSelectedDate(d); setViewMode('day') }}
-            isLarge={isLarge}
-          />
+          <>
+            <MonthView
+              events={allEvents}
+              date={selectedDate}
+              weekStartsOn={weekStartsOn}
+              showWeekends={showWeekends}
+              onDayClick={(d) => setSelectedDate(d)}
+              isLarge={isLarge}
+            />
+            {/* Selected day events panel below the month grid */}
+            <SelectedDayEvents
+              events={allEvents}
+              date={selectedDate}
+              formatTime={formatTime}
+              onEventClick={setSelectedEvent}
+              isLarge={isLarge}
+            />
+          </>
         )}
       </div>
     </div>
@@ -693,6 +712,50 @@ function MonthView({ events, date, weekStartsOn, showWeekends, onDayClick, isLar
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// --- Selected Day Events (shown below month/week grid) ---
+
+function SelectedDayEvents({ events, date, formatTime, onEventClick, isLarge }: {
+  events: CalendarEvent[]
+  date: Date
+  formatTime: (d: Date) => string
+  onEventClick: (e: CalendarEvent) => void
+  isLarge?: boolean
+}) {
+  const dayStart = startOfDay(date)
+  const dayEnd = endOfDay(date)
+  const dayEvents = events.filter(e => e.start < dayEnd && e.end > dayStart)
+
+  return (
+    <div className="shrink-0 border-t border-[var(--border)] mt-2 pt-2">
+      <div className={`${isLarge ? 'text-sm' : 'text-xs'} font-medium text-[var(--muted-foreground)] mb-1.5 px-1`}>
+        {isToday(date) ? 'Today' : isTomorrow(date) ? 'Tomorrow' : format(date, 'EEEE, MMM d')}
+        {dayEvents.length > 0 && <span className="ml-1 text-[var(--foreground)]">({dayEvents.length})</span>}
+      </div>
+      {dayEvents.length === 0 ? (
+        <p className={`${isLarge ? 'text-sm' : 'text-xs'} text-[var(--muted-foreground)] px-1`}>No events</p>
+      ) : (
+        <div className="space-y-1">
+          {dayEvents.map(event => (
+            <button
+              key={event.id}
+              onClick={() => onEventClick(event)}
+              className={`w-full flex gap-2 items-start text-left p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors ${isLarge ? 'min-h-[40px]' : 'min-h-[32px]'}`}
+            >
+              <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: event.color }} />
+              <div className="flex-1 min-w-0">
+                <div className={`${isLarge ? 'text-sm' : 'text-xs'} truncate`}>{event.summary}</div>
+                <div className={`${isLarge ? 'text-xs' : 'text-[10px]'} text-[var(--muted-foreground)]`}>
+                  {event.allDay ? 'All day' : `${formatTime(event.start)} – ${formatTime(event.end)}`}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
