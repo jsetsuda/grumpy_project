@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { GridLayout, type LayoutItem, type Layout } from 'react-grid-layout'
-import { Lock, Unlock, Settings, Home } from 'lucide-react'
+import { Lock, Unlock, Settings, Home, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
@@ -15,6 +15,7 @@ export function DashboardGrid() {
   const [editMode, setEditMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [width, setWidth] = useState(window.innerWidth - 24)
+  const [manualSlideshow, setManualSlideshow] = useState(false)
 
   useTheme(config.theme || 'midnight')
 
@@ -23,7 +24,9 @@ export function DashboardGrid() {
     config.screensaverEnabled ?? true,
   )
 
-  // Clock (shared between top bar and screensaver)
+  const inSlideshow = isIdle || manualSlideshow
+
+  // Clock
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
@@ -56,77 +59,87 @@ export function DashboardGrid() {
 
   const showTopBar = config.showTopBar ?? true
 
+  function exitSlideshow() {
+    setManualSlideshow(false)
+    wakeUp()
+  }
+
   return (
     <>
       {config.backgroundMode === 'photo' && config.backgroundPhotos && (
         <BackgroundLayer
           config={config.backgroundPhotos}
           overlay={config.backgroundOverlay ?? 60}
-          fullscreen={isIdle}
+          fullscreen={inSlideshow}
         />
       )}
 
-      {/* Screensaver overlay */}
-      {isIdle && (
-        <div className="fixed inset-0 z-20 pointer-events-none">
-          {/* Clock — top-left */}
-          <div className="absolute top-4 left-4 text-white drop-shadow-lg">
-            <div className="text-4xl font-light tracking-tight">
+      {/* Top Bar — always visible, persists over slideshow */}
+      {showTopBar && (
+        <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 py-3 z-50">
+          {/* Left: Clock/Date */}
+          <div className="flex items-center gap-4">
+            <div className="text-2xl font-light tracking-tight text-[var(--foreground)] drop-shadow-md">
               {format(now, 'h:mm a')}
             </div>
-            <div className="text-sm text-white/70 mt-0.5">
+            <div className="text-base text-[var(--muted-foreground)] drop-shadow-md">
               {format(now, 'EEEE, MMMM d')}
             </div>
           </div>
 
-          {/* Home button — top right */}
-          <button
-            onClick={(e) => { e.stopPropagation(); wakeUp() }}
-            className="absolute top-4 right-4 p-3 rounded-full bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-colors pointer-events-auto min-w-[48px] min-h-[48px] flex items-center justify-center"
-          >
-            <Home size={22} />
-          </button>
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2">
+            {/* Slideshow / Home button */}
+            {inSlideshow ? (
+              <button
+                onClick={exitSlideshow}
+                className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                title="Back to dashboard"
+              >
+                <Home size={20} />
+              </button>
+            ) : (
+              config.backgroundMode === 'photo' && config.backgroundPhotos && (
+                <button
+                  onClick={() => setManualSlideshow(true)}
+                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  title="Start slideshow"
+                >
+                  <Play size={20} />
+                </button>
+              )
+            )}
+            {!inSlideshow && (
+              <>
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  title="Settings"
+                >
+                  <Settings size={18} />
+                </button>
+                <button
+                  onClick={() => setEditMode(!editMode)}
+                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  title={editMode ? 'Lock layout' : 'Edit layout'}
+                >
+                  {editMode ? <Unlock size={18} /> : <Lock size={18} />}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Main dashboard */}
+      {/* Main dashboard (fades out during slideshow) */}
       <div
         className="h-screen w-screen flex flex-col relative z-10 transition-opacity duration-1000"
-        style={{ opacity: isIdle ? 0 : 1, pointerEvents: isIdle ? 'none' : 'auto' }}
+        style={{
+          opacity: inSlideshow ? 0 : 1,
+          pointerEvents: inSlideshow ? 'none' : 'auto',
+          paddingTop: showTopBar ? '52px' : '0',
+        }}
       >
-        {/* Top Bar */}
-        {showTopBar && (
-          <div className="flex items-center justify-between px-4 py-2 shrink-0 z-50">
-            {/* Left: Clock/Date */}
-            <div className="flex items-center gap-3">
-              <div className="text-lg font-light tracking-tight text-[var(--foreground)]">
-                {format(now, 'h:mm a')}
-              </div>
-              <div className="text-sm text-[var(--muted-foreground)]">
-                {format(now, 'EEEE, MMM d')}
-              </div>
-            </div>
-
-            {/* Right: Controls */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSettingsOpen(true)}
-                className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors"
-                title="Settings"
-              >
-                <Settings size={18} />
-              </button>
-              <button
-                onClick={() => setEditMode(!editMode)}
-                className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors"
-                title={editMode ? 'Lock layout' : 'Edit layout'}
-              >
-                {editMode ? <Unlock size={18} /> : <Lock size={18} />}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Widget Grid */}
         <div className="flex-1 px-3 pb-3 overflow-hidden">
           <GridLayout
