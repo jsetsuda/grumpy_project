@@ -111,12 +111,12 @@ export function DashboardGrid() {
       {/* Top Bar — always visible, persists over slideshow */}
       {showTopBar && (
         <div
-          className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 z-50 origin-top-left"
+          className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 z-50"
           style={{
             height: `${config.topBarHeight ?? 60}px`,
-            transform: `scale(${(config.topBarHeight ?? 60) / 60})`,
+            transform: `scale(${(config.topBarScale ?? 100) / 100})`,
             transformOrigin: 'top left',
-            width: `${100 / ((config.topBarHeight ?? 60) / 60)}%`,
+            width: `${100 / ((config.topBarScale ?? 100) / 100)}%`,
           }}
         >
           {/* Left: Clock/Date */}

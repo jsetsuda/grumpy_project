@@ -10,6 +10,7 @@ export const defaultConfig: DashboardConfig = {
   topBarSize: 'large',
   topBarBold: false,
   topBarBackground: true,
+  topBarScale: 100,
   topBarHeight: 60,
   widgetStartY: 90,
   topBarShadow: true,

@@ -33,7 +33,8 @@ export interface DashboardConfig {
   topBarSize: 'small' | 'medium' | 'large' | 'xlarge'
   topBarBold: boolean
   topBarBackground: boolean
-  topBarHeight: number // px — actual height of the top bar elements
+  topBarScale: number // percentage, 100 = normal
+  topBarHeight: number // px — actual height/padding of the top bar
   widgetStartY: number // px — where widgets begin below the top bar
   topBarShadow: boolean
   topBarShadowSize: number // 1-20

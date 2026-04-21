@@ -67,8 +67,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             onTopBarFontChange={(v) => updateConfig({ topBarFont: v })}
             onTopBarSizeChange={(v) => updateConfig({ topBarSize: v as any })}
             onTopBarBoldChange={(v) => updateConfig({ topBarBold: v })}
+            topBarScale={config.topBarScale ?? 100}
             topBarHeight={config.topBarHeight ?? 60}
             widgetStartY={config.widgetStartY ?? 90}
+            onTopBarScaleChange={(v) => updateConfig({ topBarScale: v })}
             onTopBarHeightChange={(v) => updateConfig({ topBarHeight: v })}
             onWidgetStartYChange={(v) => updateConfig({ widgetStartY: v })}
             onTopBarBackgroundChange={(v) => updateConfig({ topBarBackground: v })}
@@ -884,6 +886,7 @@ interface TopOverlaySettingsProps {
   topBarFont: string
   topBarSize: string
   topBarBold: boolean
+  topBarScale: number
   topBarHeight: number
   widgetStartY: number
   topBarBackground: boolean
@@ -897,6 +900,7 @@ interface TopOverlaySettingsProps {
   onTopBarFontChange: (font: string) => void
   onTopBarSizeChange: (size: string) => void
   onTopBarBoldChange: (bold: boolean) => void
+  onTopBarScaleChange: (scale: number) => void
   onTopBarHeightChange: (height: number) => void
   onWidgetStartYChange: (y: number) => void
   onTopBarBackgroundChange: (bg: boolean) => void
@@ -913,6 +917,7 @@ function TopOverlaySettings({
   topBarFont,
   topBarSize,
   topBarBold,
+  topBarScale,
   topBarHeight,
   widgetStartY,
   topBarBackground,
@@ -926,6 +931,7 @@ function TopOverlaySettings({
   onTopBarFontChange,
   onTopBarSizeChange,
   onTopBarBoldChange,
+  onTopBarScaleChange,
   onTopBarHeightChange,
   onWidgetStartYChange,
   onTopBarBackgroundChange,
@@ -982,6 +988,16 @@ function TopOverlaySettings({
                   { value: 'large', label: 'Large' },
                   { value: 'xlarge', label: 'Extra Large' },
                 ]}
+              />
+            </SettingsField>
+            <SettingsField label={`Top bar size (${topBarScale}%)`}>
+              <input
+                type="range"
+                min="50"
+                max="200"
+                value={topBarScale}
+                onChange={e => onTopBarScaleChange(parseInt(e.target.value))}
+                className="w-full accent-[var(--primary)]"
               />
             </SettingsField>
             <SettingsField label={`Top bar height (${topBarHeight}px)`}>
