@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useEffect } from 'react'
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { GridLayout, noCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
 import { Lock, Unlock, Settings, Home, Play } from 'lucide-react'
 import { format } from 'date-fns'
@@ -56,8 +56,12 @@ export function DashboardGrid() {
     [config.widgets]
   )
 
+  const lastLayoutRef = useRef<string>('')
   const onLayoutChange = useCallback((newLayout: Layout) => {
     if (!editMode) return
+    const serialized = JSON.stringify(newLayout.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
+    if (serialized === lastLayoutRef.current) return
+    lastLayoutRef.current = serialized
     updateAllLayouts(newLayout.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
   }, [editMode, updateAllLayouts])
 
@@ -244,7 +248,7 @@ export function DashboardGrid() {
             dragConfig={{ enabled: editMode }}
             resizeConfig={{ enabled: editMode }}
             compactor={noCompactor}
-            onLayoutChange={onLayoutChange}
+            onLayoutChange={editMode ? onLayoutChange : undefined}
             autoSize
             className="layout"
           >
