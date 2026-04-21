@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { X, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { X, Plus, Trash2, ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
@@ -566,8 +566,86 @@ function PhotosSettings({ config, onChange }: { config: Record<string, any>; onC
   )
 }
 
+interface HaEntityState {
+  entity_id: string
+  state: string
+  attributes: Record<string, any>
+}
+
+const DOMAIN_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'light', label: 'Lights' },
+  { value: 'switch', label: 'Switches' },
+  { value: 'sensor', label: 'Sensors' },
+  { value: 'climate', label: 'Climate' },
+  { value: 'fan', label: 'Fans' },
+  { value: 'cover', label: 'Covers' },
+] as const
+
 function HaEntitiesSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
   const entities: Array<{ entityId: string; name?: string }> = config.entities || []
+  const [browseOpen, setBrowseOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
+  const [domainFilter, setDomainFilter] = useState<string>('all')
+  const [allStates, setAllStates] = useState<HaEntityState[]>([])
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const fetchedRef = useRef(false)
+
+  const haUrl = config.haUrl || ''
+  const haToken = config.haToken || ''
+
+  const fetchStates = useCallback(async () => {
+    if (!haUrl || !haToken) {
+      setFetchError('Configure HA URL and token first')
+      return
+    }
+    setLoading(true)
+    setFetchError(null)
+    try {
+      const res = await fetch(`${haUrl}/api/states`, {
+        headers: { Authorization: `Bearer ${haToken}` },
+      })
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
+      const data: HaEntityState[] = await res.json()
+      setAllStates(data)
+      fetchedRef.current = true
+    } catch (err: any) {
+      setFetchError(err.message || 'Failed to fetch entities')
+    } finally {
+      setLoading(false)
+    }
+  }, [haUrl, haToken])
+
+  useEffect(() => {
+    if (browseOpen && !fetchedRef.current) {
+      fetchStates()
+    }
+  }, [browseOpen, fetchStates])
+
+  const addedEntityIds = new Set(entities.map(e => e.entityId))
+
+  const filteredResults = allStates.filter(s => {
+    if (addedEntityIds.has(s.entity_id)) return false
+    if (domainFilter !== 'all') {
+      const domain = s.entity_id.split('.')[0]
+      if (domain !== domainFilter) return false
+    }
+    if (searchText) {
+      const query = searchText.toLowerCase()
+      const friendlyName = (s.attributes.friendly_name || '').toLowerCase()
+      const entityId = s.entity_id.toLowerCase()
+      if (!friendlyName.includes(query) && !entityId.includes(query)) return false
+    }
+    return true
+  })
+
+  function addEntityFromBrowse(entity: HaEntityState) {
+    const friendlyName = entity.attributes.friendly_name || ''
+    onChange({ entities: [...entities, { entityId: entity.entity_id, name: friendlyName }] })
+  }
 
   function addEntity() {
     onChange({ entities: [...entities, { entityId: '' }] })
@@ -613,6 +691,107 @@ function HaEntitiesSettings({ config, onChange }: { config: Record<string, any>;
         >
           <Plus size={14} /> Add entity
         </button>
+      </div>
+
+      {/* Browse Entities Section */}
+      <div className="mt-4 border border-[var(--border)] rounded-lg overflow-hidden">
+        <button
+          onClick={() => setBrowseOpen(!browseOpen)}
+          className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+        >
+          {browseOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <Search size={14} />
+          <span className="flex-1 text-sm font-medium">Browse Entities</span>
+        </button>
+
+        {browseOpen && (
+          <div className="p-3 pt-0 border-t border-[var(--border)]">
+            {/* Search input */}
+            <div className="mt-2">
+              <input
+                type="text"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                placeholder="Search entities..."
+                className="w-full bg-[var(--muted)] text-[var(--foreground)] rounded-md px-3 py-2 text-sm outline-none placeholder:text-[var(--muted-foreground)] focus:ring-1 focus:ring-[var(--ring)]"
+              />
+            </div>
+
+            {/* Domain filter buttons */}
+            <div className="flex flex-wrap gap-1 mt-2">
+              {DOMAIN_FILTERS.map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => setDomainFilter(f.value)}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    domainFilter === f.value
+                      ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                      : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Status / Error */}
+            {loading && (
+              <p className="text-xs text-[var(--muted-foreground)] mt-2">Loading entities...</p>
+            )}
+            {fetchError && (
+              <div className="mt-2">
+                <p className="text-xs text-[var(--destructive)]">{fetchError}</p>
+                <button
+                  onClick={fetchStates}
+                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] mt-1 underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Results list */}
+            {!loading && !fetchError && allStates.length > 0 && (
+              <div className="mt-2 max-h-[300px] overflow-y-auto border border-[var(--border)] rounded-md">
+                {filteredResults.length === 0 ? (
+                  <p className="text-xs text-[var(--muted-foreground)] p-3 text-center">No matching entities</p>
+                ) : (
+                  filteredResults.slice(0, 100).map(entity => (
+                    <div
+                      key={entity.entity_id}
+                      className="flex items-center gap-2 px-3 min-h-[44px] border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--muted)] transition-colors"
+                    >
+                      <div className="flex-1 min-w-0 py-2">
+                        <div className="text-sm font-medium truncate">
+                          {entity.attributes.friendly_name || entity.entity_id}
+                        </div>
+                        <div className="text-xs text-[var(--muted-foreground)] truncate">
+                          {entity.entity_id}
+                        </div>
+                      </div>
+                      <div className="text-xs text-[var(--muted-foreground)] shrink-0 max-w-[80px] truncate">
+                        {entity.state}
+                      </div>
+                      <button
+                        onClick={() => addEntityFromBrowse(entity)}
+                        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] text-[var(--muted-foreground)] transition-colors"
+                        title="Add entity"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {!loading && !fetchError && allStates.length > 0 && filteredResults.length > 100 && (
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                Showing first 100 of {filteredResults.length} results. Refine your search.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
