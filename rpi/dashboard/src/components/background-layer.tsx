@@ -220,17 +220,12 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
 
   return (
     <div className="fixed inset-0 z-0 bg-[var(--background)]">
-      {/* Image centered with overlay applied directly */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative max-w-full max-h-full w-full h-full flex items-center justify-center">
-          <img
-            src={current.url}
-            alt=""
-            className="max-w-full max-h-full object-contain transition-opacity duration-2000"
-            style={{ filter: fullscreen ? 'none' : `brightness(${1 - overlay / 100})` }}
-          />
-        </div>
-      </div>
+      <img
+        src={current.url}
+        alt=""
+        className="absolute inset-0 w-full h-full object-contain transition-opacity duration-2000"
+        style={{ filter: fullscreen ? 'none' : `brightness(${1 - overlay / 100})` }}
+      />
       {/* Screensaver controls */}
       {fullscreen && photos.length > 1 && (
         <>
