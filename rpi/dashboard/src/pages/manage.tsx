@@ -24,7 +24,6 @@ export function DashboardManager() {
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingNameValue, setEditingNameValue] = useState('')
   const [credentials, setCredentials] = useState<SharedCredentials>({})
-  const [credentialsExpanded, setCredentialsExpanded] = useState(false)
   const [credentialsSaving, setCredentialsSaving] = useState(false)
 
   const loadDashboards = useCallback(async () => {
@@ -418,144 +417,76 @@ export function DashboardManager() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-200">Shared Credentials</h2>
             <button
-              onClick={() => setCredentialsExpanded(!credentialsExpanded)}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs font-medium transition-colors"
+              onClick={handleSaveCredentials}
+              disabled={credentialsSaving}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 rounded text-xs font-medium transition-colors"
             >
-              {credentialsExpanded ? 'Collapse' : 'Expand'}
+              {credentialsSaving ? 'Saving...' : 'Save All'}
             </button>
           </div>
+          <p className="text-xs text-gray-400 mb-3">
+            Shared across all dashboards. Individual widgets can override.
+          </p>
 
-          {credentialsExpanded && (
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 space-y-6">
-              <p className="text-xs text-gray-400">
-                These credentials are shared across all dashboards. Individual widgets can override them.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Home Assistant */}
+            <CredentialCard
+              title="Home Assistant"
+              status={credentials.homeAssistant?.url ? 'configured' : 'not set'}
+              fields={[
+                { label: 'URL', value: credentials.homeAssistant?.url || '', placeholder: 'http://homeassistant.local:8123', onChange: (v) => updateCredentials(['homeAssistant', 'url'], v) },
+                { label: 'Access Token', value: credentials.homeAssistant?.token || '', placeholder: 'Long-lived token', type: 'password', onChange: (v) => updateCredentials(['homeAssistant', 'token'], v) },
+              ]}
+            />
 
-              {/* Home Assistant */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Home Assistant</h3>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">URL</label>
-                    <input
-                      type="text"
-                      value={credentials.homeAssistant?.url || ''}
-                      onChange={e => updateCredentials(['homeAssistant', 'url'], e.target.value)}
-                      placeholder="http://homeassistant.local:8123"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Long-Lived Access Token</label>
-                    <input
-                      type="password"
-                      value={credentials.homeAssistant?.token || ''}
-                      onChange={e => updateCredentials(['homeAssistant', 'token'], e.target.value)}
-                      placeholder="HA access token"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
+            {/* Spotify */}
+            <CredentialCard
+              title="Spotify"
+              status={credentials.spotify?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: credentials.spotify?.clientId || '', placeholder: 'Client ID', onChange: (v) => updateCredentials(['spotify', 'clientId'], v) },
+                { label: 'Client Secret', value: credentials.spotify?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['spotify', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: credentials.spotify?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['spotify', 'refreshToken'], v) },
+              ]}
+            />
 
-              {/* Spotify */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Spotify</h3>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Client ID</label>
-                    <input
-                      type="text"
-                      value={credentials.spotify?.clientId || ''}
-                      onChange={e => updateCredentials(['spotify', 'clientId'], e.target.value)}
-                      placeholder="Spotify Client ID"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Client Secret</label>
-                    <input
-                      type="password"
-                      value={credentials.spotify?.clientSecret || ''}
-                      onChange={e => updateCredentials(['spotify', 'clientSecret'], e.target.value)}
-                      placeholder="Spotify Client Secret"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Refresh Token</label>
-                    <input
-                      type="password"
-                      value={credentials.spotify?.refreshToken || ''}
-                      onChange={e => updateCredentials(['spotify', 'refreshToken'], e.target.value)}
-                      placeholder="Spotify Refresh Token"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
+            {/* Google Photos */}
+            <CredentialCard
+              title="Google Photos"
+              status={credentials.google?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: credentials.google?.clientId || '', placeholder: 'Google Client ID', onChange: (v) => updateCredentials(['google', 'clientId'], v) },
+                { label: 'Client Secret', value: credentials.google?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['google', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: credentials.google?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['google', 'refreshToken'], v) },
+              ]}
+            />
 
-              {/* Google */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Google (Photos)</h3>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Client ID</label>
-                    <input
-                      type="text"
-                      value={credentials.google?.clientId || ''}
-                      onChange={e => updateCredentials(['google', 'clientId'], e.target.value)}
-                      placeholder="Google Client ID"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Client Secret</label>
-                    <input
-                      type="password"
-                      value={credentials.google?.clientSecret || ''}
-                      onChange={e => updateCredentials(['google', 'clientSecret'], e.target.value)}
-                      placeholder="Google Client Secret"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Refresh Token</label>
-                    <input
-                      type="password"
-                      value={credentials.google?.refreshToken || ''}
-                      onChange={e => updateCredentials(['google', 'refreshToken'], e.target.value)}
-                      placeholder="Google Refresh Token"
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
+            {/* Google Maps */}
+            <CredentialCard
+              title="Google Maps"
+              status={(credentials as any).googleMaps?.apiKey ? 'configured' : 'not set'}
+              fields={[
+                { label: 'API Key', value: (credentials as any).googleMaps?.apiKey || '', placeholder: 'Maps API Key', type: 'password', onChange: (v) => updateCredentials(['googleMaps', 'apiKey'], v) },
+              ]}
+            />
 
-              {/* Google Maps */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Google Maps</h3>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">API Key</label>
-                  <input
-                    type="password"
-                    value={credentials.googleMaps?.apiKey || ''}
-                    onChange={e => updateCredentials(['googleMaps', 'apiKey'], e.target.value)}
-                    placeholder="Google Maps API Key"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
+            {/* iCloud */}
+            <CredentialCard
+              title="iCloud Photos"
+              status={(credentials as any).icloud?.sharedAlbumUrl ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Shared Album URL', value: (credentials as any).icloud?.sharedAlbumUrl || '', placeholder: 'https://www.icloud.com/sharedalbum/#...', onChange: (v) => updateCredentials(['icloud', 'sharedAlbumUrl'], v) },
+              ]}
+            />
 
-              <button
-                onClick={handleSaveCredentials}
-                disabled={credentialsSaving}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:cursor-not-allowed rounded text-sm font-medium transition-colors"
-              >
-                {credentialsSaving ? 'Saving...' : 'Save Credentials'}
-              </button>
-            </div>
-          )}
+            {/* Calendar */}
+            <CredentialCard
+              title="Calendar"
+              status={(credentials as any).calendar?.sources?.length ? `${(credentials as any).calendar.sources.length} source(s)` : 'not set'}
+              fields={[]}
+              note="Calendar sources are managed per-widget in dashboard settings."
+            />
+          </div>
         </section>
 
         {/* Device Assignments Section */}
@@ -634,6 +565,59 @@ export function DashboardManager() {
           </div>
         </section>
       </div>
+    </div>
+  )
+}
+
+// --- Credential Card Component ---
+
+interface CredentialField {
+  label: string
+  value: string
+  placeholder: string
+  type?: string
+  onChange: (value: string) => void
+}
+
+function CredentialCard({ title, status, fields, note }: {
+  title: string
+  status: string
+  fields: CredentialField[]
+  note?: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isConfigured = status !== 'not set'
+
+  return (
+    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-3 hover:bg-gray-750 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isConfigured ? 'bg-green-500' : 'bg-gray-500'}`} />
+          <span className="text-sm font-medium text-gray-200">{title}</span>
+        </div>
+        <span className="text-xs text-gray-400">{status}</span>
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2 border-t border-gray-700 pt-2">
+          {fields.map(field => (
+            <div key={field.label}>
+              <label className="block text-xs text-gray-400 mb-1">{field.label}</label>
+              <input
+                type={field.type || 'text'}
+                value={field.value}
+                onChange={e => field.onChange(e.target.value)}
+                placeholder={field.placeholder}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          ))}
+          {note && <p className="text-xs text-gray-400 mt-1">{note}</p>}
+        </div>
+      )}
     </div>
   )
 }
