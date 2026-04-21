@@ -12,6 +12,7 @@ import { getGoogleTaskLists, type GoogleTaskList } from '@/widgets/todo/google-t
 import type { WidgetInstance, BackgroundPhotosConfig } from '@/config/types'
 import { themes, themeNames, type ThemeName } from '@/config/themes'
 import { rssFeedsDb, rssCategories, type RssFeedEntry } from '@/lib/rss-feeds-db'
+import type { CameraFeed, CameraSourceType as CameraViewerSourceType, ViewLayout } from '@/widgets/camera-viewer/camera-viewer-widget'
 
 interface SharedCredentials {
   homeAssistant?: { url: string; token: string }
@@ -380,6 +381,8 @@ export function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) 
       return <StreamingSettings config={widget.config} onChange={onConfigChange} />
     case 'cameras':
       return <CamerasSettings config={widget.config} onChange={onConfigChange} />
+    case 'camera-viewer':
+      return <CameraViewerSettings config={widget.config} onChange={onConfigChange} />
     default:
       return <p className="text-sm text-[var(--muted-foreground)]">No settings available</p>
   }
@@ -3298,6 +3301,289 @@ function CameraSettingsCard({
                   )}
                 </div>
               )}
+            </>
+          )}
+
+          {cam.sourceType === 'frigate' && (
+            <>
+              <SettingsField label="Frigate URL">
+                <TextInput value={cam.frigateUrl || ''} onChange={v => onUpdate({ frigateUrl: v })} placeholder="http://frigate.local:5000" />
+              </SettingsField>
+              <SettingsField label="Camera Name">
+                <TextInput value={cam.frigateCameraName || ''} onChange={v => onUpdate({ frigateCameraName: v })} placeholder="front_door" />
+              </SettingsField>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Camera Viewer Settings ---
+
+const VIEWER_SOURCE_TYPE_LABELS: Record<CameraViewerSourceType, string> = {
+  'snapshot-url': 'Snapshot URL',
+  'mjpeg': 'MJPEG Stream',
+  'ha-camera': 'Home Assistant',
+  'frigate': 'Frigate',
+}
+
+const LAYOUT_LABELS: Record<ViewLayout, string> = {
+  '1x1': '1x1 — Fullscreen',
+  '2x2': '2x2 — 4 cameras',
+  '3x3': '3x3 — 9 cameras',
+  '4x4': '4x4 — 16 cameras',
+  '1+3': '1+3 — 1 large + 3 small',
+  '1+5': '1+5 — 1 large + 5 small',
+  '1+7': '1+7 — 1 large + 7 small',
+  '2+8': '2+8 — 2 large + 8 small',
+  '1+1+4': '1+1+4 — 2 medium + 4 small',
+}
+
+function CameraViewerSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  const [addingType, setAddingType] = useState<CameraViewerSourceType | null>(null)
+
+  const cameras: CameraFeed[] = config.cameras || []
+  const layout: ViewLayout = config.layout || '2x2'
+  const refreshInterval = config.refreshInterval || 5
+  const gridGap = config.gridGap ?? 0
+  const cycleInterval = config.cycleInterval || 0
+  const showNames = config.showNames ?? true
+
+  function addCamera(type: CameraViewerSourceType) {
+    const newCam: CameraFeed = {
+      id: `cv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: `New ${VIEWER_SOURCE_TYPE_LABELS[type]} Camera`,
+      sourceType: type,
+    }
+    onChange({ cameras: [...cameras, newCam] })
+    setAddingType(null)
+  }
+
+  function updateCamera(id: string, updates: Partial<CameraFeed>) {
+    const updated = cameras.map(c => c.id === id ? { ...c, ...updates } : c)
+    onChange({ cameras: updated })
+  }
+
+  function deleteCamera(id: string) {
+    onChange({ cameras: cameras.filter(c => c.id !== id) })
+  }
+
+  function moveCamera(id: string, direction: -1 | 1) {
+    const idx = cameras.findIndex(c => c.id === id)
+    if (idx < 0) return
+    const newIdx = idx + direction
+    if (newIdx < 0 || newIdx >= cameras.length) return
+    const updated = [...cameras]
+    const temp = updated[idx]
+    updated[idx] = updated[newIdx]
+    updated[newIdx] = temp
+    onChange({ cameras: updated })
+  }
+
+  return (
+    <div>
+      {/* Layout Preset */}
+      <SettingsField label="Layout Preset">
+        <SelectInput
+          value={layout}
+          onChange={v => onChange({ layout: v })}
+          options={Object.entries(LAYOUT_LABELS).map(([value, label]) => ({ value, label }))}
+        />
+      </SettingsField>
+
+      {/* Add Camera */}
+      <div className="mt-5 pt-4 border-t border-[var(--border)]">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-medium text-[var(--muted-foreground)]">
+            Cameras ({cameras.length})
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setAddingType(addingType ? null : 'snapshot-url')}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md font-medium min-h-[32px]"
+            >
+              <Plus size={12} /> Add Camera
+            </button>
+            {addingType !== null && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-lg py-1 min-w-[180px]">
+                {(Object.keys(VIEWER_SOURCE_TYPE_LABELS) as CameraViewerSourceType[]).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => addCamera(type)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--muted)] transition-colors min-h-[44px]"
+                  >
+                    {VIEWER_SOURCE_TYPE_LABELS[type]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Camera list */}
+        <div className="space-y-2">
+          {cameras.map((cam, idx) => (
+            <CameraViewerCameraCard
+              key={cam.id}
+              cam={cam}
+              index={idx}
+              total={cameras.length}
+              onUpdate={updates => updateCamera(cam.id, updates)}
+              onDelete={() => deleteCamera(cam.id)}
+              onMove={dir => moveCamera(cam.id, dir)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Display Settings */}
+      <div className="mt-5 pt-4 border-t border-[var(--border)]">
+        <SettingsField label="Refresh Interval">
+          <SelectInput
+            value={String(refreshInterval)}
+            onChange={v => onChange({ refreshInterval: Number(v) })}
+            options={[
+              { value: '1', label: '1 second' },
+              { value: '2', label: '2 seconds' },
+              { value: '5', label: '5 seconds' },
+              { value: '10', label: '10 seconds' },
+              { value: '30', label: '30 seconds' },
+            ]}
+          />
+        </SettingsField>
+
+        <SettingsField label="Grid Gap">
+          <SelectInput
+            value={String(gridGap)}
+            onChange={v => onChange({ gridGap: Number(v) })}
+            options={[
+              { value: '0', label: 'None (NVR look)' },
+              { value: '1', label: '1px' },
+              { value: '2', label: '2px' },
+              { value: '4', label: '4px' },
+            ]}
+          />
+        </SettingsField>
+
+        <SettingsField label="Cycle Interval (1x1 mode)">
+          <SelectInput
+            value={String(cycleInterval)}
+            onChange={v => onChange({ cycleInterval: Number(v) })}
+            options={[
+              { value: '0', label: 'Off' },
+              { value: '5', label: '5 seconds' },
+              { value: '10', label: '10 seconds' },
+              { value: '15', label: '15 seconds' },
+              { value: '30', label: '30 seconds' },
+            ]}
+          />
+        </SettingsField>
+
+        <Toggle checked={showNames} onChange={v => onChange({ showNames: v })} label="Show camera names" />
+      </div>
+    </div>
+  )
+}
+
+function CameraViewerCameraCard({
+  cam,
+  index,
+  total,
+  onUpdate,
+  onDelete,
+  onMove,
+}: {
+  cam: CameraFeed
+  index: number
+  total: number
+  onUpdate: (updates: Partial<CameraFeed>) => void
+  onDelete: () => void
+  onMove: (dir: -1 | 1) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="bg-[var(--muted)] rounded-md overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 min-h-[44px]">
+        <button onClick={() => setExpanded(!expanded)} className="text-[var(--muted-foreground)] shrink-0">
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[var(--muted-foreground)] font-mono shrink-0">#{index + 1}</span>
+            <span className="text-sm font-medium truncate">{cam.name}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-blue-500/20 text-blue-300">
+              {VIEWER_SOURCE_TYPE_LABELS[cam.sourceType]}
+            </span>
+          </div>
+        </div>
+
+        {/* Move up/down */}
+        <div className="flex flex-col shrink-0">
+          <button
+            onClick={() => onMove(-1)}
+            disabled={index === 0}
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-20 p-0.5 text-[10px]"
+          >
+            ▲
+          </button>
+          <button
+            onClick={() => onMove(1)}
+            disabled={index === total - 1}
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-20 p-0.5 text-[10px]"
+          >
+            ▼
+          </button>
+        </div>
+
+        <button
+          onClick={onDelete}
+          className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors shrink-0 p-1"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2 border-t border-[var(--border)]">
+          <SettingsField label="Name">
+            <TextInput value={cam.name} onChange={v => onUpdate({ name: v })} placeholder="Camera name" />
+          </SettingsField>
+
+          <SettingsField label="Source Type">
+            <SelectInput
+              value={cam.sourceType}
+              onChange={v => onUpdate({ sourceType: v as CameraViewerSourceType })}
+              options={Object.entries(VIEWER_SOURCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+            />
+          </SettingsField>
+
+          {cam.sourceType === 'snapshot-url' && (
+            <SettingsField label="Snapshot URL">
+              <TextInput value={cam.url || ''} onChange={v => onUpdate({ url: v })} placeholder="https://camera.local/snapshot.jpg" />
+            </SettingsField>
+          )}
+
+          {cam.sourceType === 'mjpeg' && (
+            <SettingsField label="MJPEG URL">
+              <TextInput value={cam.url || ''} onChange={v => onUpdate({ url: v })} placeholder="https://camera.local/mjpeg" />
+            </SettingsField>
+          )}
+
+          {cam.sourceType === 'ha-camera' && (
+            <>
+              <SettingsField label="HA URL">
+                <TextInput value={cam.haUrl || ''} onChange={v => onUpdate({ haUrl: v })} placeholder="http://homeassistant.local:8123" />
+              </SettingsField>
+              <SettingsField label="HA Token">
+                <TextInput value={cam.haToken || ''} onChange={v => onUpdate({ haToken: v })} placeholder="Long-lived access token" type="password" />
+              </SettingsField>
+              <SettingsField label="Entity ID">
+                <TextInput value={cam.haEntityId || ''} onChange={v => onUpdate({ haEntityId: v })} placeholder="camera.front_door" />
+              </SettingsField>
             </>
           )}
 

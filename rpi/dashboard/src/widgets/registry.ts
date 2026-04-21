@@ -20,6 +20,7 @@ import { StreamWidget } from './stream/stream-widget'
 import { MediaPlayerWidget } from './media-player/media-player-widget'
 import { StreamingWidget } from './streaming/streaming-widget'
 import { CamerasWidget } from './cameras/cameras-widget'
+import { CameraViewerWidget } from './camera-viewer/camera-viewer-widget'
 
 const registry = new Map<string, WidgetDefinition>()
 
@@ -214,6 +215,15 @@ register({
   component: CamerasWidget,
   defaultSize: { w: 6, h: 4 },
   minSize: { w: 3, h: 3 },
+})
+
+register({
+  type: 'camera-viewer',
+  name: 'Camera Viewer',
+  description: 'NVR-style camera viewer with layout presets and 16:9 feeds',
+  component: CameraViewerWidget,
+  defaultSize: { w: 8, h: 4 },
+  minSize: { w: 4, h: 3 },
 })
 
 export { registry }
