@@ -132,7 +132,7 @@ export function NowPlayingOverlay({ spotifyConfig, showBackground = true }: NowP
 
   return (
     <div
-      className={`fixed bottom-4 left-4 z-50 flex flex-col gap-2 px-4 py-3 rounded-2xl w-[360px] ${
+      className={`fixed bottom-4 left-4 z-50 flex flex-col gap-2 px-4 py-3 rounded-2xl w-[305px] ${
         showBackground ? 'bg-black/40 backdrop-blur-sm' : ''
       }`}
       style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}
