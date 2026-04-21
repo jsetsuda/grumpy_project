@@ -1,5 +1,5 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
-import { GridLayout, type LayoutItem, type Layout } from 'react-grid-layout'
+import { GridLayout, noCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
 import { Lock, Unlock, Settings, Home, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import { useConfig } from '@/config/config-provider'
@@ -243,6 +243,7 @@ export function DashboardGrid() {
             }}
             dragConfig={{ enabled: editMode }}
             resizeConfig={{ enabled: editMode }}
+            compactor={noCompactor}
             onLayoutChange={onLayoutChange}
             autoSize
             className="layout"

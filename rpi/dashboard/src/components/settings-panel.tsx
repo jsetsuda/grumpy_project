@@ -35,6 +35,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Dashboard Manager link */}
+          <a
+            href="/manage"
+            className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Dashboard Manager
+          </a>
+
           {/* Theme & Background section */}
           <ThemeBackgroundSettings
             theme={(config.theme || 'midnight') as ThemeName}

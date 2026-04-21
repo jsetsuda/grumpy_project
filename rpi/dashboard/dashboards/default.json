@@ -4,7 +4,7 @@
     "name": "Default",
     "layoutMode": "grid",
     "createdAt": "2026-04-21T03:50:10.169Z",
-    "updatedAt": "2026-04-21T03:50:10.169Z"
+    "updatedAt": "2026-04-21T04:31:35.751Z"
   },
   "config": {
     "version": 1,
@@ -83,7 +83,7 @@
             "clientSecret": "REDACTED_SPOTIFY_CLIENT_SECRET",
             "refreshToken": "REDACTED_SPOTIFY_REFRESH_TOKEN",
             "accessToken": "REDACTED_SPOTIFY_ACCESS_TOKEN",
-            "tokenExpiry": 1776745032942
+            "tokenExpiry": 1776748690874
           }
         }
       },
@@ -92,9 +92,9 @@
         "type": "ha-entities",
         "layout": {
           "x": 0,
-          "y": null,
-          "w": 4,
-          "h": 4
+          "y": 5,
+          "w": 5,
+          "h": 3
         },
         "config": {
           "haUrl": "http://192.168.2.94:8123",
