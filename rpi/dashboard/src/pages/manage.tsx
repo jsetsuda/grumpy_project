@@ -450,6 +450,7 @@ export function DashboardManager() {
                 { label: 'URL', value: credentials.homeAssistant?.url || '', placeholder: 'http://homeassistant.local:8123', onChange: (v) => updateCredentials(['homeAssistant', 'url'], v) },
                 { label: 'Access Token', value: credentials.homeAssistant?.token || '', placeholder: 'Long-lived token', type: 'password', onChange: (v) => updateCredentials(['homeAssistant', 'token'], v) },
               ]}
+              note="Create a Long-Lived Access Token in HA: Profile → Long-Lived Access Tokens → Create Token"
             />
 
             {/* Spotify */}
@@ -461,6 +462,7 @@ export function DashboardManager() {
                 { label: 'Client Secret', value: credentials.spotify?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['spotify', 'clientSecret'], v) },
                 { label: 'Refresh Token', value: credentials.spotify?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['spotify', 'refreshToken'], v) },
               ]}
+              note="Create app at developer.spotify.com → Dashboard → Create App. Set redirect URI to http://127.0.0.1:5173/spotify-callback. Use the Authorize button in the Music widget to get the refresh token."
             />
 
             {/* Google Photos */}
@@ -472,6 +474,7 @@ export function DashboardManager() {
                 { label: 'Client Secret', value: credentials.google?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['google', 'clientSecret'], v) },
                 { label: 'Refresh Token', value: credentials.google?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['google', 'refreshToken'], v) },
               ]}
+              note="Create project at console.cloud.google.com → Enable Photos Library API → Create OAuth credentials. Set redirect URI to http://127.0.0.1:5173/google-callback"
             />
 
             {/* Google Maps */}
@@ -481,6 +484,7 @@ export function DashboardManager() {
               fields={[
                 { label: 'API Key', value: (credentials as any).googleMaps?.apiKey || '', placeholder: 'Maps API Key', type: 'password', onChange: (v) => updateCredentials(['googleMaps', 'apiKey'], v) },
               ]}
+              note="Get API key at console.cloud.google.com → Enable Distance Matrix API → Create API Key"
             />
 
             {/* iCloud */}
@@ -490,6 +494,7 @@ export function DashboardManager() {
               fields={[
                 { label: 'Shared Album URL', value: (credentials as any).icloud?.sharedAlbumUrl || '', placeholder: 'https://www.icloud.com/sharedalbum/#...', onChange: (v) => updateCredentials(['icloud', 'sharedAlbumUrl'], v) },
               ]}
+              note="In Photos app: create a Shared Album → enable Public Website in sharing options → copy the link"
             />
 
             {/* Calendar */}
@@ -497,7 +502,7 @@ export function DashboardManager() {
               title="Calendar (iCal)"
               status={(credentials as any).calendar?.sources?.length ? `${(credentials as any).calendar.sources.length} source(s)` : 'not set'}
               fields={[]}
-              note="Calendar sources are managed per-widget in dashboard settings."
+              note="Google Calendar: Settings → calendar → Secret address in iCal format. Outlook: Settings → View all Outlook settings → Calendar → Shared calendars → Publish"
             />
 
             {/* Todoist */}
@@ -507,6 +512,7 @@ export function DashboardManager() {
               fields={[
                 { label: 'API Token', value: (credentials as any).todoist?.apiToken || '', placeholder: 'From todoist.com/prefs/integrations', type: 'password', onChange: (v) => updateCredentials(['todoist', 'apiToken'], v) },
               ]}
+              note="Get API token at todoist.com → Settings → Integrations → Developer → API token"
             />
 
             {/* Microsoft */}
@@ -518,6 +524,7 @@ export function DashboardManager() {
                 { label: 'Client Secret', value: (credentials as any).microsoft?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'clientSecret'], v) },
                 { label: 'Refresh Token', value: (credentials as any).microsoft?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'refreshToken'], v) },
               ]}
+              note="Register app at portal.azure.com → Azure AD → App registrations. Set redirect URI to http://127.0.0.1:5173/microsoft-callback. Add Tasks.ReadWrite permission."
             />
 
             {/* Google Tasks */}
@@ -529,6 +536,7 @@ export function DashboardManager() {
                 { label: 'Client Secret', value: (credentials as any).googleTasks?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'clientSecret'], v) },
                 { label: 'Refresh Token', value: (credentials as any).googleTasks?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'refreshToken'], v) },
               ]}
+              note="Same Google Cloud project as Photos. Enable Tasks API. Use same OAuth credentials with tasks scope."
             />
 
             {/* YouTube */}
@@ -538,6 +546,7 @@ export function DashboardManager() {
               fields={[
                 { label: 'API Key', value: (credentials as any).youtube?.apiKey || '', placeholder: 'YouTube Data API v3 Key', type: 'password', onChange: (v) => updateCredentials(['youtube', 'apiKey'], v) },
               ]}
+              note="console.cloud.google.com → Enable YouTube Data API v3 → Create API Key (no OAuth needed)"
             />
 
             {/* Plex */}
@@ -548,6 +557,7 @@ export function DashboardManager() {
                 { label: 'Server URL', value: (credentials as any).plex?.serverUrl || '', placeholder: 'http://plex.local:32400', onChange: (v) => updateCredentials(['plex', 'serverUrl'], v) },
                 { label: 'Token', value: (credentials as any).plex?.token || '', placeholder: 'X-Plex-Token', type: 'password', onChange: (v) => updateCredentials(['plex', 'token'], v) },
               ]}
+              note="Find your token: open Plex Web → inspect any API request → copy X-Plex-Token from the URL"
             />
 
             {/* Jellyfin */}
@@ -559,6 +569,7 @@ export function DashboardManager() {
                 { label: 'API Key', value: (credentials as any).jellyfin?.apiKey || '', placeholder: 'Jellyfin API Key', type: 'password', onChange: (v) => updateCredentials(['jellyfin', 'apiKey'], v) },
                 { label: 'User ID', value: (credentials as any).jellyfin?.userId || '', placeholder: 'Jellyfin User ID', onChange: (v) => updateCredentials(['jellyfin', 'userId'], v) },
               ]}
+              note="Dashboard → API Keys → Create. User ID: Dashboard → Users → click user → copy ID from URL"
             />
 
             {/* Immich */}
@@ -569,6 +580,7 @@ export function DashboardManager() {
                 { label: 'Server URL', value: (credentials as any).immich?.serverUrl || '', placeholder: 'http://immich.local:2283', onChange: (v) => updateCredentials(['immich', 'serverUrl'], v) },
                 { label: 'API Key', value: (credentials as any).immich?.apiKey || '', placeholder: 'Immich API Key', type: 'password', onChange: (v) => updateCredentials(['immich', 'apiKey'], v) },
               ]}
+              note="User Settings → API Keys → Create New API Key"
             />
 
             {/* Custom credentials */}

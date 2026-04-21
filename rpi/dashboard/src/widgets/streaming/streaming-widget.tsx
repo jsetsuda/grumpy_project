@@ -18,26 +18,36 @@ export interface StreamingWidgetConfig {
 }
 
 export const DEFAULT_SERVICES: StreamingService[] = [
-  { id: 'netflix', name: 'Netflix', url: 'https://www.netflix.com/browse', icon: '\uD83C\uDFAC', color: '#E50914', enabled: true, openMode: 'overlay' },
-  { id: 'hulu', name: 'Hulu', url: 'https://www.hulu.com/hub/home', icon: '\uD83D\uDCFA', color: '#1CE783', enabled: true, openMode: 'overlay' },
-  { id: 'disney', name: 'Disney+', url: 'https://www.disneyplus.com/home', icon: '\u2728', color: '#113CCF', enabled: true, openMode: 'overlay' },
-  { id: 'prime', name: 'Prime Video', url: 'https://www.amazon.com/gp/video/storefront', icon: '\uD83D\uDCE6', color: '#00A8E1', enabled: true, openMode: 'overlay' },
+  { id: 'netflix', name: 'Netflix', url: 'https://www.netflix.com/browse', icon: '\uD83C\uDFAC', color: '#E50914', enabled: true, openMode: 'window' },
+  { id: 'hulu', name: 'Hulu', url: 'https://www.hulu.com/hub/home', icon: '\uD83D\uDCFA', color: '#1CE783', enabled: true, openMode: 'window' },
+  { id: 'disney', name: 'Disney+', url: 'https://www.disneyplus.com/home', icon: '\u2728', color: '#113CCF', enabled: true, openMode: 'window' },
+  { id: 'prime', name: 'Prime Video', url: 'https://www.amazon.com/gp/video/storefront', icon: '\uD83D\uDCE6', color: '#00A8E1', enabled: true, openMode: 'window' },
   { id: 'youtubetv', name: 'YouTube TV', url: 'https://tv.youtube.com', icon: '\uD83D\uDCE1', color: '#FF0000', enabled: true, openMode: 'overlay' },
-  { id: 'hbo', name: 'HBO Max', url: 'https://play.max.com', icon: '\uD83C\uDFAD', color: '#5822B4', enabled: true, openMode: 'overlay' },
-  { id: 'paramount', name: 'Paramount+', url: 'https://www.paramountplus.com', icon: '\u2B50', color: '#0064FF', enabled: true, openMode: 'overlay' },
-  { id: 'appletv', name: 'Apple TV+', url: 'https://tv.apple.com', icon: '\uD83C\uDF4E', color: '#000000', enabled: true, openMode: 'overlay' },
-  { id: 'peacock', name: 'Peacock', url: 'https://www.peacocktv.com', icon: '\uD83E\uDD9A', color: '#FFC300', enabled: true, openMode: 'overlay' },
+  { id: 'hbo', name: 'HBO Max', url: 'https://play.max.com', icon: '\uD83C\uDFAD', color: '#5822B4', enabled: true, openMode: 'window' },
+  { id: 'paramount', name: 'Paramount+', url: 'https://www.paramountplus.com', icon: '\u2B50', color: '#0064FF', enabled: true, openMode: 'window' },
+  { id: 'appletv', name: 'Apple TV+', url: 'https://tv.apple.com', icon: '\uD83C\uDF4E', color: '#000000', enabled: true, openMode: 'window' },
+  { id: 'peacock', name: 'Peacock', url: 'https://www.peacocktv.com', icon: '\uD83E\uDD9A', color: '#FFC300', enabled: true, openMode: 'window' },
   { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com', icon: '\u25B6\uFE0F', color: '#FF0000', enabled: true, openMode: 'overlay' },
   { id: 'twitch', name: 'Twitch', url: 'https://www.twitch.tv', icon: '\uD83C\uDFAE', color: '#9146FF', enabled: true, openMode: 'overlay' },
   { id: 'spotify', name: 'Spotify', url: 'https://open.spotify.com', icon: '\uD83C\uDFB5', color: '#1DB954', enabled: true, openMode: 'overlay' },
-  { id: 'crunchyroll', name: 'Crunchyroll', url: 'https://www.crunchyroll.com', icon: '🍥', color: '#F47521', enabled: true, openMode: 'overlay' },
+  { id: 'crunchyroll', name: 'Crunchyroll', url: 'https://www.crunchyroll.com', icon: '🍥', color: '#F47521', enabled: true, openMode: 'window' },
   { id: 'plex', name: 'Plex', url: '', icon: '\uD83C\uDF9E\uFE0F', color: '#E5A00D', enabled: false, openMode: 'overlay' },
 ]
+
+const FIRST_LOGIN_DISMISSED_KEY = 'streaming-first-login-dismissed'
 
 export function StreamingWidget({ config }: WidgetProps<StreamingWidgetConfig>) {
   const services = (config.services || DEFAULT_SERVICES).filter(s => s.enabled && s.url)
   const [activeStream, setActiveStream] = useState<{ url: string; name: string } | null>(null)
   const [iframeError, setIframeError] = useState(false)
+  const [firstLoginDismissed, setFirstLoginDismissed] = useState(() => {
+    try { return localStorage.getItem(FIRST_LOGIN_DISMISSED_KEY) === 'true' } catch { return false }
+  })
+
+  const dismissFirstLogin = useCallback(() => {
+    setFirstLoginDismissed(true)
+    try { localStorage.setItem(FIRST_LOGIN_DISMISSED_KEY, 'true') } catch { /* ignore */ }
+  }, [])
 
   const openService = useCallback((service: StreamingService) => {
     if (service.openMode === 'window') {
@@ -81,6 +91,16 @@ export function StreamingWidget({ config }: WidgetProps<StreamingWidgetConfig>) 
     <>
       <div className="flex flex-col h-full px-4 py-3 overflow-y-auto">
         <h3 className="text-sm font-medium text-[var(--muted-foreground)] mb-2">Streaming</h3>
+        {!firstLoginDismissed && services.length > 0 && (
+          <div className="flex items-center gap-2 mb-2 px-2 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
+            <span className="flex-1">Tap a service to open it. Log in once and the browser will remember your session.</span>
+            <button
+              onClick={dismissFirstLogin}
+              className="shrink-0 text-blue-400 hover:text-blue-200 transition-colors"
+              aria-label="Dismiss"
+            >{'\u2715'}</button>
+          </div>
+        )}
         {services.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 text-[var(--muted-foreground)]">
             <span className="text-2xl mb-2">{'\uD83D\uDCFA'}</span>
