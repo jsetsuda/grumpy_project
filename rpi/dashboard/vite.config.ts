@@ -120,10 +120,18 @@ function configApiPlugin(): Plugin {
           }
 
           const proxyRes = await fetch(url, fetchOptions)
-          const text = await proxyRes.text()
+          const contentType = proxyRes.headers.get('content-type') || 'text/plain'
           res.statusCode = proxyRes.status
-          res.setHeader('Content-Type', proxyRes.headers.get('content-type') || 'text/plain')
-          res.end(text)
+          res.setHeader('Content-Type', contentType)
+
+          // Use buffer for binary content (images), text for everything else
+          if (contentType.startsWith('image/') || contentType.startsWith('application/octet')) {
+            const buffer = Buffer.from(await proxyRes.arrayBuffer())
+            res.end(buffer)
+          } else {
+            const text = await proxyRes.text()
+            res.end(text)
+          }
         } catch (e) {
           res.statusCode = 500
           res.end(`Proxy fetch failed: ${e}`)
