@@ -31,31 +31,31 @@ export function TopBarWeather({ lat, lon, units, mode, forecastDays }: TopBarWea
 
   if (!weather) return null
 
-  const unitLabel = units === 'imperial' ? '°' : '°'
+  const unitLabel = '°'
 
   if (mode === 'current') {
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-lg">{weather.icon}</span>
-        <span className="text-sm font-medium">{weather.temperature}{unitLabel}</span>
-        <span className="text-xs text-[var(--muted-foreground)]">{weather.description}</span>
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">{weather.icon}</span>
+        <span className="text-2xl font-medium">{weather.temperature}{unitLabel}</span>
+        <span className="text-base text-[var(--muted-foreground)]">{weather.description}</span>
       </div>
     )
   }
 
   if (mode === 'hourly') {
     return (
-      <div className="flex items-center gap-3">
-        <span className="text-lg">{weather.icon}</span>
-        <span className="text-sm font-medium">{weather.temperature}{unitLabel}</span>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <span className="text-3xl">{weather.icon}</span>
+        <span className="text-2xl font-medium">{weather.temperature}{unitLabel}</span>
+        <div className="flex items-center gap-3">
           {weather.hourly.slice(1, 7).map(hour => {
             const info = getWeatherInfo(hour.weatherCode, hour.isDay)
             return (
-              <div key={hour.time} className="flex flex-col items-center text-[10px]">
-                <span className="text-[var(--muted-foreground)]">{format(parseISO(hour.time), 'ha').toLowerCase()}</span>
-                <span className="text-sm">{info.icon}</span>
-                <span>{hour.temperature}{unitLabel}</span>
+              <div key={hour.time} className="flex flex-col items-center">
+                <span className="text-xs text-[var(--muted-foreground)]">{format(parseISO(hour.time), 'ha').toLowerCase()}</span>
+                <span className="text-xl">{info.icon}</span>
+                <span className="text-sm">{hour.temperature}{unitLabel}</span>
               </div>
             )
           })}
@@ -66,17 +66,17 @@ export function TopBarWeather({ lat, lon, units, mode, forecastDays }: TopBarWea
 
   // forecast mode
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-lg">{weather.icon}</span>
-      <span className="text-sm font-medium">{weather.temperature}{unitLabel}</span>
-      <div className="flex items-center gap-2">
+    <div className="flex items-center gap-4">
+      <span className="text-3xl">{weather.icon}</span>
+      <span className="text-2xl font-medium">{weather.temperature}{unitLabel}</span>
+      <div className="flex items-center gap-3">
         {weather.daily.slice(1, forecastDays + 1).map(day => {
           const info = getWeatherInfo(day.weatherCode)
           return (
-            <div key={day.date} className="flex flex-col items-center text-[10px]">
-              <span className="text-[var(--muted-foreground)]">{format(parseISO(day.date), 'EEE')}</span>
-              <span className="text-sm">{info.icon}</span>
-              <span>{day.tempMax}{unitLabel}</span>
+            <div key={day.date} className="flex flex-col items-center">
+              <span className="text-xs text-[var(--muted-foreground)]">{format(parseISO(day.date), 'EEE')}</span>
+              <span className="text-xl">{info.icon}</span>
+              <span className="text-sm">{day.tempMax}{unitLabel}</span>
             </div>
           )
         })}

@@ -178,7 +178,7 @@ export function DashboardGrid() {
         style={{
           opacity: inSlideshow ? 0 : 1,
           pointerEvents: inSlideshow ? 'none' : 'auto',
-          paddingTop: showTopBar ? '52px' : '0',
+          paddingTop: showTopBar ? '80px' : '0',
         }}
       >
         {/* Widget Grid */}
