@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
-import type { DashboardConfig, WidgetInstance } from './types'
+import type { DashboardConfig, DashboardMeta, DashboardFile, WidgetInstance } from './types'
 import { defaultConfig } from './default-config'
 
 interface ConfigContextValue {
   config: DashboardConfig
+  dashboardId: string
+  dashboardMeta: DashboardMeta | null
   updateConfig: (partial: Partial<DashboardConfig>) => void
   updateWidgetConfig: (widgetId: string, config: Partial<Record<string, unknown>>) => void
   updateWidgetLayout: (widgetId: string, layout: WidgetInstance['layout']) => void
@@ -14,24 +16,65 @@ interface ConfigContextValue {
 
 const ConfigContext = createContext<ConfigContextValue | null>(null)
 
-async function loadConfig(): Promise<DashboardConfig> {
+async function resolveDashboardId(): Promise<string> {
+  const params = new URLSearchParams(window.location.search)
+  const dashboardParam = params.get('dashboard')
+  if (dashboardParam) return dashboardParam
+
+  const deviceParam = params.get('device')
+  if (deviceParam) {
+    try {
+      const res = await fetch('/api/devices')
+      if (res.ok) {
+        const devices = await res.json() as Record<string, string>
+        if (devices[deviceParam]) return devices[deviceParam]
+      }
+    } catch {
+      // Fall through to default
+    }
+  }
+
+  return 'default'
+}
+
+async function loadDashboard(id: string): Promise<{ config: DashboardConfig; meta: DashboardMeta | null }> {
   try {
-    const res = await fetch('/api/config')
+    const res = await fetch(`/api/dashboards/${id}`)
     if (res.ok) {
-      return await res.json() as DashboardConfig
+      const data = await res.json() as DashboardFile
+      return { config: data.config, meta: data.meta }
     }
   } catch {
     // Fall through to default
   }
-  return defaultConfig
+  // Fallback: try legacy /api/config for backward compat
+  try {
+    const res = await fetch('/api/config')
+    if (res.ok) {
+      return { config: await res.json() as DashboardConfig, meta: null }
+    }
+  } catch {
+    // Fall through
+  }
+  return { config: defaultConfig, meta: null }
 }
 
-async function saveConfig(config: DashboardConfig): Promise<void> {
+async function saveDashboard(id: string, config: DashboardConfig, meta: DashboardMeta | null): Promise<void> {
   try {
-    await fetch('/api/config', {
+    const file: DashboardFile = {
+      meta: meta || {
+        id,
+        name: id.charAt(0).toUpperCase() + id.slice(1),
+        layoutMode: 'grid',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      config,
+    }
+    await fetch(`/api/dashboards/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config, null, 2),
+      body: JSON.stringify(file, null, 2),
     })
   } catch {
     // Silently ignore save errors
@@ -40,18 +83,29 @@ async function saveConfig(config: DashboardConfig): Promise<void> {
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<DashboardConfig>(defaultConfig)
+  const [dashboardId, setDashboardId] = useState<string>('default')
+  const [dashboardMeta, setDashboardMeta] = useState<DashboardMeta | null>(null)
   const [loaded, setLoaded] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const configRef = useRef(config)
+  const metaRef = useRef(dashboardMeta)
+  const idRef = useRef(dashboardId)
 
-  // Keep ref in sync
+  // Keep refs in sync
   configRef.current = config
+  metaRef.current = dashboardMeta
+  idRef.current = dashboardId
 
   // Load config on mount
   useEffect(() => {
-    loadConfig().then(c => {
-      setConfig(c)
-      setLoaded(true)
+    resolveDashboardId().then(id => {
+      setDashboardId(id)
+      idRef.current = id
+      loadDashboard(id).then(({ config: c, meta }) => {
+        setConfig(c)
+        setDashboardMeta(meta)
+        setLoaded(true)
+      })
     })
   }, [])
 
@@ -63,7 +117,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       clearTimeout(saveTimer.current)
     }
     saveTimer.current = setTimeout(() => {
-      saveConfig(configRef.current)
+      saveDashboard(idRef.current, configRef.current, metaRef.current)
     }, 1000)
 
     return () => {
@@ -117,7 +171,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <ConfigContext.Provider value={{ config, updateConfig, updateWidgetConfig, updateWidgetLayout, updateAllLayouts, addWidget, removeWidget }}>
+    <ConfigContext.Provider value={{ config, dashboardId, dashboardMeta, updateConfig, updateWidgetConfig, updateWidgetLayout, updateAllLayouts, addWidget, removeWidget }}>
       {children}
     </ConfigContext.Provider>
   )

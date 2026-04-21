@@ -1,7 +1,20 @@
-import { ConfigProvider } from '@/config/config-provider'
+import { ConfigProvider, useConfig } from '@/config/config-provider'
 import { DashboardGrid } from '@/components/dashboard-grid'
+import { ZoneRenderer } from '@/components/zone-renderer'
 import { SpotifyCallback } from '@/widgets/music/spotify-callback'
 import { GoogleCallback } from '@/widgets/photos/google-callback'
+import { DashboardManager } from '@/pages/manage'
+
+function DashboardRouter() {
+  const { config } = useConfig()
+
+  // Use zone layout if a zoneLayout config is present with a templateId
+  if (config.zoneLayout?.templateId) {
+    return <ZoneRenderer />
+  }
+
+  return <DashboardGrid />
+}
 
 export default function App() {
   if (window.location.pathname === '/spotify-callback') {
@@ -12,9 +25,13 @@ export default function App() {
     return <GoogleCallback />
   }
 
+  if (window.location.pathname === '/manage') {
+    return <DashboardManager />
+  }
+
   return (
     <ConfigProvider>
-      <DashboardGrid />
+      <DashboardRouter />
     </ConfigProvider>
   )
 }

@@ -1,0 +1,124 @@
+{
+  "meta": {
+    "id": "default",
+    "name": "Default",
+    "layoutMode": "grid",
+    "createdAt": "2026-04-21T03:50:10.169Z",
+    "updatedAt": "2026-04-21T03:50:10.169Z"
+  },
+  "config": {
+    "version": 1,
+    "grid": {
+      "cols": 12,
+      "rowHeight": 80,
+      "margin": [
+        12,
+        12
+      ]
+    },
+    "widgets": [
+      {
+        "id": "weather-1",
+        "type": "weather",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "w": 5,
+          "h": 5
+        },
+        "config": {
+          "lat": 42.3314,
+          "lon": -83.0458,
+          "units": "imperial",
+          "forecastDays": 7,
+          "displayMode": "detailed",
+          "forecastLayout": "row"
+        }
+      },
+      {
+        "id": "calendar-1",
+        "type": "calendar",
+        "layout": {
+          "x": 8,
+          "y": 0,
+          "w": 4,
+          "h": 5
+        },
+        "config": {
+          "sources": [
+            {
+              "url": "https://calendar.google.com/calendar/ical/jason.setsuda%40gmail.com/private-125d5d101482d2c85eaf31da31e6a967/basic.ics",
+              "name": "Jason"
+            }
+          ],
+          "maxEvents": 8
+        }
+      },
+      {
+        "id": "todo-1",
+        "type": "todo",
+        "layout": {
+          "x": 5,
+          "y": 0,
+          "w": 3,
+          "h": 5
+        },
+        "config": {
+          "title": "To Do"
+        }
+      },
+      {
+        "id": "music-1",
+        "type": "music",
+        "layout": {
+          "x": 5,
+          "y": 5,
+          "w": 7,
+          "h": 3
+        },
+        "config": {
+          "provider": "spotify",
+          "spotify": {
+            "clientId": "a864f77dddd4437bb70abeebb6d87feb",
+            "clientSecret": "REDACTED_SPOTIFY_CLIENT_SECRET",
+            "refreshToken": "REDACTED_SPOTIFY_REFRESH_TOKEN",
+            "accessToken": "REDACTED_SPOTIFY_ACCESS_TOKEN",
+            "tokenExpiry": 1776745032942
+          }
+        }
+      },
+      {
+        "id": "ha-entities-mo80o96h",
+        "type": "ha-entities",
+        "layout": {
+          "x": 0,
+          "y": null,
+          "w": 4,
+          "h": 4
+        },
+        "config": {
+          "haUrl": "http://192.168.2.94:8123",
+          "haToken": "REDACTED_HA_LONG_LIVED_TOKEN",
+          "entities": []
+        }
+      }
+    ],
+    "theme": "forest",
+    "backgroundMode": "photo",
+    "backgroundPhotos": {
+      "provider": "icloud",
+      "interval": 30,
+      "icloud": {
+        "sharedAlbumUrl": "https://www.icloud.com/sharedalbum/#B1hJtdOXmJfqRVS"
+      }
+    },
+    "widgetOpacity": 45,
+    "topBarWeatherMode": "forecast",
+    "topBarBackground": false,
+    "topBarWeather": true,
+    "topBarFont": "'Segoe UI', sans-serif",
+    "topBarHeight": 98,
+    "showTopBar": true,
+    "widgetStartY": 95
+  }
+}

@@ -1,3 +1,5 @@
+import type { ZoneLayoutConfig } from './zone-types'
+
 export interface BackgroundPhotosConfig {
   provider: 'immich' | 'local' | 'google' | 'icloud' | 'none'
   immich?: {
@@ -54,6 +56,7 @@ export interface DashboardConfig {
   voicePipelineId?: string
   voiceTtsVoice?: string
   widgets: WidgetInstance[]
+  zoneLayout?: ZoneLayoutConfig
 }
 
 export interface WidgetInstance {
@@ -66,4 +69,17 @@ export interface WidgetInstance {
     h: number
   }
   config: Record<string, unknown>
+}
+
+export interface DashboardMeta {
+  id: string
+  name: string
+  layoutMode: 'grid' | 'zones'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DashboardFile {
+  meta: DashboardMeta
+  config: DashboardConfig
 }
