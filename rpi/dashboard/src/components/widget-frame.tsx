@@ -1,4 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react'
+import { useConfig } from '@/config/config-provider'
 
 interface WidgetFrameProps {
   children: ReactNode
@@ -34,8 +35,18 @@ class WidgetErrorBoundary extends Component<{ children: ReactNode }, ErrorBounda
 }
 
 export function WidgetFrame({ children }: WidgetFrameProps) {
+  const { config } = useConfig()
+  const opacity = (config.widgetOpacity ?? 100) / 100
+
   return (
-    <div className="h-full w-full rounded-xl bg-[var(--card)] border border-[var(--border)] overflow-hidden shadow-lg">
+    <div
+      className="h-full w-full rounded-xl border border-[var(--border)] overflow-hidden shadow-lg"
+      style={{
+        backgroundColor: opacity >= 1
+          ? 'var(--card)'
+          : `color-mix(in srgb, var(--card) ${Math.round(opacity * 100)}%, transparent)`,
+      }}
+    >
       <WidgetErrorBoundary>
         {children}
       </WidgetErrorBoundary>

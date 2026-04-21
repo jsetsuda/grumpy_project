@@ -41,10 +41,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             backgroundMode={config.backgroundMode || 'solid'}
             backgroundPhotos={config.backgroundPhotos}
             backgroundOverlay={config.backgroundOverlay ?? 60}
+            widgetOpacity={config.widgetOpacity ?? 100}
+            screensaverEnabled={config.screensaverEnabled ?? true}
+            screensaverTimeout={config.screensaverTimeout ?? 300}
             onThemeChange={(t) => updateConfig({ theme: t })}
             onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
             onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
             onOverlayChange={(o) => updateConfig({ backgroundOverlay: o })}
+            onWidgetOpacityChange={(o) => updateConfig({ widgetOpacity: o })}
+            onScreensaverEnabledChange={(v) => updateConfig({ screensaverEnabled: v })}
+            onScreensaverTimeoutChange={(v) => updateConfig({ screensaverTimeout: v })}
           />
 
           {/* Widget list */}
@@ -579,10 +585,16 @@ interface ThemeBackgroundSettingsProps {
   backgroundMode: 'solid' | 'photo'
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
+  widgetOpacity: number
+  screensaverEnabled: boolean
+  screensaverTimeout: number
   onThemeChange: (theme: ThemeName) => void
   onBackgroundModeChange: (mode: 'solid' | 'photo') => void
   onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
   onOverlayChange: (opacity: number) => void
+  onWidgetOpacityChange: (opacity: number) => void
+  onScreensaverEnabledChange: (enabled: boolean) => void
+  onScreensaverTimeoutChange: (timeout: number) => void
 }
 
 function ThemeBackgroundSettings({
@@ -590,11 +602,18 @@ function ThemeBackgroundSettings({
   backgroundMode,
   backgroundPhotos,
   backgroundOverlay,
+  widgetOpacity,
+  screensaverEnabled,
+  screensaverTimeout,
   onThemeChange,
   onBackgroundModeChange,
   onBackgroundPhotosChange,
   onOverlayChange,
+  onWidgetOpacityChange,
+  onScreensaverEnabledChange,
+  onScreensaverTimeoutChange,
 }: ThemeBackgroundSettingsProps) {
+  const [expanded, setExpanded] = useState(false)
   const bgConfig: BackgroundPhotosConfig = backgroundPhotos || {
     provider: 'none',
     interval: 30,
@@ -602,11 +621,15 @@ function ThemeBackgroundSettings({
 
   return (
     <div className="border border-[var(--border)] rounded-lg overflow-hidden">
-      <div className="p-3 border-b border-[var(--border)]">
-        <h3 className="text-sm font-medium">Theme & Background</h3>
-      </div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+      >
+        {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className="flex-1 text-sm font-medium">Theme & Background</span>
+      </button>
 
-      <div className="p-3 space-y-4">
+      {expanded && <div className="p-3 pt-0 border-t border-[var(--border)] space-y-4">
         {/* Theme selector */}
         <div>
           <label className="text-xs font-medium text-[var(--muted-foreground)]">Theme</label>
@@ -780,7 +803,46 @@ function ThemeBackgroundSettings({
             </SettingsField>
           </>
         )}
-      </div>
+
+        {/* Widget Transparency slider */}
+        <SettingsField label={`Widget Transparency: ${100 - widgetOpacity}%`}>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={widgetOpacity}
+            onChange={e => onWidgetOpacityChange(parseInt(e.target.value))}
+            className="w-full accent-[var(--primary)]"
+          />
+          <div className="flex justify-between text-[10px] text-[var(--muted-foreground)]">
+            <span>Transparent</span>
+            <span>Opaque</span>
+          </div>
+        </SettingsField>
+
+        {/* Screensaver settings */}
+        <Toggle
+          checked={screensaverEnabled}
+          onChange={onScreensaverEnabledChange}
+          label="Screensaver"
+        />
+        {screensaverEnabled && (
+          <SettingsField label="Screensaver timeout">
+            <SelectInput
+              value={String(screensaverTimeout)}
+              onChange={v => onScreensaverTimeoutChange(parseInt(v))}
+              options={[
+                { value: '60', label: '1 minute' },
+                { value: '120', label: '2 minutes' },
+                { value: '300', label: '5 minutes' },
+                { value: '600', label: '10 minutes' },
+                { value: '900', label: '15 minutes' },
+                { value: '1800', label: '30 minutes' },
+              ]}
+            />
+          </SettingsField>
+        )}
+      </div>}
     </div>
   )
 }

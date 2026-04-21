@@ -4,6 +4,7 @@ import type { BackgroundPhotosConfig } from '@/config/types'
 interface BackgroundLayerProps {
   config: BackgroundPhotosConfig
   overlay: number // 0-100
+  fullscreen?: boolean
 }
 
 interface PhotoItem {
@@ -11,7 +12,7 @@ interface PhotoItem {
   url: string
 }
 
-export function BackgroundLayer({ config, overlay }: BackgroundLayerProps) {
+export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayerProps) {
   const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const googleTokenRef = useRef<{ accessToken: string; expiry: number } | null>(null)
@@ -218,8 +219,8 @@ export function BackgroundLayer({ config, overlay }: BackgroundLayerProps) {
       />
       {/* Dark overlay for readability */}
       <div
-        className="absolute inset-0"
-        style={{ backgroundColor: `rgba(0, 0, 0, ${overlay / 100})` }}
+        className="absolute inset-0 transition-opacity duration-1000"
+        style={{ backgroundColor: `rgba(0, 0, 0, ${fullscreen ? 0 : overlay / 100})` }}
       />
     </div>
   )

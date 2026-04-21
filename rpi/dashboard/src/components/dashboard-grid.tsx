@@ -7,6 +7,7 @@ import { WidgetFrame } from './widget-frame'
 import { SettingsPanel } from './settings-panel'
 import { BackgroundLayer } from './background-layer'
 import { useTheme } from '@/hooks/use-theme'
+import { useIdleTimer } from '@/hooks/use-idle-timer'
 
 export function DashboardGrid() {
   const { config, updateWidgetConfig, updateAllLayouts } = useConfig()
@@ -15,6 +16,11 @@ export function DashboardGrid() {
   const [width, setWidth] = useState(window.innerWidth - 24)
 
   useTheme(config.theme || 'midnight')
+
+  const isIdle = useIdleTimer(
+    (config.screensaverTimeout ?? 300) * 1000,
+    config.screensaverEnabled ?? true,
+  )
 
   useEffect(() => {
     const onResize = () => setWidth(window.innerWidth - 24)
@@ -46,9 +52,13 @@ export function DashboardGrid() {
         <BackgroundLayer
           config={config.backgroundPhotos}
           overlay={config.backgroundOverlay ?? 60}
+          fullscreen={isIdle}
         />
       )}
-    <div className="h-screen w-screen p-3 relative z-10">
+    <div
+      className="h-screen w-screen p-3 relative z-10 transition-opacity duration-1000"
+      style={{ opacity: isIdle ? 0 : 1, pointerEvents: isIdle ? 'none' : 'auto' }}
+    >
       {/* Toolbar */}
       <div className="absolute top-3 right-3 z-50 flex gap-2">
         <button

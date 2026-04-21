@@ -5,6 +5,9 @@ export const defaultConfig: DashboardConfig = {
   theme: 'midnight',
   backgroundMode: 'solid',
   backgroundOverlay: 60,
+  screensaverEnabled: true,
+  screensaverTimeout: 300,
+  widgetOpacity: 100,
   grid: {
     cols: 12,
     rowHeight: 80,
