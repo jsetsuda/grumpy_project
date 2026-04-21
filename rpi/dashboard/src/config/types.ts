@@ -44,6 +44,8 @@ export interface DashboardConfig {
   topBarWeather: boolean
   topBarWeatherMode: 'current' | 'hourly' | 'forecast'
   topBarForecastDays: 3 | 5 | 7
+  screenRatio: string // 'auto' | '16:9' | '16:10' | '4:3' | '3:2' | '9:16' | '10:16' | '3:4' | '2:3' | 'custom'
+  screenRatioCustom?: string // e.g. '21:9'
   screensaverEnabled: boolean
   screensaverTimeout: number // seconds
   widgetOpacity: number // 0-100

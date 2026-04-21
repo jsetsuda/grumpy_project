@@ -125,8 +125,12 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             backgroundPhotos={config.backgroundPhotos}
             backgroundOverlay={config.backgroundOverlay ?? 60}
             widgetOpacity={config.widgetOpacity ?? 100}
+            screenRatio={config.screenRatio || 'auto'}
+            screenRatioCustom={config.screenRatioCustom || ''}
             screensaverEnabled={config.screensaverEnabled ?? true}
             screensaverTimeout={config.screensaverTimeout ?? 300}
+            onScreenRatioChange={(v) => updateConfig({ screenRatio: v })}
+            onScreenRatioCustomChange={(v) => updateConfig({ screenRatioCustom: v })}
             onThemeChange={(t) => updateConfig({ theme: t })}
             onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
             onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
@@ -1783,8 +1787,12 @@ interface ThemeBackgroundSettingsProps {
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
   widgetOpacity: number
+  screenRatio: string
+  screenRatioCustom: string
   screensaverEnabled: boolean
   screensaverTimeout: number
+  onScreenRatioChange: (ratio: string) => void
+  onScreenRatioCustomChange: (ratio: string) => void
   onThemeChange: (theme: ThemeName) => void
   onBackgroundModeChange: (mode: 'solid' | 'photo') => void
   onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
@@ -1800,8 +1808,12 @@ function ThemeBackgroundSettings({
   backgroundPhotos,
   backgroundOverlay,
   widgetOpacity,
+  screenRatio,
+  screenRatioCustom,
   screensaverEnabled,
   screensaverTimeout,
+  onScreenRatioChange,
+  onScreenRatioCustomChange,
   onThemeChange,
   onBackgroundModeChange,
   onBackgroundPhotosChange,
@@ -2016,6 +2028,37 @@ function ThemeBackgroundSettings({
             <span>Opaque</span>
           </div>
         </SettingsField>
+
+        {/* Screen ratio */}
+        <SettingsField label="Screen Ratio">
+          <SelectInput
+            value={screenRatio}
+            onChange={onScreenRatioChange}
+            options={[
+              { value: 'auto', label: 'Auto (fit to screen)' },
+              { value: '16:9', label: '16:9 Landscape (HD/4K TV)' },
+              { value: '16:10', label: '16:10 Landscape (MacBook)' },
+              { value: '4:3', label: '4:3 Landscape (iPad/Classic)' },
+              { value: '3:2', label: '3:2 Landscape (Surface)' },
+              { value: '21:9', label: '21:9 Ultrawide' },
+              { value: '9:16', label: '9:16 Portrait (Phone/Kiosk)' },
+              { value: '10:16', label: '10:16 Portrait' },
+              { value: '3:4', label: '3:4 Portrait (iPad)' },
+              { value: '2:3', label: '2:3 Portrait' },
+              { value: '1:1', label: '1:1 Square' },
+              { value: 'custom', label: 'Custom ratio...' },
+            ]}
+          />
+        </SettingsField>
+        {screenRatio === 'custom' && (
+          <SettingsField label="Custom ratio (W:H)">
+            <TextInput
+              value={screenRatioCustom}
+              onChange={onScreenRatioCustomChange}
+              placeholder="e.g. 21:9"
+            />
+          </SettingsField>
+        )}
 
         {/* Screensaver settings */}
         <Toggle

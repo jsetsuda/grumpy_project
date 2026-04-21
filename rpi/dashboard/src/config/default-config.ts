@@ -19,6 +19,7 @@ export const defaultConfig: DashboardConfig = {
   topBarWeather: true,
   topBarWeatherMode: 'current',
   topBarForecastDays: 5,
+  screenRatio: 'auto',
   screensaverEnabled: true,
   screensaverTimeout: 300,
   widgetOpacity: 100,
