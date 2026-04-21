@@ -1,17 +1,17 @@
 {
   "meta": {
-    "id": "shop-office",
-    "name": "Shop Office",
+    "id": "test",
+    "name": "Test",
     "layoutMode": "zones",
-    "createdAt": "2026-04-21T04:57:31.491Z",
-    "updatedAt": "2026-04-21T06:10:06.470Z"
+    "createdAt": "2026-04-21T06:10:21.369Z",
+    "updatedAt": "2026-04-21T06:10:27.949Z"
   },
   "config": {
     "version": 1,
-    "theme": "ocean",
+    "theme": "midnight",
     "backgroundMode": "photo",
     "backgroundOverlay": 60,
-    "showTopBar": false,
+    "showTopBar": true,
     "topBarFont": "system-ui",
     "topBarSize": "large",
     "topBarBold": false,
@@ -28,7 +28,7 @@
     "screensaverEnabled": true,
     "screensaverTimeout": 300,
     "widgetOpacity": 100,
-    "voiceEnabled": true,
+    "voiceEnabled": false,
     "grid": {
       "cols": 12,
       "rowHeight": 80,
@@ -39,26 +39,26 @@
     },
     "widgets": [],
     "zoneLayout": {
-      "templateId": "dakboard-classic",
+      "templateId": "full-overlay",
       "zones": [
         {
-          "regionId": "header-left",
+          "regionId": "top-left",
           "widgetType": "clock",
           "widgetConfig": {}
         },
         {
-          "regionId": "header-right",
+          "regionId": "top-right",
           "widgetType": "weather",
           "widgetConfig": {}
         },
         {
-          "regionId": "main-calendar",
+          "regionId": "left-panel",
           "widgetType": "calendar",
           "widgetConfig": {}
         },
         {
-          "regionId": "right-sidebar",
-          "widgetType": "news",
+          "regionId": "bottom-right",
+          "widgetType": "todo",
           "widgetConfig": {}
         }
       ],

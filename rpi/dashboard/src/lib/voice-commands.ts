@@ -9,6 +9,38 @@ const THEME_NAMES = ['midnight', 'slate', 'nord', 'sunset', 'forest', 'ocean', '
 export function matchVoiceCommand(transcript: string): VoiceCommandResult | null {
   const text = transcript.toLowerCase().trim()
 
+  // Timer: "set a timer for X minutes" / "timer X minutes" / "X minute timer"
+  {
+    const timerMatch = parseTimerCommand(text)
+    if (timerMatch) return timerMatch
+  }
+
+  // Alarm: "set an alarm for X am/pm"
+  {
+    const alarmMatch = parseAlarmCommand(text)
+    if (alarmMatch) return alarmMatch
+  }
+
+  // Cancel timer / alarm
+  if (text === 'cancel timer' || text === 'stop timer' || text === 'cancel all timers' || text === 'stop all timers') {
+    return { action: 'timer:cancel', params: {}, responseText: 'Cancelling timer' }
+  }
+  if (text === 'cancel alarm' || text === 'stop alarm' || text === 'cancel all alarms' || text === 'stop all alarms') {
+    return { action: 'alarm:cancel', params: {}, responseText: 'Cancelling alarm' }
+  }
+
+  // YouTube: "play X on youtube" / "youtube X"
+  {
+    const ytOnMatch = text.match(/^play\s+(.+?)\s+on\s+youtube$/)
+    if (ytOnMatch) {
+      return { action: 'youtube:play', params: { query: ytOnMatch[1] }, responseText: `Searching YouTube for ${ytOnMatch[1]}` }
+    }
+    const ytMatch = text.match(/^youtube\s+(.+)$/)
+    if (ytMatch) {
+      return { action: 'youtube:play', params: { query: ytMatch[1] }, responseText: `Searching YouTube for ${ytMatch[1]}` }
+    }
+  }
+
   // Spotify: pause
   if (text === 'pause' || text === 'pause music' || text === 'stop music') {
     return { action: 'spotify:pause', params: {}, responseText: 'Pausing music' }
@@ -72,7 +104,8 @@ export function matchVoiceCommand(transcript: string): VoiceCommandResult | null
   }
 
   // Spotify: play [query] — must come last since it's a catch-all for "play ..."
-  if (text.startsWith('play ')) {
+  // (but not "play X on youtube" which is handled above)
+  if (text.startsWith('play ') && !text.includes('on youtube')) {
     const query = text.slice(5).trim()
     if (query && query !== 'music') {
       return { action: 'spotify:search', params: { query }, responseText: `Playing ${query}` }
@@ -80,4 +113,106 @@ export function matchVoiceCommand(transcript: string): VoiceCommandResult | null
   }
 
   return null
+}
+
+function parseDurationSeconds(text: string): number | null {
+  let totalSeconds = 0
+  let matched = false
+
+  // Match hours
+  const hourMatch = text.match(/(\d+)\s*(?:hour|hours|hr|hrs)/)
+  if (hourMatch) {
+    totalSeconds += parseInt(hourMatch[1], 10) * 3600
+    matched = true
+  }
+
+  // Match minutes
+  const minMatch = text.match(/(\d+)\s*(?:minute|minutes|min|mins)/)
+  if (minMatch) {
+    totalSeconds += parseInt(minMatch[1], 10) * 60
+    matched = true
+  }
+
+  // Match seconds
+  const secMatch = text.match(/(\d+)\s*(?:second|seconds|sec|secs)/)
+  if (secMatch) {
+    totalSeconds += parseInt(secMatch[1], 10)
+    matched = true
+  }
+
+  return matched ? totalSeconds : null
+}
+
+function parseTimerCommand(text: string): VoiceCommandResult | null {
+  // "set a timer for X minutes" / "set timer for X minutes"
+  if (text.match(/^set\s+(?:a\s+)?timer\s+(?:for\s+)?/)) {
+    const duration = parseDurationSeconds(text)
+    if (duration !== null && duration > 0) {
+      return {
+        action: 'timer:set',
+        params: { duration: String(duration), name: 'Timer' },
+        responseText: `Setting timer for ${formatDuration(duration)}`,
+      }
+    }
+  }
+
+  // "timer X minutes"
+  if (text.match(/^timer\s+\d/)) {
+    const duration = parseDurationSeconds(text)
+    if (duration !== null && duration > 0) {
+      return {
+        action: 'timer:set',
+        params: { duration: String(duration), name: 'Timer' },
+        responseText: `Setting timer for ${formatDuration(duration)}`,
+      }
+    }
+  }
+
+  // "X minute timer" / "X hour timer"
+  const reverseMatch = text.match(/^(\d+)\s*(?:minute|minutes|min|hour|hours|hr|second|seconds|sec)\s+timer$/)
+  if (reverseMatch) {
+    const duration = parseDurationSeconds(text.replace(/\s+timer$/, ''))
+    if (duration !== null && duration > 0) {
+      return {
+        action: 'timer:set',
+        params: { duration: String(duration), name: 'Timer' },
+        responseText: `Setting timer for ${formatDuration(duration)}`,
+      }
+    }
+  }
+
+  return null
+}
+
+function parseAlarmCommand(text: string): VoiceCommandResult | null {
+  // "set an alarm for 7:00 am" / "set alarm for 7 pm"
+  const match = text.match(/(?:set\s+(?:an?\s+)?alarm\s+(?:for\s+)?|alarm\s+(?:for\s+)?)(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i)
+  if (match) {
+    let hours = parseInt(match[1], 10)
+    const minutes = match[2] ? parseInt(match[2], 10) : 0
+    const period = match[3].toLowerCase()
+
+    if (period === 'pm' && hours !== 12) hours += 12
+    if (period === 'am' && hours === 12) hours = 0
+
+    const timeStr = `${hours % 12 || 12}:${minutes.toString().padStart(2, '0')} ${period.toUpperCase()}`
+    return {
+      action: 'alarm:set',
+      params: { time: timeStr },
+      responseText: `Setting alarm for ${timeStr}`,
+    }
+  }
+
+  return null
+}
+
+function formatDuration(seconds: number): string {
+  const parts: string[] = []
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) parts.push(`${h} hour${h !== 1 ? 's' : ''}`)
+  if (m > 0) parts.push(`${m} minute${m !== 1 ? 's' : ''}`)
+  if (s > 0) parts.push(`${s} second${s !== 1 ? 's' : ''}`)
+  return parts.join(' and ') || '0 seconds'
 }

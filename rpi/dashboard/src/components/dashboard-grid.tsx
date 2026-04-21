@@ -12,7 +12,9 @@ import { useTheme } from '@/hooks/use-theme'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import { TopBarWeather } from './topbar-weather'
 import { NowPlayingOverlay } from './now-playing-overlay'
+import { TimerOverlay } from './timer-overlay'
 import { VoiceOverlay } from './voice-overlay'
+import { useTimers } from '@/hooks/use-timers'
 
 export function DashboardGrid() {
   const { config, updateConfig, updateWidgetConfig, updateAllLayouts } = useConfig()
@@ -27,6 +29,8 @@ export function DashboardGrid() {
     (config.screensaverTimeout ?? 300) * 1000,
     config.screensaverEnabled ?? true,
   )
+
+  const { timers, addTimer, addAlarm, cancelTimer, dismissTimer, cancelByType } = useTimers()
 
   const inSlideshow = isIdle || manualSlideshow
 
@@ -126,6 +130,59 @@ export function DashboardGrid() {
     return unregister
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Register voice handlers for timers, alarms, and YouTube
+  useEffect(() => {
+    const unregister = registerVoiceHandler(async (action, params) => {
+      switch (action) {
+        case 'timer:set': {
+          const seconds = parseInt(params.duration, 10)
+          if (seconds > 0) {
+            addTimer(params.name || 'Timer', seconds * 1000)
+          }
+          return true
+        }
+        case 'alarm:set': {
+          const timeStr = params.time
+          if (timeStr) {
+            const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+            if (match) {
+              let hours = parseInt(match[1], 10)
+              const minutes = parseInt(match[2], 10)
+              const period = match[3].toUpperCase()
+              if (period === 'PM' && hours !== 12) hours += 12
+              if (period === 'AM' && hours === 12) hours = 0
+              const target = new Date()
+              target.setHours(hours, minutes, 0, 0)
+              if (target.getTime() <= Date.now()) {
+                target.setDate(target.getDate() + 1)
+              }
+              addAlarm(`Alarm ${timeStr}`, target)
+            }
+          }
+          return true
+        }
+        case 'timer:cancel': {
+          cancelByType('timer')
+          return true
+        }
+        case 'alarm:cancel': {
+          cancelByType('alarm')
+          return true
+        }
+        case 'youtube:play': {
+          const ytWidget = config.widgets.find(w => w.type === 'youtube')
+          if (ytWidget) {
+            updateWidgetConfig(ytWidget.id, { searchQuery: params.query })
+          }
+          return true
+        }
+        default: return false
+      }
+    })
+    return unregister
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addTimer, addAlarm, cancelByType, config.widgets])
 
   return (
     <>
@@ -300,6 +357,9 @@ export function DashboardGrid() {
         )}
 
       </div>
+
+      {/* Timer overlay — centered */}
+      <TimerOverlay timers={timers} onCancel={cancelTimer} onDismiss={dismissTimer} />
 
       {/* Voice overlay — bottom right */}
       {(config.voiceEnabled ?? true) && haUrl && haToken && (

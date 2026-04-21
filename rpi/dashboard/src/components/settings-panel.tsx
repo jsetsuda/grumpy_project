@@ -283,6 +283,8 @@ export function WidgetSettings({ widget, onConfigChange }: WidgetSettingsProps) 
       return <GrocerySettings config={widget.config} onChange={onConfigChange} />
     case 'countdown':
       return <CountdownSettings config={widget.config} onChange={onConfigChange} />
+    case 'youtube':
+      return <YouTubeSettings config={widget.config} onChange={onConfigChange} />
     default:
       return <p className="text-sm text-[var(--muted-foreground)]">No settings available</p>
   }
@@ -1458,6 +1460,35 @@ function CountdownSettings({ config, onChange }: { config: Record<string, any>; 
       >
         <Plus size={14} /> Add event
       </button>
+    </div>
+  )
+}
+
+function YouTubeSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
+  return (
+    <div>
+      <SettingsField label="YouTube API Key (optional)">
+        <TextInput
+          value={config.apiKey || ''}
+          onChange={v => onChange({ apiKey: v || undefined })}
+          placeholder="AIza... (enables search)"
+        />
+      </SettingsField>
+      <p className="text-xs text-[var(--muted-foreground)] mt-1">
+        Optional. Without an API key you can still paste YouTube URLs to play videos.
+      </p>
+      <SettingsField label="Default Search Query">
+        <TextInput
+          value={config.searchQuery || ''}
+          onChange={v => onChange({ searchQuery: v })}
+          placeholder="e.g. lofi hip hop radio"
+        />
+      </SettingsField>
+      <Toggle
+        checked={config.autoplay !== false}
+        onChange={v => onChange({ autoplay: v })}
+        label="Autoplay videos"
+      />
     </div>
   )
 }

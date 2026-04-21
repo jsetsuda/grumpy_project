@@ -1,25 +1,7 @@
 import { useState } from 'react'
-import { X, Check, Plus, Trash2, Wand2, ChevronDown, ChevronRight } from 'lucide-react'
+import { X, Check, Plus, Trash2, Wand2 } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
-import { WidgetSettings } from './settings-panel'
-import { Component, type ReactNode, type ErrorInfo } from 'react'
-
-class SafeWidgetSettings extends Component<{ children: ReactNode }, { hasError: boolean; error?: string }> {
-  state = { hasError: false, error: undefined as string | undefined }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error: error.message }
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Zone widget settings error:', error, info)
-  }
-  render() {
-    if (this.state.hasError) {
-      return <p className="text-xs text-[var(--destructive)] p-2">Settings error: {this.state.error}</p>
-    }
-    return this.props.children
-  }
-}
 import { zoneTemplates, getTemplate, templatePresets } from '@/config/zone-templates'
 import type { ZoneLayoutConfig, ZoneInstance, ZoneRegion } from '@/config/zone-types'
 
@@ -77,8 +59,6 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
     setZones(newZones)
   }
 
-  const [expandedZone, setExpandedZone] = useState<string | null>(null)
-
   function handleWidgetAssign(regionId: string, widgetType: string) {
     setZones(prev => {
       const existing = prev.find(z => z.regionId === regionId)
@@ -87,12 +67,6 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
       }
       return [...prev, { regionId, widgetType, widgetConfig: {} }]
     })
-  }
-
-  function handleZoneConfigChange(regionId: string, partial: Partial<Record<string, unknown>>) {
-    setZones(prev => prev.map(z =>
-      z.regionId === regionId ? { ...z, widgetConfig: { ...z.widgetConfig, ...partial } } : z
-    ))
   }
 
   // Custom zone management
@@ -214,7 +188,6 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
               <div className="space-y-3">
                 {selectedTemplate.regions.map(region => {
                   const zone = zones.find(z => z.regionId === region.id)
-                  const isExpanded = expandedZone === region.id
                   const hasWidget = zone?.widgetType && zone.widgetType !== ''
                   return (
                     <div key={region.id} className="rounded-lg border border-[var(--border)] bg-[var(--card)] overflow-hidden">
@@ -234,25 +207,9 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
                         </select>
                       </div>
                       {hasWidget && (
-                        <>
-                          <button
-                            onClick={() => setExpandedZone(isExpanded ? null : region.id)}
-                            className="w-full flex items-center gap-1 px-3 py-2 text-xs text-[var(--muted-foreground)] hover:bg-[var(--muted)] transition-colors border-t border-[var(--border)]"
-                          >
-                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            Widget Settings
-                          </button>
-                          {isExpanded && (
-                            <div className="px-3 pb-3">
-                              <SafeWidgetSettings>
-                                <WidgetSettings
-                                  widget={{ id: region.id, type: zone!.widgetType, layout: { x: 0, y: 0, w: 4, h: 4 }, config: zone!.widgetConfig }}
-                                  onConfigChange={(partial) => handleZoneConfigChange(region.id, partial)}
-                                />
-                              </SafeWidgetSettings>
-                            </div>
-                          )}
-                        </>
+                        <div className="px-3 pb-2 text-xs text-[var(--muted-foreground)] border-t border-[var(--border)] pt-2">
+                          Configure this widget in the Settings panel
+                        </div>
                       )}
                     </div>
                   )
@@ -310,25 +267,10 @@ export function ZoneEditor({ open, onClose }: ZoneEditorProps) {
                       ))}
                     </select>
 
-                    {/* Widget settings */}
                     {zone.widgetType && (
-                      <>
-                        <button
-                          onClick={() => setExpandedZone(expandedZone === zone.regionId ? null : zone.regionId)}
-                          className="w-full flex items-center gap-1 py-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-                        >
-                          {expandedZone === zone.regionId ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                          Widget Settings
-                        </button>
-                        {expandedZone === zone.regionId && (
-                          <SafeWidgetSettings>
-                            <WidgetSettings
-                              widget={{ id: zone.regionId, type: zone.widgetType, layout: { x: 0, y: 0, w: 4, h: 4 }, config: zone.widgetConfig }}
-                              onConfigChange={(partial) => handleZoneConfigChange(zone.regionId, partial)}
-                            />
-                          </SafeWidgetSettings>
-                        )}
-                      </>
+                      <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                        Configure this widget in the Settings panel
+                      </p>
                     )}
 
                     {/* Position/Size controls */}

@@ -11,6 +11,7 @@ import { TrafficWidget } from './traffic/traffic-widget'
 import { GroceryWidget } from './grocery/grocery-widget'
 import { CountdownWidget } from './countdown/countdown-widget'
 import { NewsWidget } from './news/news-widget'
+import { YouTubeWidget } from './youtube/youtube-widget'
 
 const registry = new Map<string, WidgetDefinition>()
 
@@ -124,6 +125,15 @@ register({
   component: NewsWidget,
   defaultSize: { w: 4, h: 4 },
   minSize: { w: 3, h: 2 },
+})
+
+register({
+  type: 'youtube',
+  name: 'YouTube',
+  description: 'Search and play YouTube videos',
+  component: YouTubeWidget,
+  defaultSize: { w: 4, h: 4 },
+  minSize: { w: 3, h: 3 },
 })
 
 export { registry }
