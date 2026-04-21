@@ -6,6 +6,7 @@ import { SpotifyAuth } from '@/widgets/music/spotify-auth'
 import { GooglePhotosAuth } from '@/widgets/photos/google-photos-auth'
 import type { WidgetInstance, BackgroundPhotosConfig } from '@/config/types'
 import { themes, themeNames, type ThemeName } from '@/config/themes'
+import { rssFeedsDb, rssCategories, type RssFeedEntry } from '@/lib/rss-feeds-db'
 
 interface SharedCredentials {
   homeAssistant?: { url: string; token: string }
@@ -1195,6 +1196,9 @@ function TrafficSettings({ config, onChange }: { config: Record<string, any>; on
 
 function NewsSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
   const feeds: Array<{ url: string; name: string }> = config.feeds || []
+  const [browseOpen, setBrowseOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('All')
 
   function addFeed() {
     onChange({ feeds: [...feeds, { url: '', name: `Feed ${feeds.length + 1}` }] })
@@ -1208,6 +1212,26 @@ function NewsSettings({ config, onChange }: { config: Record<string, any>; onCha
   function removeFeed(index: number) {
     onChange({ feeds: feeds.filter((_, i) => i !== index) })
   }
+
+  function addFeedFromDb(entry: RssFeedEntry) {
+    onChange({ feeds: [...feeds, { url: entry.url, name: entry.name }] })
+  }
+
+  const addedUrls = new Set(feeds.map(f => f.url))
+
+  const filteredDbFeeds = rssFeedsDb.filter(entry => {
+    if (addedUrls.has(entry.url)) return false
+    if (categoryFilter !== 'All' && entry.category !== categoryFilter) return false
+    if (searchText) {
+      const query = searchText.toLowerCase()
+      if (
+        !entry.name.toLowerCase().includes(query) &&
+        !entry.description.toLowerCase().includes(query) &&
+        !entry.category.toLowerCase().includes(query)
+      ) return false
+    }
+    return true
+  })
 
   return (
     <div>
@@ -1264,6 +1288,89 @@ function NewsSettings({ config, onChange }: { config: Record<string, any>; onCha
         >
           <Plus size={14} /> Add feed
         </button>
+      </div>
+
+      {/* Browse Feeds Section */}
+      <div className="mt-4 border border-[var(--border)] rounded-lg overflow-hidden">
+        <button
+          onClick={() => setBrowseOpen(!browseOpen)}
+          className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+        >
+          {browseOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <Search size={14} />
+          <span className="flex-1 text-sm font-medium">Browse Feeds</span>
+        </button>
+
+        {browseOpen && (
+          <div className="p-3 pt-0 border-t border-[var(--border)]">
+            {/* Search input */}
+            <div className="mt-2">
+              <input
+                type="text"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                placeholder="Search feeds..."
+                className="w-full bg-[var(--muted)] text-[var(--foreground)] rounded-md px-3 py-2 text-sm outline-none placeholder:text-[var(--muted-foreground)] focus:ring-1 focus:ring-[var(--ring)]"
+              />
+            </div>
+
+            {/* Category filter buttons */}
+            <div className="flex flex-wrap gap-1 mt-2">
+              {['All', ...rssCategories].map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                    categoryFilter === cat
+                      ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                      : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Results list */}
+            <div className="mt-2 max-h-[300px] overflow-y-auto border border-[var(--border)] rounded-md">
+              {filteredDbFeeds.length === 0 ? (
+                <p className="text-xs text-[var(--muted-foreground)] p-3 text-center">No matching feeds</p>
+              ) : (
+                <>
+                  {filteredDbFeeds.slice(0, 20).map(entry => (
+                    <div
+                      key={entry.url}
+                      className="flex items-center gap-2 px-3 min-h-[44px] border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--muted)] transition-colors"
+                    >
+                      <div className="flex-1 min-w-0 py-2">
+                        <div className="text-sm font-medium truncate">{entry.name}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--primary)]/15 text-[var(--primary)] shrink-0">
+                            {entry.category}
+                          </span>
+                          <span className="text-xs text-[var(--muted-foreground)] truncate">{entry.description}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => addFeedFromDb(entry)}
+                        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] text-[var(--muted-foreground)] transition-colors"
+                        title={`Add ${entry.name}`}
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {filteredDbFeeds.length > 20 && (
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                Showing first 20 of {filteredDbFeeds.length} results. Refine your search.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
