@@ -4,7 +4,7 @@ export const zoneTemplates: ZoneTemplate[] = [
   {
     id: 'full-overlay',
     name: 'Full Overlay',
-    description: 'Photo fills the screen with info overlaid in corners and a left panel',
+    description: 'Photo background with calendar panel, weather, and clock overlaid',
     regions: [
       {
         id: 'top-left',
@@ -54,9 +54,108 @@ export const zoneTemplates: ZoneTemplate[] = [
     ],
   },
   {
+    id: 'dakboard-classic',
+    name: 'DAKboard Classic',
+    description: 'Large calendar with weather header and news sidebar — classic digital display',
+    regions: [
+      {
+        id: 'header-left',
+        name: 'Header Left (Clock)',
+        top: '0',
+        left: '0',
+        width: '35%',
+        height: '80px',
+        padding: '16px 24px',
+        background: 'rgba(0,0,0,0.6)',
+      },
+      {
+        id: 'header-right',
+        name: 'Header Right (Weather)',
+        top: '0',
+        left: '35%',
+        width: '65%',
+        height: '80px',
+        padding: '16px 24px',
+        background: 'rgba(0,0,0,0.5)',
+      },
+      {
+        id: 'main-calendar',
+        name: 'Main Area (Calendar)',
+        top: '80px',
+        left: '0',
+        width: '70%',
+        bottom: '0',
+        padding: '20px',
+        background: 'rgba(0,0,0,0.55)',
+        overflow: 'auto',
+      },
+      {
+        id: 'right-sidebar',
+        name: 'Right Sidebar (News)',
+        top: '80px',
+        right: '0',
+        width: '30%',
+        bottom: '0',
+        padding: '16px',
+        background: 'rgba(0,0,0,0.6)',
+        overflow: 'auto',
+      },
+    ],
+  },
+  {
+    id: 'agenda-focus',
+    name: 'Agenda Focus',
+    description: 'Upcoming events front and center with weather and news on the sides',
+    regions: [
+      {
+        id: 'top-bar',
+        name: 'Top Bar (Clock + Weather)',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '70px',
+        padding: '12px 24px',
+        background: 'rgba(0,0,0,0.6)',
+      },
+      {
+        id: 'left-news',
+        name: 'Left Column (News)',
+        top: '70px',
+        left: '0',
+        width: '25%',
+        bottom: '0',
+        padding: '16px',
+        background: 'rgba(0,0,0,0.5)',
+        overflow: 'auto',
+      },
+      {
+        id: 'center-calendar',
+        name: 'Center (Calendar/Agenda)',
+        top: '70px',
+        left: '25%',
+        width: '50%',
+        bottom: '0',
+        padding: '20px',
+        background: 'rgba(0,0,0,0.45)',
+        overflow: 'auto',
+      },
+      {
+        id: 'right-info',
+        name: 'Right Column (Todo/Info)',
+        top: '70px',
+        right: '0',
+        width: '25%',
+        bottom: '0',
+        padding: '16px',
+        background: 'rgba(0,0,0,0.5)',
+        overflow: 'auto',
+      },
+    ],
+  },
+  {
     id: 'left-panel',
     name: 'Left Panel',
-    description: 'Dark panel on left with full height, photo visible on right',
+    description: 'Dark info panel on left with calendar and news, photo visible on right',
     regions: [
       {
         id: 'left-panel',
@@ -85,11 +184,11 @@ export const zoneTemplates: ZoneTemplate[] = [
   {
     id: 'split',
     name: 'Split',
-    description: '50/50 split with info panel on left and photo/widget area on right',
+    description: '50/50 split — calendar and news on left, widgets on right',
     regions: [
       {
         id: 'left-half',
-        name: 'Left Half (Info Panel)',
+        name: 'Left Half (Calendar)',
         top: '0',
         left: '0',
         width: '50%',
@@ -100,7 +199,7 @@ export const zoneTemplates: ZoneTemplate[] = [
       },
       {
         id: 'right-half',
-        name: 'Right Half (Widget Area)',
+        name: 'Right Half (Widgets)',
         top: '0',
         right: '0',
         width: '50%',
@@ -112,13 +211,13 @@ export const zoneTemplates: ZoneTemplate[] = [
     ],
   },
   {
-    id: 'header-content',
-    name: 'Header + Content',
-    description: 'Full-width header bar on top with content panels below',
+    id: 'family-hub',
+    name: 'Family Hub',
+    description: 'Calendar header, grocery list, todo, and news — family command center',
     regions: [
       {
         id: 'header',
-        name: 'Header Bar',
+        name: 'Header (Clock + Weather)',
         top: '0',
         left: '0',
         width: '100%',
@@ -127,27 +226,47 @@ export const zoneTemplates: ZoneTemplate[] = [
         background: 'rgba(0,0,0,0.6)',
       },
       {
-        id: 'left-content',
-        name: 'Left Content',
-        top: '96px',
-        left: '16px',
-        width: 'calc(50% - 24px)',
-        bottom: '16px',
-        padding: '20px',
-        background: 'rgba(0,0,0,0.5)',
-        borderRadius: '16px',
+        id: 'calendar-panel',
+        name: 'Calendar (Left)',
+        top: '80px',
+        left: '0',
+        width: '40%',
+        bottom: '0',
+        padding: '16px',
+        background: 'rgba(0,0,0,0.55)',
         overflow: 'auto',
       },
       {
-        id: 'right-content',
-        name: 'Right Content',
-        top: '96px',
-        right: '16px',
-        width: 'calc(50% - 24px)',
-        bottom: '16px',
-        padding: '20px',
+        id: 'top-right-panel',
+        name: 'Top Right (Todo/Grocery)',
+        top: '80px',
+        left: '40%',
+        width: '30%',
+        height: '50%',
+        padding: '16px',
         background: 'rgba(0,0,0,0.5)',
-        borderRadius: '16px',
+        overflow: 'auto',
+      },
+      {
+        id: 'bottom-right-panel',
+        name: 'Bottom Right (News)',
+        bottom: '0',
+        left: '40%',
+        width: '30%',
+        height: 'calc(50% - 40px)',
+        padding: '16px',
+        background: 'rgba(0,0,0,0.5)',
+        overflow: 'auto',
+      },
+      {
+        id: 'far-right',
+        name: 'Far Right (Countdown/Music)',
+        top: '80px',
+        right: '0',
+        width: '30%',
+        bottom: '0',
+        padding: '16px',
+        background: 'rgba(0,0,0,0.45)',
         overflow: 'auto',
       },
     ],
@@ -155,7 +274,7 @@ export const zoneTemplates: ZoneTemplate[] = [
   {
     id: 'minimal',
     name: 'Minimal',
-    description: 'Just a clock and one widget, the rest is beautiful photo',
+    description: 'Just clock and one widget — the rest is beautiful photos',
     regions: [
       {
         id: 'center-top',
@@ -183,17 +302,6 @@ export const zoneTemplates: ZoneTemplate[] = [
   },
 ]
 
-// Custom template — empty, user places their own zones
-export const customTemplate: ZoneTemplate = {
-  id: 'custom',
-  name: 'Custom',
-  description: 'Place and size your own widgets freely on the screen',
-  regions: [],
-}
-
-// Include custom in the full list
-zoneTemplates.push(customTemplate)
-
 export function getTemplate(id: string): ZoneTemplate | undefined {
   return zoneTemplates.find(t => t.id === id)
 }
@@ -206,6 +314,18 @@ export const templatePresets: Record<string, Record<string, string>> = {
     'left-panel': 'calendar',
     'bottom-right': 'todo',
   },
+  'dakboard-classic': {
+    'header-left': 'clock',
+    'header-right': 'weather',
+    'main-calendar': 'calendar',
+    'right-sidebar': 'news',
+  },
+  'agenda-focus': {
+    'top-bar': 'clock',
+    'left-news': 'news',
+    'center-calendar': 'calendar',
+    'right-info': 'todo',
+  },
   'left-panel': {
     'left-panel': 'calendar',
     'top-right': 'weather',
@@ -214,13 +334,25 @@ export const templatePresets: Record<string, Record<string, string>> = {
     'left-half': 'calendar',
     'right-half': 'ha-entities',
   },
-  'header-content': {
+  'family-hub': {
     'header': 'clock',
-    'left-content': 'calendar',
-    'right-content': 'weather',
+    'calendar-panel': 'calendar',
+    'top-right-panel': 'grocery',
+    'bottom-right-panel': 'news',
+    'far-right': 'countdown',
   },
   'minimal': {
     'center-top': 'clock',
     'bottom-center': 'weather',
   },
 }
+
+// Custom template — empty, user places their own zones
+export const customTemplate: ZoneTemplate = {
+  id: 'custom',
+  name: 'Custom',
+  description: 'Place and size your own widgets freely on the screen',
+  regions: [],
+}
+
+zoneTemplates.push(customTemplate)

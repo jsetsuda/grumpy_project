@@ -137,6 +137,19 @@ export function DashboardGrid() {
         />
       )}
 
+      {/* Hidden settings button when top bar is off — appears on hover */}
+      {!showTopBar && !inSlideshow && (
+        <div className="fixed top-0 right-0 z-50 p-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2 rounded-lg bg-black/30 backdrop-blur-sm hover:bg-black/50 transition-colors"
+            title="Settings"
+          >
+            <Settings size={18} />
+          </button>
+        </div>
+      )}
+
       {/* Top Bar — always visible, persists over slideshow */}
       {showTopBar && (
         <div
