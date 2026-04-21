@@ -58,6 +58,17 @@ export function DashboardGrid() {
   }, [editMode, updateAllLayouts])
 
   const showTopBar = config.showTopBar ?? true
+  const topBarFont = config.topBarFont || 'system-ui'
+  const topBarBold = config.topBarBold ?? false
+  const topBarBg = config.topBarBackground ?? true
+  const topBarSize = config.topBarSize || 'large'
+
+  const sizeClasses = {
+    small: { time: 'text-2xl', date: 'text-base' },
+    medium: { time: 'text-3xl', date: 'text-xl' },
+    large: { time: 'text-5xl', date: 'text-3xl' },
+    xlarge: { time: 'text-7xl', date: 'text-4xl' },
+  }[topBarSize]
 
   function exitSlideshow() {
     setManualSlideshow(false)
@@ -78,11 +89,17 @@ export function DashboardGrid() {
       {showTopBar && (
         <div className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 py-3 z-50">
           {/* Left: Clock/Date */}
-          <div className="flex items-center gap-4" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 1px 3px rgba(0,0,0,0.6)' }}>
-            <div className="text-5xl font-bold tracking-tight text-[var(--foreground)]">
+          <div
+            className={`flex items-center gap-4 px-4 py-2 rounded-2xl ${topBarBg ? 'bg-black/30 backdrop-blur-sm' : ''}`}
+            style={{
+              fontFamily: topBarFont,
+              textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 1px 3px rgba(0,0,0,0.6)',
+            }}
+          >
+            <div className={`${sizeClasses.time} ${topBarBold ? 'font-bold' : 'font-light'} tracking-tight text-[var(--foreground)]`}>
               {format(now, 'h:mm a')}
             </div>
-            <div className="text-3xl font-bold text-[var(--muted-foreground)]">
+            <div className={`${sizeClasses.date} ${topBarBold ? 'font-bold' : 'font-normal'} text-[var(--muted-foreground)]`}>
               {format(now, 'EEEE, MMMM d')}
             </div>
           </div>

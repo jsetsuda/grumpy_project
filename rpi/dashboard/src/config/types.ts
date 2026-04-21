@@ -29,6 +29,10 @@ export interface DashboardConfig {
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
   showTopBar: boolean
+  topBarFont: string
+  topBarSize: 'small' | 'medium' | 'large' | 'xlarge'
+  topBarBold: boolean
+  topBarBackground: boolean
   screensaverEnabled: boolean
   screensaverTimeout: number // seconds
   widgetOpacity: number // 0-100

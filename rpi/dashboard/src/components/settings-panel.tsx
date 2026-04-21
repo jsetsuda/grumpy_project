@@ -43,8 +43,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             backgroundOverlay={config.backgroundOverlay ?? 60}
             widgetOpacity={config.widgetOpacity ?? 100}
             showTopBar={config.showTopBar ?? true}
+            topBarFont={config.topBarFont || 'system-ui'}
+            topBarSize={config.topBarSize || 'large'}
+            topBarBold={config.topBarBold ?? false}
+            topBarBackground={config.topBarBackground ?? true}
             screensaverEnabled={config.screensaverEnabled ?? true}
             screensaverTimeout={config.screensaverTimeout ?? 300}
+            onTopBarFontChange={(v) => updateConfig({ topBarFont: v })}
+            onTopBarSizeChange={(v) => updateConfig({ topBarSize: v as any })}
+            onTopBarBoldChange={(v) => updateConfig({ topBarBold: v })}
+            onTopBarBackgroundChange={(v) => updateConfig({ topBarBackground: v })}
             onThemeChange={(t) => updateConfig({ theme: t })}
             onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
             onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
@@ -589,8 +597,16 @@ interface ThemeBackgroundSettingsProps {
   backgroundOverlay: number
   widgetOpacity: number
   showTopBar: boolean
+  topBarFont: string
+  topBarSize: string
+  topBarBold: boolean
+  topBarBackground: boolean
   screensaverEnabled: boolean
   screensaverTimeout: number
+  onTopBarFontChange: (font: string) => void
+  onTopBarSizeChange: (size: string) => void
+  onTopBarBoldChange: (bold: boolean) => void
+  onTopBarBackgroundChange: (bg: boolean) => void
   onThemeChange: (theme: ThemeName) => void
   onBackgroundModeChange: (mode: 'solid' | 'photo') => void
   onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
@@ -608,8 +624,16 @@ function ThemeBackgroundSettings({
   backgroundOverlay,
   widgetOpacity,
   showTopBar,
+  topBarFont,
+  topBarSize,
+  topBarBold,
+  topBarBackground,
   screensaverEnabled,
   screensaverTimeout,
+  onTopBarFontChange,
+  onTopBarSizeChange,
+  onTopBarBoldChange,
+  onTopBarBackgroundChange,
   onThemeChange,
   onBackgroundModeChange,
   onBackgroundPhotosChange,
@@ -832,6 +856,48 @@ function ThemeBackgroundSettings({
           onChange={onShowTopBarChange}
           label="Show top bar (clock, settings, lock)"
         />
+        {showTopBar && (
+          <div className="ml-4 space-y-2 mt-2">
+            <SettingsField label="Font">
+              <SelectInput
+                value={topBarFont}
+                onChange={onTopBarFontChange}
+                options={[
+                  { value: 'system-ui', label: 'System Default' },
+                  { value: 'Inter, sans-serif', label: 'Inter' },
+                  { value: 'Georgia, serif', label: 'Georgia (Serif)' },
+                  { value: "'Courier New', monospace", label: 'Courier (Mono)' },
+                  { value: "'Segoe UI', sans-serif", label: 'Segoe UI' },
+                  { value: 'Verdana, sans-serif', label: 'Verdana' },
+                  { value: "'Trebuchet MS', sans-serif", label: 'Trebuchet' },
+                  { value: "'Palatino Linotype', serif", label: 'Palatino' },
+                ]}
+              />
+            </SettingsField>
+            <SettingsField label="Size">
+              <SelectInput
+                value={topBarSize}
+                onChange={onTopBarSizeChange}
+                options={[
+                  { value: 'small', label: 'Small' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'large', label: 'Large' },
+                  { value: 'xlarge', label: 'Extra Large' },
+                ]}
+              />
+            </SettingsField>
+            <Toggle
+              checked={topBarBold}
+              onChange={onTopBarBoldChange}
+              label="Bold"
+            />
+            <Toggle
+              checked={topBarBackground}
+              onChange={onTopBarBackgroundChange}
+              label="Background card behind clock"
+            />
+          </div>
+        )}
 
         {/* Screensaver settings */}
         <Toggle
