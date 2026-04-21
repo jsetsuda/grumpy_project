@@ -52,6 +52,7 @@ declare global {
       }) => SpotifyPlayer
     }
     onSpotifyWebPlaybackSDKReady: () => void
+    _grumpySpotifyPlayer?: SpotifyPlayer
   }
 }
 
@@ -88,10 +89,17 @@ export function useSpotifyPlayer({ getToken, enabled, deviceName = 'Grumpy Dashb
     function initPlayer() {
       if (!window.Spotify || !mounted) return
 
+      // Disconnect any existing singleton player first
+      if (window._grumpySpotifyPlayer) {
+        try {
+          window._grumpySpotifyPlayer.disconnect()
+        } catch { /* ignore */ }
+        window._grumpySpotifyPlayer = undefined
+      }
+
       const newPlayer = new window.Spotify.Player({
         name: deviceName,
         getOAuthToken: (cb: (token: string) => void) => {
-          // The SDK calls this whenever it needs a token (including refresh)
           getTokenRef.current().then(token => {
             if (token) cb(token)
           })
@@ -108,7 +116,6 @@ export function useSpotifyPlayer({ getToken, enabled, deviceName = 'Grumpy Dashb
 
       newPlayer.addListener('not_ready', () => {
         if (!mounted) return
-        console.log('Spotify Web Player not ready')
         setIsReady(false)
         setDeviceId(null)
       })
@@ -139,6 +146,8 @@ export function useSpotifyPlayer({ getToken, enabled, deviceName = 'Grumpy Dashb
         }
       })
 
+      // Store as singleton
+      window._grumpySpotifyPlayer = newPlayer
       playerRef.current = newPlayer
       setPlayer(newPlayer)
     }
@@ -151,8 +160,13 @@ export function useSpotifyPlayer({ getToken, enabled, deviceName = 'Grumpy Dashb
 
     return () => {
       mounted = false
-      playerRef.current?.disconnect()
-      playerRef.current = null
+      if (playerRef.current) {
+        playerRef.current.disconnect()
+        if (window._grumpySpotifyPlayer === playerRef.current) {
+          window._grumpySpotifyPlayer = undefined
+        }
+        playerRef.current = null
+      }
       setPlayer(null)
       setDeviceId(null)
       setIsReady(false)
