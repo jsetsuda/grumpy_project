@@ -9,6 +9,7 @@ import { SettingsPanel } from './settings-panel'
 import { BackgroundLayer } from './background-layer'
 import { useTheme } from '@/hooks/use-theme'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
+import { TopBarWeather } from './topbar-weather'
 
 export function DashboardGrid() {
   const { config, updateWidgetConfig, updateAllLayouts } = useConfig()
@@ -58,6 +59,16 @@ export function DashboardGrid() {
   }, [editMode, updateAllLayouts])
 
   const showTopBar = config.showTopBar ?? true
+  const showTopBarWeather = config.topBarWeather ?? true
+  const topBarWeatherMode = config.topBarWeatherMode || 'current'
+  const topBarForecastDays = config.topBarForecastDays || 5
+
+  // Get weather config from the first weather widget
+  const weatherWidget = config.widgets.find(w => w.type === 'weather')
+  const weatherLat = (weatherWidget?.config?.lat as number) || 42.3314
+  const weatherLon = (weatherWidget?.config?.lon as number) || -83.0458
+  const weatherUnits = ((weatherWidget?.config?.units as string) || 'imperial') as 'metric' | 'imperial'
+
   const topBarFont = config.topBarFont || 'system-ui'
   const topBarBold = config.topBarBold ?? false
   const topBarBg = config.topBarBackground ?? true
@@ -103,6 +114,19 @@ export function DashboardGrid() {
               {format(now, 'EEEE, MMMM d')}
             </div>
           </div>
+
+          {/* Center: Weather */}
+          {showTopBarWeather && (
+            <div className={`px-4 py-2 rounded-2xl ${topBarBg ? 'bg-black/30 backdrop-blur-sm' : ''}`}>
+              <TopBarWeather
+                lat={weatherLat}
+                lon={weatherLon}
+                units={weatherUnits}
+                mode={topBarWeatherMode}
+                forecastDays={topBarForecastDays}
+              />
+            </div>
+          )}
 
           {/* Right: Controls */}
           <div className="flex items-center gap-2">

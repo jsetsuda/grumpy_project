@@ -47,12 +47,18 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             topBarSize={config.topBarSize || 'large'}
             topBarBold={config.topBarBold ?? false}
             topBarBackground={config.topBarBackground ?? true}
+            topBarWeather={config.topBarWeather ?? true}
+            topBarWeatherMode={config.topBarWeatherMode || 'current'}
+            topBarForecastDays={config.topBarForecastDays || 5}
             screensaverEnabled={config.screensaverEnabled ?? true}
             screensaverTimeout={config.screensaverTimeout ?? 300}
             onTopBarFontChange={(v) => updateConfig({ topBarFont: v })}
             onTopBarSizeChange={(v) => updateConfig({ topBarSize: v as any })}
             onTopBarBoldChange={(v) => updateConfig({ topBarBold: v })}
             onTopBarBackgroundChange={(v) => updateConfig({ topBarBackground: v })}
+            onTopBarWeatherChange={(v) => updateConfig({ topBarWeather: v })}
+            onTopBarWeatherModeChange={(v) => updateConfig({ topBarWeatherMode: v as any })}
+            onTopBarForecastDaysChange={(v) => updateConfig({ topBarForecastDays: v })}
             onThemeChange={(t) => updateConfig({ theme: t })}
             onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
             onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
@@ -601,12 +607,18 @@ interface ThemeBackgroundSettingsProps {
   topBarSize: string
   topBarBold: boolean
   topBarBackground: boolean
+  topBarWeather: boolean
+  topBarWeatherMode: string
+  topBarForecastDays: number
   screensaverEnabled: boolean
   screensaverTimeout: number
   onTopBarFontChange: (font: string) => void
   onTopBarSizeChange: (size: string) => void
   onTopBarBoldChange: (bold: boolean) => void
   onTopBarBackgroundChange: (bg: boolean) => void
+  onTopBarWeatherChange: (show: boolean) => void
+  onTopBarWeatherModeChange: (mode: string) => void
+  onTopBarForecastDaysChange: (days: 3 | 5 | 7) => void
   onThemeChange: (theme: ThemeName) => void
   onBackgroundModeChange: (mode: 'solid' | 'photo') => void
   onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
@@ -628,12 +640,18 @@ function ThemeBackgroundSettings({
   topBarSize,
   topBarBold,
   topBarBackground,
+  topBarWeather,
+  topBarWeatherMode,
+  topBarForecastDays,
   screensaverEnabled,
   screensaverTimeout,
   onTopBarFontChange,
   onTopBarSizeChange,
   onTopBarBoldChange,
   onTopBarBackgroundChange,
+  onTopBarWeatherChange,
+  onTopBarWeatherModeChange,
+  onTopBarForecastDaysChange,
   onThemeChange,
   onBackgroundModeChange,
   onBackgroundPhotosChange,
@@ -896,6 +914,37 @@ function ThemeBackgroundSettings({
               onChange={onTopBarBackgroundChange}
               label="Background card behind clock"
             />
+            <Toggle
+              checked={topBarWeather}
+              onChange={onTopBarWeatherChange}
+              label="Show weather in top bar"
+            />
+            {topBarWeather && (
+              <SettingsField label="Top bar weather display">
+                <SelectInput
+                  value={topBarWeatherMode}
+                  onChange={onTopBarWeatherModeChange}
+                  options={[
+                    { value: 'current', label: 'Current conditions only' },
+                    { value: 'hourly', label: 'Current + 6hr hourly' },
+                    { value: 'forecast', label: 'Current + daily forecast' },
+                  ]}
+                />
+              </SettingsField>
+            )}
+            {topBarWeather && topBarWeatherMode === 'forecast' && (
+              <SettingsField label="Forecast days">
+                <SelectInput
+                  value={String(topBarForecastDays)}
+                  onChange={v => onTopBarForecastDaysChange(parseInt(v) as 3 | 5 | 7)}
+                  options={[
+                    { value: '3', label: '3 days' },
+                    { value: '5', label: '5 days' },
+                    { value: '7', label: '7 days' },
+                  ]}
+                />
+              </SettingsField>
+            )}
           </div>
         )}
 

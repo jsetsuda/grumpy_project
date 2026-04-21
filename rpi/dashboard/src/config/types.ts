@@ -33,6 +33,9 @@ export interface DashboardConfig {
   topBarSize: 'small' | 'medium' | 'large' | 'xlarge'
   topBarBold: boolean
   topBarBackground: boolean
+  topBarWeather: boolean
+  topBarWeatherMode: 'current' | 'hourly' | 'forecast'
+  topBarForecastDays: 3 | 5 | 7
   screensaverEnabled: boolean
   screensaverTimeout: number // seconds
   widgetOpacity: number // 0-100
