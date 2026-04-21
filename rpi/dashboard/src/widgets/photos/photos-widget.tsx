@@ -181,26 +181,56 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
       if (!res.ok) throw new Error(`iCloud shared album: ${res.status}`)
       const data = await res.json()
 
-      // Extract photos from the stream
+      if (!data.photos || data.photos.length === 0) {
+        setPhotos([])
+        setError(null)
+        return
+      }
+
+      // Collect photo GUIDs and their largest derivative checksums
+      const photoMap: Map<string, { guid: string; checksum: string; caption?: string }> = new Map()
+      for (const photo of data.photos.slice(0, 50)) {
+        if (photo.derivatives) {
+          const derivatives = Object.values(photo.derivatives) as any[]
+          const largest = derivatives.reduce((a: any, b: any) =>
+            (parseInt(a.width || '0') > parseInt(b.width || '0')) ? a : b
+          , derivatives[0])
+          if (largest?.checksum) {
+            photoMap.set(largest.checksum, {
+              guid: photo.photoGuid || photo.batchGuid || largest.checksum,
+              checksum: largest.checksum,
+              caption: photo.caption || undefined,
+            })
+          }
+        }
+      }
+
+      // Get actual download URLs via webasseturls endpoint
+      const photoGuids = data.photos.slice(0, 50).map((p: any) => p.photoGuid).filter(Boolean)
+      const urlsEndpoint = `https://${host}/${token}/sharedstreams/webasseturls`
+      const urlsRes = await fetch(`/api/proxy?url=${encodeURIComponent(urlsEndpoint)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoGuids }),
+      })
+
+      if (!urlsRes.ok) throw new Error(`iCloud asset URLs: ${urlsRes.status}`)
+      const urlsData = await urlsRes.json()
+
+      // Build photo items from the resolved URLs
       const photos_list: PhotoItem[] = []
-
-      if (data.photos) {
-        for (const photo of data.photos.slice(0, 50)) {
-          if (photo.derivatives) {
-            // Get the largest derivative
-            const derivatives = Object.values(photo.derivatives) as any[]
-            const largest = derivatives.reduce((a: any, b: any) =>
-              (parseInt(a.width || '0') > parseInt(b.width || '0')) ? a : b
-            , derivatives[0])
-
-            if (largest?.checksum) {
-              const assetUrl = `https://${host}/${token}/sharedstreams/asset/${largest.checksum}?derivativeKey=${largest.checksum}`
-              photos_list.push({
-                id: photo.photoGuid || photo.batchGuid || String(photos_list.length),
-                url: `/api/proxy?url=${encodeURIComponent(assetUrl)}`,
-                caption: photo.caption || undefined,
-              })
-            }
+      if (urlsData.items) {
+        for (const [checksum, info] of Object.entries(urlsData.items) as [string, any][]) {
+          const photoInfo = photoMap.get(checksum)
+          if (info.url_path && info.url_location) {
+            const loc = urlsData.locations?.[info.url_location]
+            const scheme = loc?.scheme || 'https'
+            const photoUrl = `${scheme}://${info.url_location}${info.url_path}`
+            photos_list.push({
+              id: photoInfo?.guid || checksum,
+              url: `/api/proxy?url=${encodeURIComponent(photoUrl)}`,
+              caption: photoInfo?.caption,
+            })
           }
         }
       }

@@ -137,21 +137,31 @@ export function BackgroundLayer({ config, overlay }: BackgroundLayerProps) {
 
       if (!res.ok) return
       const data = await res.json()
+
+      if (!data.photos || data.photos.length === 0) return
+
+      // Get actual download URLs via webasseturls
+      const photoGuids = data.photos.slice(0, 50).map((p: any) => p.photoGuid).filter(Boolean)
+      const urlsEndpoint = `https://${host}/${token}/sharedstreams/webasseturls`
+      const urlsRes = await fetch(`/api/proxy?url=${encodeURIComponent(urlsEndpoint)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoGuids }),
+      })
+      if (!urlsRes.ok) return
+      const urlsData = await urlsRes.json()
+
       const photosList: PhotoItem[] = []
-      if (data.photos) {
-        for (const photo of data.photos.slice(0, 50)) {
-          if (photo.derivatives) {
-            const derivatives = Object.values(photo.derivatives) as any[]
-            const largest = derivatives.reduce((a: any, b: any) =>
-              (parseInt(a.width || '0') > parseInt(b.width || '0')) ? a : b
-            , derivatives[0])
-            if (largest?.checksum) {
-              const assetUrl = `https://${host}/${token}/sharedstreams/asset/${largest.checksum}?derivativeKey=${largest.checksum}`
-              photosList.push({
-                id: photo.photoGuid || photo.batchGuid || String(photosList.length),
-                url: `/api/proxy?url=${encodeURIComponent(assetUrl)}`,
-              })
-            }
+      if (urlsData.items) {
+        for (const [checksum, info] of Object.entries(urlsData.items) as [string, any][]) {
+          if (info.url_path && info.url_location) {
+            const loc = urlsData.locations?.[info.url_location]
+            const scheme = loc?.scheme || 'https'
+            const photoUrl = `${scheme}://${info.url_location}${info.url_path}`
+            photosList.push({
+              id: checksum,
+              url: `/api/proxy?url=${encodeURIComponent(photoUrl)}`,
+            })
           }
         }
       }
