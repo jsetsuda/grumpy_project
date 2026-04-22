@@ -63,28 +63,53 @@ body {
   z-index: 2;
 }
 
+/* Resize handles: 8 axes, only rendered when grid is editable.
+   Always visible (no :hover) since touchscreens have no hover. */
 .react-resizable-handle {
   position: absolute;
-  width: 20px;
-  height: 20px;
-  bottom: 0;
-  right: 0;
-  cursor: se-resize;
-  opacity: 0;
-  transition: opacity 200ms;
+  background: var(--primary);
+  opacity: 0.55;
+  transition: opacity 120ms, background 120ms;
+  z-index: 3;
 }
+.react-resizable-handle:hover { opacity: 0.85; }
 
-.react-grid-item:hover .react-resizable-handle {
-  opacity: 0.5;
+/* Side handles: thin bars centered on each edge, ~32px long for
+   touch targets. */
+.react-resizable-handle-n,
+.react-resizable-handle-s {
+  left: 50%;
+  width: 32px;
+  height: 6px;
+  margin-left: -16px;
+  cursor: ns-resize;
+  border-radius: 3px;
 }
+.react-resizable-handle-n { top: 2px; }
+.react-resizable-handle-s { bottom: 2px; }
 
-.react-resizable-handle::after {
-  content: '';
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid var(--muted-foreground);
-  border-bottom: 2px solid var(--muted-foreground);
+.react-resizable-handle-e,
+.react-resizable-handle-w {
+  top: 50%;
+  width: 6px;
+  height: 32px;
+  margin-top: -16px;
+  cursor: ew-resize;
+  border-radius: 3px;
 }
+.react-resizable-handle-e { right: 2px; }
+.react-resizable-handle-w { left: 2px; }
+
+/* Corner handles: small squares for two-axis resize. */
+.react-resizable-handle-se,
+.react-resizable-handle-sw,
+.react-resizable-handle-ne,
+.react-resizable-handle-nw {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+.react-resizable-handle-se { right: 2px; bottom: 2px; cursor: se-resize; }
+.react-resizable-handle-sw { left: 2px; bottom: 2px; cursor: sw-resize; }
+.react-resizable-handle-ne { right: 2px; top: 2px; cursor: ne-resize; }
+.react-resizable-handle-nw { left: 2px; top: 2px; cursor: nw-resize; }

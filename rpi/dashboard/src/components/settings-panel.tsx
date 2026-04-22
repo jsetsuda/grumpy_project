@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Plus, Trash2, ChevronDown, ChevronRight, Search, Eye, EyeOff, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react'
+import { X, Plus, Trash2, ChevronDown, ChevronRight, Search, Eye, EyeOff } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WIDGET_CATEGORY_ORDER, type WidgetCategory, type WidgetDefinition } from '@/widgets/types'
@@ -130,80 +130,6 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
   return config
 }
 
-/**
- * Touchscreen-friendly nudge + resize controls for a widget's grid
- * layout. Each tap is one grid cell. Constrained to grid bounds and the
- * widget's optional min/max size. Pairs with drag-to-position; the
- * buttons are useful when fine adjustment is annoying via touch.
- */
-function LayoutControls({
-  layout, gridCols, minSize, maxSize, onChange,
-}: {
-  layout: { x: number; y: number; w: number; h: number }
-  gridCols: number
-  minSize?: { w: number; h: number }
-  maxSize?: { w: number; h: number }
-  onChange: (next: { x: number; y: number; w: number; h: number }) => void
-}) {
-  const minW = minSize?.w ?? 1
-  const minH = minSize?.h ?? 1
-  const maxW = maxSize?.w ?? gridCols
-  const maxH = maxSize?.h ?? 99
-
-  const nudge = (dx: number, dy: number) => {
-    const x = Math.max(0, Math.min(gridCols - layout.w, layout.x + dx))
-    const y = Math.max(0, layout.y + dy)
-    onChange({ ...layout, x, y })
-  }
-  const resize = (dw: number, dh: number) => {
-    const w = Math.max(minW, Math.min(maxW, layout.w + dw))
-    const h = Math.max(minH, Math.min(maxH, layout.h + dh))
-    // If growing wider would push past the right edge, shrink x to fit.
-    const x = Math.max(0, Math.min(gridCols - w, layout.x))
-    onChange({ ...layout, x, w, h })
-  }
-
-  const btn = "min-w-[44px] min-h-[36px] flex items-center justify-center rounded bg-[var(--muted)] hover:bg-[var(--muted)]/70 transition-colors"
-
-  return (
-    <div className="space-y-2">
-      <div className="text-xs font-medium text-[var(--muted-foreground)]">
-        Layout · pos {layout.x},{layout.y} · size {layout.w}×{layout.h}
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[10px] text-[var(--muted-foreground)] uppercase">Move</span>
-          <div className="grid grid-cols-3 gap-1">
-            <span />
-            <button onClick={() => nudge(0, -1)} className={btn} title="Up"><ArrowUp size={14} /></button>
-            <span />
-            <button onClick={() => nudge(-1, 0)} className={btn} title="Left"><ArrowLeft size={14} /></button>
-            <span />
-            <button onClick={() => nudge(1, 0)} className={btn} title="Right"><ArrowRight size={14} /></button>
-            <span />
-            <button onClick={() => nudge(0, 1)} className={btn} title="Down"><ArrowDown size={14} /></button>
-            <span />
-          </div>
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[10px] text-[var(--muted-foreground)] uppercase">Width</span>
-          <div className="flex gap-1">
-            <button onClick={() => resize(-1, 0)} disabled={layout.w <= minW} className={`${btn} disabled:opacity-30`} title="Narrower">−</button>
-            <button onClick={() => resize(1, 0)} disabled={layout.w >= maxW || layout.x + layout.w >= gridCols} className={`${btn} disabled:opacity-30`} title="Wider">+</button>
-          </div>
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[10px] text-[var(--muted-foreground)] uppercase">Height</span>
-          <div className="flex gap-1">
-            <button onClick={() => resize(0, -1)} disabled={layout.h <= minH} className={`${btn} disabled:opacity-30`} title="Shorter">−</button>
-            <button onClick={() => resize(0, 1)} disabled={layout.h >= maxH} className={`${btn} disabled:opacity-30`} title="Taller">+</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function SectionHeader({ label }: { label: string }) {
   return (
     <div className="pt-2 pb-1">
@@ -222,7 +148,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanelProps) {
-  const { config, dashboardMeta, updateConfig, updateWidgetConfig, updateWidgetLayout, addWidget, removeWidget, setWidgetHidden } = useConfig()
+  const { config, dashboardMeta, updateConfig, updateWidgetConfig, addWidget, removeWidget, setWidgetHidden } = useConfig()
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null)
   const [showAddWidget, setShowAddWidget] = useState(false)
   const [cachedCredentials, setCachedCredentials] = useState<SharedCredentials | null>(null)
@@ -418,14 +344,7 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
                 </button>
 
                 {isExpanded && (
-                  <div className="p-3 pt-0 border-t border-[var(--border)] space-y-3">
-                    <LayoutControls
-                      layout={widget.layout}
-                      gridCols={config.grid.cols}
-                      minSize={def?.minSize}
-                      maxSize={def?.maxSize}
-                      onChange={(next) => updateWidgetLayout(widget.id, next)}
-                    />
+                  <div className="p-3 pt-0 border-t border-[var(--border)]">
                     <WidgetSettings
                       widget={widget}
                       onConfigChange={(c) => updateWidgetConfig(widget.id, c)}

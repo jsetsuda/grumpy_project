@@ -76,10 +76,18 @@ export function DashboardGrid() {
   const lastLayoutRef = useRef<string>('')
   const onLayoutChange = useCallback((newLayout: Layout) => {
     if (!editMode) return
-    const serialized = JSON.stringify(newLayout.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
+    // If any widget is at y < 0 (shouldn't happen, but RGL can let it
+    // slip with noCompactor), shift the whole grid down so the topmost
+    // widget sits at y=0. Also collapse empty rows above the topmost
+    // widget so dragging up doesn't strand widgets behind padding.
+    const minY = newLayout.length > 0 ? Math.min(...newLayout.map(l => l.y)) : 0
+    const adjusted = minY !== 0
+      ? newLayout.map(l => ({ ...l, y: l.y - minY }))
+      : newLayout
+    const serialized = JSON.stringify(adjusted.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
     if (serialized === lastLayoutRef.current) return
     lastLayoutRef.current = serialized
-    updateAllLayouts(newLayout.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
+    updateAllLayouts(adjusted.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
   }, [editMode, updateAllLayouts])
 
   const resetWidgetsIntoView = useCallback(() => {
@@ -385,7 +393,13 @@ export function DashboardGrid() {
               margin: config.grid.margin,
             }}
             dragConfig={{ enabled: editMode }}
-            resizeConfig={{ enabled: editMode }}
+            resizeConfig={{
+              enabled: editMode,
+              // All 8 handles when in edit mode: side arrows for one-axis
+              // resize plus corner pulls for two-axis. RGL renders handles
+              // only when resize is enabled, so no need to gate by mode.
+              handles: ['s', 'n', 'e', 'w', 'se', 'sw', 'ne', 'nw'],
+            }}
             compactor={noCompactor}
             onLayoutChange={editMode ? onLayoutChange : undefined}
             autoSize
