@@ -56,8 +56,10 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
       config.sources = (creds as any).calendar.sources
     }
   }
+  // traffic, youtube and cameras creds now live in shared credentials;
+  // widgets read them at runtime.
   if (widgetType === 'traffic') {
-    if (creds.googleMaps?.apiKey) config.apiKey = creds.googleMaps.apiKey
+    // Intentionally no-op — googleMaps apiKey read from shared credentials at runtime.
   }
   if (widgetType === 'todo') {
     const c = creds as any
@@ -73,7 +75,7 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
     }
   }
   if (widgetType === 'youtube') {
-    if ((creds as any).youtube?.apiKey) config.apiKey = (creds as any).youtube.apiKey
+    // Intentionally no-op — youtube apiKey read from shared credentials at runtime.
   }
   if (widgetType === 'media-player') {
     const c = creds as any
@@ -85,11 +87,7 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
       config.jellyfin = { ...c.jellyfin }
     }
   }
-  if (widgetType === 'cameras') {
-    if (creds.unifi?.host) config.host = creds.unifi.host
-    if (creds.unifi?.username) config.username = creds.unifi.username
-    if (creds.unifi?.password) config.password = creds.unifi.password
-  }
+  // cameras: UniFi creds read from shared credentials at runtime.
   return config
 }
 

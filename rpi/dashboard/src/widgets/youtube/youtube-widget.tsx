@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Search, Play, Video, Link, ListPlus, ListVideo, Minimize2, Maximize2, SkipForward, Clock, Eye, User, Plus, Trash2 } from 'lucide-react'
 import type { WidgetProps } from '../types'
+import { useSharedCredentials } from '@/config/credentials-provider'
 
 interface YouTubeChannel {
   channelId: string
@@ -82,13 +83,27 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
   const [channelInput, setChannelInput] = useState('')
   const [channelVideos, setChannelVideos] = useState<SearchResult[]>([])
 
-  const hasApiKey = !!config.apiKey
+  const { credentials } = useSharedCredentials()
+  const apiKey = credentials?.youtube?.apiKey || config.apiKey
+  const hasApiKey = !!apiKey
   const channels = config.channels || []
   const watchLater = config.watchLater || []
   const isMini = config.miniPlayer === true
 
+  // Scrub duplicated apiKey from widget config.
+  const scrubbedRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedRef.current || !credentials) return
+    if (config.apiKey && config.apiKey === credentials.youtube?.apiKey) {
+      scrubbedRef.current = true
+      const next = { ...config }
+      delete next.apiKey
+      onConfigChange(next)
+    }
+  }, [credentials, config, onConfigChange])
+
   const search = useCallback(async (query: string) => {
-    if (!config.apiKey || !query.trim()) return
+    if (!apiKey || !query.trim()) return
     setSearching(true)
     setError('')
 
@@ -97,7 +112,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
         part: 'snippet',
         type: 'video',
         q: query.trim(),
-        key: config.apiKey,
+        key: apiKey,
         maxResults: '10',
       })
       const res = await fetch(`/api/proxy?url=${encodeURIComponent(`https://www.googleapis.com/youtube/v3/search?${params}`)}`)
@@ -112,7 +127,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
           const statsParams = new URLSearchParams({
             part: 'statistics,snippet',
             id: videoIds,
-            key: config.apiKey,
+            key: apiKey,
           })
           const statsRes = await fetch(`/api/proxy?url=${encodeURIComponent(`https://www.googleapis.com/youtube/v3/videos?${statsParams}`)}`)
           if (statsRes.ok) {
@@ -143,7 +158,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
     } finally {
       setSearching(false)
     }
-  }, [config.apiKey])
+  }, [apiKey])
 
   const playVideo = useCallback((videoId: string) => {
     onConfigChange({ videoId })
@@ -190,14 +205,14 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
   }, [config.watchLater, onConfigChange])
 
   const addChannel = useCallback(async () => {
-    if (!config.apiKey || !channelInput.trim()) return
+    if (!apiKey || !channelInput.trim()) return
     setError('')
     try {
       const params = new URLSearchParams({
         part: 'snippet',
         type: 'channel',
         q: channelInput.trim(),
-        key: config.apiKey,
+        key: apiKey,
         maxResults: '1',
       })
       const res = await fetch(`/api/proxy?url=${encodeURIComponent(`https://www.googleapis.com/youtube/v3/search?${params}`)}`)
@@ -223,7 +238,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
     } catch {
       setError('Failed to find channel')
     }
-  }, [config.apiKey, channelInput, config.channels, onConfigChange])
+  }, [apiKey, channelInput, config.channels, onConfigChange])
 
   const removeChannel = useCallback((channelId: string) => {
     const current = config.channels || []
@@ -231,7 +246,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
   }, [config.channels, onConfigChange])
 
   const loadChannelVideos = useCallback(async (channelId: string) => {
-    if (!config.apiKey) return
+    if (!apiKey) return
     setSearching(true)
     try {
       const params = new URLSearchParams({
@@ -239,7 +254,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
         channelId,
         order: 'date',
         type: 'video',
-        key: config.apiKey,
+        key: apiKey,
         maxResults: '10',
       })
       const res = await fetch(`/api/proxy?url=${encodeURIComponent(`https://www.googleapis.com/youtube/v3/search?${params}`)}`)
@@ -258,7 +273,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
     } finally {
       setSearching(false)
     }
-  }, [config.apiKey])
+  }, [apiKey])
 
   // Auto-play next from queue when video ends (check periodically is not feasible with iframe)
   // Instead we provide a "Next" button

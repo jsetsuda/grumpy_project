@@ -48,9 +48,6 @@
           "h": null
         },
         "config": {
-          "host": "https://192.168.5.10",
-          "username": "viewport",
-          "password": "REDACTED_UNIFI_PASSWORD",
           "cameras": [
             {
               "id": "63cc64930075e903e40003ed",

@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { WidgetProps } from '../types'
+import { useSharedCredentials } from '@/config/credentials-provider'
 
 export interface SceneConfig {
   name: string
@@ -9,8 +10,8 @@ export interface SceneConfig {
 }
 
 export interface ScenesWidgetConfig {
-  haUrl: string
-  haToken: string
+  haUrl?: string // deprecated: read from shared credentials
+  haToken?: string // deprecated: read from shared credentials
   scenes: SceneConfig[]
 }
 
@@ -27,12 +28,28 @@ const ICON_MAP: Record<string, string> = {
   baby: '\u{1F476}',
 }
 
-export function ScenesWidget({ config }: WidgetProps<ScenesWidgetConfig>) {
+export function ScenesWidget({ config, onConfigChange }: WidgetProps<ScenesWidgetConfig>) {
   const [activatedId, setActivatedId] = useState<string | null>(null)
+  const { credentials } = useSharedCredentials()
 
-  const haUrl = config.haUrl
-  const haToken = config.haToken
+  const haUrl = credentials?.homeAssistant?.url || config.haUrl
+  const haToken = credentials?.homeAssistant?.token || config.haToken
   const scenes = config.scenes || []
+
+  // Scrub duplicated creds from widget config on mount.
+  const scrubbedRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedRef.current || !credentials) return
+    const sameUrl = !!config.haUrl && config.haUrl === credentials.homeAssistant?.url
+    const sameTok = !!config.haToken && config.haToken === credentials.homeAssistant?.token
+    if (sameUrl || sameTok) {
+      scrubbedRef.current = true
+      const next = { ...config }
+      if (sameUrl) delete next.haUrl
+      if (sameTok) delete next.haToken
+      onConfigChange(next)
+    }
+  }, [credentials, config, onConfigChange])
 
   const activateScene = useCallback(async (scene: SceneConfig) => {
     if (!haUrl || !haToken) return

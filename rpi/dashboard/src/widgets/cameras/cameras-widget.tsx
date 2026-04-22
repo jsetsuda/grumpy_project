@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Camera, Maximize2, X, RefreshCw, AlertTriangle } from 'lucide-react'
 import type { WidgetProps } from '../types'
+import { useSharedCredentials } from '@/config/credentials-provider'
 
 // --- Types ---
 
@@ -28,10 +29,12 @@ export interface CameraSource {
 }
 
 export interface CamerasConfig {
-  // Legacy fields (kept for backward compat, used as defaults for unifi cameras)
-  host: string
-  username: string
-  password: string
+  // host/username/password are deprecated in the widget config — they
+  // now live in shared credentials.json. Retained as optional fields for
+  // back-compat during the migration.
+  host?: string
+  username?: string
+  password?: string
   cameras: Array<CameraSource>
   refreshInterval: number
   layout: 'single' | 'grid'
@@ -271,6 +274,7 @@ export function CamerasWidget({ config, onConfigChange }: WidgetProps<CamerasCon
   const [fullscreenCamera, setFullscreenCamera] = useState<CameraSource | null>(null)
   const [containerSize, setContainerSize] = useState<{ w: number; h: number }>({ w: 800, h: 450 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const { credentials } = useSharedCredentials()
 
   const cameras = useMemo(() => migrateCameras(config), [config])
   const enabledCameras = useMemo(() => cameras.filter(c => c.enabled), [cameras])
@@ -278,7 +282,28 @@ export function CamerasWidget({ config, onConfigChange }: WidgetProps<CamerasCon
   const layout = config.layout || 'grid'
   const selectedCamera = config.selectedCamera || enabledCameras[0]?.id
   const gridGap = config.gridGap ?? 0
-  const legacyHost = config.host || ''
+  // Prefer shared credentials for the UniFi host; fall back to the
+  // widget's legacy config value.
+  const legacyHost = credentials?.unifi?.host || config.host || ''
+
+  // Scrub UniFi credentials from the persisted widget config when they
+  // duplicate shared credentials.
+  const scrubbedRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedRef.current || !credentials) return
+    const u = credentials.unifi
+    const sameHost = !!config.host && config.host === u?.host
+    const sameUser = !!config.username && config.username === u?.username
+    const samePass = !!config.password && config.password === u?.password
+    if (sameHost || sameUser || samePass) {
+      scrubbedRef.current = true
+      const next = { ...config }
+      if (sameHost) delete next.host
+      if (sameUser) delete next.username
+      if (samePass) delete next.password
+      onConfigChange(next)
+    }
+  }, [credentials, config, onConfigChange])
 
   // ResizeObserver for grid calculation
   useEffect(() => {

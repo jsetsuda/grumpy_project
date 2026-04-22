@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { WidgetProps } from '../types'
+import { useSharedCredentials } from '@/config/credentials-provider'
 
 export interface DestinationConfig {
   name: string
@@ -8,7 +9,7 @@ export interface DestinationConfig {
 }
 
 export interface TrafficWidgetConfig {
-  apiKey: string
+  apiKey?: string // deprecated: read from shared credentials
   destinations: DestinationConfig[]
 }
 
@@ -25,13 +26,26 @@ const TRAFFIC_COLORS = {
   heavy: '#ef4444',
 }
 
-export function TrafficWidget({ config }: WidgetProps<TrafficWidgetConfig>) {
+export function TrafficWidget({ config, onConfigChange }: WidgetProps<TrafficWidgetConfig>) {
   const [results, setResults] = useState<CommuteResult[]>([])
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const { credentials } = useSharedCredentials()
 
-  const apiKey = config.apiKey
+  const apiKey = credentials?.googleMaps?.apiKey || config.apiKey
   const destinations = config.destinations || []
+
+  // Scrub duplicated apiKey from widget config.
+  const scrubbedRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedRef.current || !credentials) return
+    if (config.apiKey && config.apiKey === credentials.googleMaps?.apiKey) {
+      scrubbedRef.current = true
+      const next = { ...config }
+      delete next.apiKey
+      onConfigChange(next)
+    }
+  }, [credentials, config, onConfigChange])
 
   const fetchCommutes = useCallback(async () => {
     if (!apiKey || destinations.length === 0) return

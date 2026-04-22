@@ -172,7 +172,6 @@
           "h": 4
         },
         "config": {
-          "apiKey": "AIzaSyCWUcc1ej9CUruBJLUegSzVodTN5oOJuOw",
           "destinations": [
             {
               "name": "Shop",
@@ -191,9 +190,7 @@
           "w": 4,
           "h": 4
         },
-        "config": {
-          "apiKey": "AIzaSyDb1ybmji1m5Z_p5QhyalNMSehgE0E-aWw"
-        }
+        "config": {}
       },
       {
         "id": "ha-entities-moa40o89",
