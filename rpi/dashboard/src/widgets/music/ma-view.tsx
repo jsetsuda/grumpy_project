@@ -11,6 +11,12 @@ interface MaViewProps {
   targetPlayer: string | undefined
   onTargetPlayerChange: (entityId: string) => void
   /**
+   * True while the shared-credentials context is still fetching. When
+   * true we render a spinner instead of the "credentials missing" state
+   * so a slow initial fetch doesn't flash the wrong message.
+   */
+  credsLoading?: boolean
+  /**
    * Preferred default if the user hasn't picked one yet. Typically derived
    * from the current device id (e.g. pi-grumpy01 → media_player.pi_grumpy01_media_player).
    */
@@ -19,7 +25,7 @@ interface MaViewProps {
 
 type Tab = 'browse' | 'search' | 'devices'
 
-export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, preferredDefault }: MaViewProps) {
+export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, credsLoading, preferredDefault }: MaViewProps) {
   const { connected, error, players, targetState, browse, playMedia, callService } =
     useMaClient({ haUrl, haToken, targetPlayer })
 
@@ -126,11 +132,19 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, pre
 
   // --- Render ---
 
+  if (credsLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-sm text-[var(--muted-foreground)]">
+        <Loader2 size={14} className="animate-spin mr-2" /> Loading credentials…
+      </div>
+    )
+  }
+
   if (!haUrl || !haToken) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-[var(--muted-foreground)] p-4 text-center">
-        Music Assistant needs Home Assistant credentials. Add an ha-entities
-        widget to this dashboard, or configure shared credentials.
+        Music Assistant needs Home Assistant credentials. Open the Dashboard
+        Manager and fill in Home Assistant under Shared Credentials.
       </div>
     )
   }

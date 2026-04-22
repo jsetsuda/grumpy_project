@@ -192,6 +192,34 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Template poll: once an hour, re-fetch the dashboard and compare
+  // meta.updatedAt. If it changed externally (the manager or another
+  // device edited it), re-merge with our local per-device overrides.
+  // Skipped while we have pending local saves to avoid clobbering an
+  // in-progress edit.
+  useEffect(() => {
+    if (!loaded) return
+    const interval = setInterval(async () => {
+      if (pendingTemplateSave.current || pendingInstanceSave.current) return
+      try {
+        const res = await fetch(`/api/dashboards/${idRef.current}`)
+        if (!res.ok) return
+        const data = await res.json() as DashboardFile
+        const remoteUpdated = data.meta?.updatedAt
+        const localUpdated = metaRef.current?.updatedAt
+        if (!remoteUpdated || remoteUpdated === localUpdated) return
+
+        const overrides = deviceIdRef.current ? await loadInstance(deviceIdRef.current) : {}
+        const merged = { ...data.config, ...overrides } as DashboardConfig
+        setConfig(merged)
+        setDashboardMeta(data.meta)
+      } catch {
+        // network blip — try again next interval
+      }
+    }, 3600_000) // 1 hour
+    return () => clearInterval(interval)
+  }, [loaded])
+
   const scheduleSave = useCallback((targetTemplate: boolean, targetInstance: boolean) => {
     if (targetTemplate) pendingTemplateSave.current = true
     if (targetInstance) pendingInstanceSave.current = true

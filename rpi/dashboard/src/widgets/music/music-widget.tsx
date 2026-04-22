@@ -1151,7 +1151,7 @@ function MaWrapper({
   config, onConfigChange,
 }: { config: MusicConfig; onConfigChange: (partial: Partial<MusicConfig>) => void }) {
   const { config: dashConfig, deviceId } = useConfig()
-  const { credentials: sharedCreds } = useSharedCredentials()
+  const { credentials: sharedCreds, loading: credsLoading } = useSharedCredentials()
 
   // Prefer shared credentials; fall back to an ha-entities widget's config
   // on dashboards that haven't been scrubbed yet.
@@ -1169,6 +1169,7 @@ function MaWrapper({
     <MaView
       haUrl={haUrl}
       haToken={haToken}
+      credsLoading={credsLoading}
       targetPlayer={config.ma?.targetPlayer}
       onTargetPlayerChange={(entityId) =>
         onConfigChange({ ma: { ...config.ma, targetPlayer: entityId } })
