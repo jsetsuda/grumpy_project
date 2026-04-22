@@ -172,6 +172,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       idRef.current = dId
       deviceIdRef.current = devId
 
+      // Auto-register this device in the manager. Fire-and-forget — idempotent
+      // on the server side, no-op if the device is already registered.
+      if (devId) {
+        fetch(`/api/devices/${devId}`, { method: 'PUT' }).catch(() => {})
+      }
+
       const [{ config: templateConfig, meta }, overrides] = await Promise.all([
         loadDashboard(dId),
         devId ? loadInstance(devId) : Promise.resolve<InstanceOverrides>({}),

@@ -12,6 +12,7 @@ import {
 } from './spotify-api'
 import { registerVoiceHandler } from '@/lib/voice-command-actions'
 import { useSpotifyPlayer } from './use-spotify-player'
+import { useConfig } from '@/config/config-provider'
 
 export interface MusicConfig {
   provider: 'spotify' | 'youtube' | 'apple' | 'none'
@@ -108,11 +109,19 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     return token ?? null
   }, [])
 
-  // Web Playback SDK — registers this browser as a Spotify Connect device
+  // Web Playback SDK — registers this browser as a Spotify Connect device.
+  // Each dashboard instance names itself after its deviceId (from the URL
+  // ?device param) so "Grumpy (kitchen)" and "Grumpy (office)" show up as
+  // distinct Spotify Connect targets.
+  const { deviceId: dashboardDeviceId } = useConfig()
+  const spotifyDeviceName = dashboardDeviceId
+    ? `Grumpy (${dashboardDeviceId})`
+    : 'Grumpy Dashboard'
+
   const { deviceId: localDeviceId, isReady: playerReady } = useSpotifyPlayer({
     getToken,
     enabled: provider === 'spotify' && !!config.spotify?.refreshToken,
-    deviceName: 'Grumpy Dashboard',
+    deviceName: spotifyDeviceName,
     volume: 0.5,
   })
 
@@ -270,17 +279,45 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     const token = await getToken()
     if (!token) return
 
+    // Play needs special handling: if there's no active device, Spotify
+    // returns 404 "No active device" with no side effect. Resolve the
+    // target device first — prefer an already-active one, then our local
+    // Web Playback SDK device, then the first available — and transfer
+    // playback to it before hitting /play.
+    if (command === 'play') {
+      try {
+        const devData = await getDevices(token)
+        const active = devData.devices.find(d => d.is_active)
+        const targetId = active?.id || localDeviceId || devData.devices[0]?.id
+        if (!targetId) {
+          console.warn('[spotify] no available device — open Spotify on a device first')
+          return
+        }
+        if (!active) {
+          await transferPlayback(token, targetId, false)
+        }
+        await startPlayback(token, { device_id: targetId })
+        setTimeout(fetchSpotifyNowPlaying, 500)
+        return
+      } catch (e) {
+        console.error('[spotify] play failed:', e)
+        return
+      }
+    }
+
+    // Pause/next/previous act on whichever device is already active.
     const endpoints: Record<string, { method: string; url: string }> = {
-      play: { method: 'PUT', url: 'https://api.spotify.com/v1/me/player/play' },
       pause: { method: 'PUT', url: 'https://api.spotify.com/v1/me/player/pause' },
       next: { method: 'POST', url: 'https://api.spotify.com/v1/me/player/next' },
       previous: { method: 'POST', url: 'https://api.spotify.com/v1/me/player/previous' },
     }
-
     const { method, url } = endpoints[command]
-    await fetch(url, { method, headers: { Authorization: `Bearer ${token}` } })
+    const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) {
+      console.warn(`[spotify] ${command} failed:`, res.status, await res.text().catch(() => ''))
+    }
     setTimeout(fetchSpotifyNowPlaying, 500)
-  }, [getToken])
+  }, [getToken, localDeviceId])
 
   // Register voice command handlers for Spotify controls
   useEffect(() => {

@@ -278,6 +278,22 @@ async function handleRequest(req, res) {
     return send405(res);
   }
 
+  // PUT /api/devices/:name — idempotent auto-register.
+  if (pathname.startsWith('/api/devices/') && req.method === 'PUT') {
+    const rawName = pathname.slice('/api/devices/'.length).split('/')[0];
+    const name = rawName.replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!name) { res.writeHead(400); return res.end('Invalid device name'); }
+    const existing = fs.existsSync(DEVICES_PATH)
+      ? JSON.parse(fs.readFileSync(DEVICES_PATH, 'utf-8'))
+      : {};
+    const added = !(name in existing);
+    if (added) {
+      existing[name] = 'default';
+      fs.writeFileSync(DEVICES_PATH, JSON.stringify(existing, null, 2), 'utf-8');
+    }
+    return sendJSON(res, { ok: true, added });
+  }
+
   // ── Instance overrides API ──────────────────────────────────────────
   // GET /api/instances/:deviceId   → returns stored overrides (or empty)
   // POST /api/instances/:deviceId  → body is the InstanceFile JSON

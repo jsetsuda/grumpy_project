@@ -67,6 +67,18 @@ export function DashboardManager() {
     loadCredentials()
   }, [loadDashboards, loadDevices, loadCredentials])
 
+  // Auto-refresh the device list so newly-booted Pis appear without a
+  // manual reload. Poll every 10s, and also refresh on tab focus.
+  useEffect(() => {
+    const interval = setInterval(loadDevices, 10_000)
+    const onFocus = () => loadDevices()
+    window.addEventListener('focus', onFocus)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [loadDevices])
+
   function slugify(name: string): string {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   }

@@ -232,9 +232,36 @@ function configApiPlugin(): Plugin {
       })
 
       // --- Device assignments API ---
+      // GET  /api/devices           → full {name: dashboardId} map
+      // POST /api/devices           → replace the whole map (manage UI)
+      // PUT  /api/devices/:name     → idempotent register; no-op if name exists
 
       server.middlewares.use('/api/devices', async (req, res) => {
-        if (req.method === 'GET') {
+        const url = req.url || '/'
+        const segments = url.split('?')[0].split('/').filter(Boolean)
+
+        // Per-device PUT for auto-registration.
+        if (req.method === 'PUT' && segments.length === 1) {
+          const name = segments[0].replace(/[^a-zA-Z0-9_-]/g, '')
+          if (!name) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Invalid device name' }))
+            return
+          }
+          const existing: Record<string, string> = fs.existsSync(DEVICES_PATH)
+            ? JSON.parse(fs.readFileSync(DEVICES_PATH, 'utf-8'))
+            : {}
+          const added = !(name in existing)
+          if (added) {
+            existing[name] = 'default'
+            fs.writeFileSync(DEVICES_PATH, JSON.stringify(existing, null, 2), 'utf-8')
+          }
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ ok: true, added }))
+          return
+        }
+
+        if (req.method === 'GET' && segments.length === 0) {
           if (fs.existsSync(DEVICES_PATH)) {
             const data = fs.readFileSync(DEVICES_PATH, 'utf-8')
             res.setHeader('Content-Type', 'application/json')
@@ -246,7 +273,7 @@ function configApiPlugin(): Plugin {
           return
         }
 
-        if (req.method === 'POST') {
+        if (req.method === 'POST' && segments.length === 0) {
           const body = await readBody(req)
           fs.writeFileSync(DEVICES_PATH, body, 'utf-8')
           res.setHeader('Content-Type', 'application/json')
