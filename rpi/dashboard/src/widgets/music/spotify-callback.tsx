@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
 
+// Module-level guard so React StrictMode's double-mount in dev can't
+// post the same code twice (which would cause the opener's second
+// token-exchange to fail with Spotify's invalid_grant — codes are
+// single-use).
+let codeDispatched = false
+
 export function SpotifyCallback() {
   const [status, setStatus] = useState<'pending' | 'sent' | 'no-opener' | 'no-code' | 'error'>('pending')
   const [errorMsg, setErrorMsg] = useState<string>('')
@@ -25,6 +31,15 @@ export function SpotifyCallback() {
       return
     }
 
+    if (codeDispatched) {
+      // StrictMode remount — the first mount already posted. Just
+      // show the done state and close.
+      setStatus('sent')
+      const t = setTimeout(() => window.close(), 400)
+      return () => clearTimeout(t)
+    }
+
+    codeDispatched = true
     window.opener.postMessage({ type: 'spotify-callback', code }, '*')
     setStatus('sent')
     // Give the opener a moment to process, then close the popup.

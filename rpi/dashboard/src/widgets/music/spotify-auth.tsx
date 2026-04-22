@@ -29,19 +29,28 @@ interface SpotifyAuthProps {
   onAuthorized: (refreshToken: string) => void
 }
 
+// Codes that have already been handed to Spotify's token endpoint in this
+// page load. Spotify rejects re-use with invalid_grant, so we dedupe
+// defensively — the callback page's StrictMode guard is the primary
+// protection, this is belt-and-suspenders for any future entry point.
+const processedCodes = new Set<string>()
+
 export function SpotifyAuth({ clientId, clientSecret, onAuthorized }: SpotifyAuthProps) {
   const onAuthorizedRef = useRef(onAuthorized)
   onAuthorizedRef.current = onAuthorized
 
   const handleMessage = useCallback(async (event: MessageEvent) => {
     if (event.data?.type !== 'spotify-callback' || !event.data.code) return
+    const code = event.data.code as string
+    if (processedCodes.has(code)) return
+    processedCodes.add(code)
 
     try {
       const res = await fetch('/api/spotify/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: event.data.code,
+          code,
           clientId,
           clientSecret,
           redirectUri: getRedirectUri(),
