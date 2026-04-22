@@ -22,10 +22,15 @@ The Pi is a **thin client**. It:
 
 ```
 rpi/
-├── dashboard/    Source code + production server + Docker
-├── kiosk/        RPi kiosk container + setup script
-└── README.md     This file
+├── dashboard/                Source code + production server + Docker
+├── kiosk/                    RPi kiosk container + setup script
+├── linux-voice-assistant/    Local wake-word + voice satellite (ESPHome protocol)
+└── README.md                 This file
 ```
+
+`linux-voice-assistant/` replaced the old `wyoming-satellite/` setup.
+Local wake-word detection, ESPHome integration, and mic/speaker shared
+with the kiosk via PipeWire.
 
 ## Dashboard (Phase 3)
 
