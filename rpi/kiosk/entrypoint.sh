@@ -52,6 +52,7 @@ UNCLUTTER_PID=$!
 # ── Launch Chromium ─────────────────────────────────────────────────────────
 chromium \
     --kiosk \
+    --no-sandbox \
     --noerrdialogs \
     --disable-infobars \
     --disable-session-crashed-bubble \

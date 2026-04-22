@@ -64,8 +64,20 @@ After editing `.env`, restart the container:
 
 - Verify X is running: `echo $DISPLAY` should return `:0`
 - Check logs: `./manage.sh logs`
-- Grant X11 access: `xhost +local:`
+- Grant X11 access: `xhost +local:` — must be run **inside the graphical
+  session** (from a terminal on the desktop itself). Running it over SSH
+  silently no-ops because the SSH shell has no `DISPLAY`.
 - Ensure you are using the Desktop (not Lite) image of RPi OS
+- Chromium is launched with `--no-sandbox` because the container runs as
+  root; newer Chromium builds (e.g. on Trixie / Debian 13) refuse to
+  start without this.
+
+### Wayland / labwc (RPi OS Trixie)
+
+Trixie uses labwc + Xwayland by default. The X11 socket at
+`/tmp/.X11-unix/X0` is provided by Xwayland, which is enough for the
+kiosk container — just make sure `xhost +local:` runs at login in the
+graphical session (a labwc autostart entry works).
 
 ### No audio output
 
