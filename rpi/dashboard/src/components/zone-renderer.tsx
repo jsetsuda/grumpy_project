@@ -21,7 +21,7 @@ export function ZoneRenderer() {
   const [zoneEditorOpen, setZoneEditorOpen] = useState(false)
   const [manualSlideshow, setManualSlideshow] = useState(false)
 
-  useTheme(config.theme || 'midnight')
+  useTheme(config.theme || 'midnight', config.themeCustomAccent)
 
   const { isIdle, wakeUp } = useIdleTimer(
     (config.screensaverTimeout ?? 300) * 1000,

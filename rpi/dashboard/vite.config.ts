@@ -11,6 +11,7 @@ import net from 'net'
 const CONFIG_PATH = path.resolve(__dirname, 'config.json')
 const DASHBOARDS_DIR = path.resolve(__dirname, 'dashboards')
 const DEVICES_PATH = path.resolve(__dirname, 'devices.json')
+const INSTANCES_DIR = path.resolve(__dirname, 'instances')
 const CREDENTIALS_PATH = path.resolve(__dirname, 'credentials.json')
 
 function ensureDashboardsDir(): void {
@@ -257,6 +258,58 @@ function configApiPlugin(): Plugin {
         res.end('Method not allowed')
       })
 
+      // --- Per-device instance overrides API ---
+      // GET  /api/instances/:deviceId  → returns stored overrides (or {} if none)
+      // POST /api/instances/:deviceId  → body is the InstanceFile JSON
+
+      server.middlewares.use('/api/instances', async (req, res) => {
+        const url = req.url || '/'
+        const segments = url.split('?')[0].split('/').filter(Boolean)
+
+        if (segments.length !== 1) {
+          res.statusCode = 400
+          res.end(JSON.stringify({ error: 'Device id required' }))
+          return
+        }
+
+        const deviceId = segments[0].replace(/[^a-zA-Z0-9_-]/g, '')
+        if (!deviceId) {
+          res.statusCode = 400
+          res.end(JSON.stringify({ error: 'Invalid device id' }))
+          return
+        }
+
+        const filePath = path.join(INSTANCES_DIR, `${deviceId}.json`)
+
+        if (req.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json')
+          if (fs.existsSync(filePath)) {
+            res.end(fs.readFileSync(filePath, 'utf-8'))
+          } else {
+            res.end(JSON.stringify({ version: 1, deviceId, updatedAt: '', overrides: {} }))
+          }
+          return
+        }
+
+        if (req.method === 'POST') {
+          if (!fs.existsSync(INSTANCES_DIR)) {
+            fs.mkdirSync(INSTANCES_DIR, { recursive: true })
+          }
+          const body = await readBody(req)
+          const parsed = JSON.parse(body)
+          parsed.updatedAt = new Date().toISOString()
+          parsed.deviceId = deviceId
+          parsed.version = 1
+          fs.writeFileSync(filePath, JSON.stringify(parsed, null, 2), 'utf-8')
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ ok: true }))
+          return
+        }
+
+        res.statusCode = 405
+        res.end('Method not allowed')
+      })
+
       // --- Credentials API ---
 
       server.middlewares.use('/api/credentials', async (req, res) => {
@@ -427,8 +480,14 @@ function configApiPlugin(): Plugin {
           const contentType = proxyRes.headers.get('content-type') || 'application/json'
           res.statusCode = proxyRes.status
           res.setHeader('Content-Type', contentType)
-          const text = await proxyRes.text()
-          res.end(text)
+          const isText = /^(text\/|application\/(json|xml|javascript))/.test(contentType)
+          if (isText) {
+            const text = await proxyRes.text()
+            res.end(text)
+          } else {
+            const buffer = Buffer.from(await proxyRes.arrayBuffer())
+            res.end(buffer)
+          }
         } catch (e) {
           res.statusCode = 500
           res.end(`HA proxy failed: ${e}`)

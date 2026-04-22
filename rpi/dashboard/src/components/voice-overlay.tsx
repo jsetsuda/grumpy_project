@@ -1,10 +1,12 @@
 import { Mic, MicOff, X } from 'lucide-react'
 import { useVoiceAssistant } from '@/hooks/use-voice-assistant'
+import { usePipelineEvents } from '@/hooks/use-pipeline-events'
 
 interface VoiceOverlayProps {
   haUrl: string
   haToken: string
   pipelineId?: string
+  satelliteEntity?: string
   showBackground?: boolean
   onInteraction?: () => void
 }
@@ -13,14 +15,24 @@ export function VoiceOverlay({
   haUrl,
   haToken,
   pipelineId,
+  satelliteEntity,
   showBackground = true,
   onInteraction,
 }: VoiceOverlayProps) {
-  const { state, transcript, response, error, startListening, stopListening } = useVoiceAssistant({
-    haUrl,
-    haToken,
-    pipelineId,
-  })
+  const click = useVoiceAssistant({ haUrl, haToken, pipelineId })
+  const satellite = usePipelineEvents({ haUrl, haToken, satelliteEntity })
+
+  // If the local wyoming-satellite is actively doing something, let its
+  // state drive the overlay. Otherwise fall back to the click-to-talk
+  // state. Click-to-talk carries richer data (transcript/response), so it
+  // remains the source of truth when it's active.
+  const satelliteActive = satellite.state !== 'idle'
+  const state = click.state !== 'idle' ? click.state : (satelliteActive ? satellite.state : 'idle')
+  const transcript = click.transcript
+  const response = click.response
+  const error = click.error
+  const startListening = click.startListening
+  const stopListening = click.stopListening
 
   const isActive = state !== 'idle'
 

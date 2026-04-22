@@ -33,6 +33,21 @@ export function useVoiceAssistant({ haUrl, haToken, pipelineId }: UseVoiceAssist
   const sendAudioRef = useRef<((samples: Int16Array) => void) | null>(null)
   const endAudioRef = useRef<(() => void) | null>(null)
 
+  // Per-device conversation tracking. Reuse the id while the user is
+  // actively conversing so "turn it off" can resolve "it" against the
+  // previous turn. Expire after 60s of inactivity (new conversation).
+  const conversationIdRef = useRef<string | null>(null)
+  const conversationExpiresAtRef = useRef<number>(0)
+
+  const acquireConversationId = useCallback((): string => {
+    const now = Date.now()
+    if (!conversationIdRef.current || now > conversationExpiresAtRef.current) {
+      conversationIdRef.current = crypto.randomUUID()
+    }
+    conversationExpiresAtRef.current = now + 60_000
+    return conversationIdRef.current
+  }, [])
+
   const cleanup = useCallback(() => {
     if (processorRef.current) {
       processorRef.current.disconnect()
@@ -92,7 +107,7 @@ export function useVoiceAssistant({ haUrl, haToken, pipelineId }: UseVoiceAssist
 
     // Start the assist pipeline
     const closePipeline = runAssistPipeline(
-      { haUrl, haToken, pipelineId },
+      { haUrl, haToken, pipelineId, conversationId: acquireConversationId() },
       {
         onEvent: (event: PipelineEvent) => {
           switch (event.type) {
@@ -221,7 +236,7 @@ export function useVoiceAssistant({ haUrl, haToken, pipelineId }: UseVoiceAssist
         setTimeout(() => setState('idle'), 4000)
       }
     }
-  }, [haUrl, haToken, pipelineId, cleanup])
+  }, [haUrl, haToken, pipelineId, cleanup, acquireConversationId])
 
   return { state, transcript, response, error, startListening, stopListening }
 }
@@ -231,7 +246,11 @@ async function playTtsAudio(ttsUrl: string, haUrl: string, haToken: string) {
     // TTS URL may be relative
     const fullUrl = ttsUrl.startsWith('http') ? ttsUrl : `${haUrl}${ttsUrl}`
 
-    const res = await fetch(fullUrl, {
+    // Route through the dashboard's HA proxy so an HTTPS page can fetch
+    // audio from a plain http:// HA install without mixed-content blocking.
+    const proxiedUrl = `/api/ha-proxy?url=${encodeURIComponent(fullUrl)}`
+
+    const res = await fetch(proxiedUrl, {
       headers: { Authorization: `Bearer ${haToken}` },
     })
     if (!res.ok) return

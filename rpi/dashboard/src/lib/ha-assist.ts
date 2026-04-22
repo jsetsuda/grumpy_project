@@ -25,17 +25,21 @@ export interface AssistOptions {
   haUrl: string
   haToken: string
   pipelineId?: string
+  conversationId?: string
 }
 
 export function runAssistPipeline(options: AssistOptions, callbacks: AssistCallbacks): () => void {
-  const { haUrl, haToken, pipelineId } = options
+  const { haUrl, haToken, pipelineId, conversationId } = options
   let socket: WebSocket | null = null
   let msgId = 1
   let handlerId: number | null = null
   let pipelineMsgId: number | null = null
   let closed = false
 
-  const wsUrl = haUrl.replace(/^http/, 'ws') + '/api/websocket'
+  // Route through the dashboard server's WebSocket proxy so an HTTPS page
+  // doesn't hit mixed-content blocking when HA is plain http://.
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${proto}//${window.location.host}/api/ha-ws?url=${encodeURIComponent(haUrl + '/api/websocket')}`
   socket = new WebSocket(wsUrl)
 
   socket.binaryType = 'arraybuffer'
@@ -66,9 +70,16 @@ export function runAssistPipeline(options: AssistOptions, callbacks: AssistCallb
         if (pipelineId) {
           payload.pipeline = pipelineId
         }
+        if (conversationId) {
+          payload.conversation_id = conversationId
+        }
         socket?.send(JSON.stringify(payload))
       } else if (msg.type === 'auth_invalid') {
         callbacks.onError('Invalid Home Assistant token')
+        close()
+      } else if (msg.type === 'result' && msg.id === pipelineMsgId && msg.success === false) {
+        const errMsg = msg.error?.message || 'Assist pipeline rejected the request'
+        callbacks.onError(errMsg)
         close()
       } else if (msg.type === 'event' && msg.id === pipelineMsgId) {
         const pipelineEvent = msg.event as PipelineEvent

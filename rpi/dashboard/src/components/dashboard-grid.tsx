@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { GridLayout, noCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
-import { Lock, Unlock, Settings, Home, Play } from 'lucide-react'
+import { Lock, Unlock, Settings, Home, Play, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
@@ -23,7 +23,7 @@ export function DashboardGrid() {
   const [width, setWidth] = useState(window.innerWidth - 24)
   const [manualSlideshow, setManualSlideshow] = useState(false)
 
-  useTheme(config.theme || 'midnight')
+  useTheme(config.theme || 'midnight', config.themeCustomAccent)
 
   const { isIdle, wakeUp } = useIdleTimer(
     (config.screensaverTimeout ?? 300) * 1000,
@@ -68,6 +68,26 @@ export function DashboardGrid() {
     lastLayoutRef.current = serialized
     updateAllLayouts(newLayout.map(l => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h })))
   }, [editMode, updateAllLayouts])
+
+  const resetWidgetsIntoView = useCallback(() => {
+    const cols = config.grid.cols
+    const rowHeight = config.grid.rowHeight
+    const marginY = config.grid.margin?.[1] ?? 12
+    const topBarSpace = (config.showTopBar ?? true) ? (config.widgetStartY ?? 90) : 0
+    const verticalPadding = 12 // px pb-3 on the grid container
+    const availableHeight = window.innerHeight - topBarSpace - verticalPadding
+    // A grid with N rows has total height: N * rowHeight + (N + 1) * marginY
+    const maxRows = Math.max(1, Math.floor((availableHeight - marginY) / (rowHeight + marginY)))
+
+    const updated = config.widgets.map(w => {
+      let { x, y } = w.layout
+      const { w: width, h: height } = w.layout
+      if (x + width > cols) x = Math.max(0, cols - width)
+      if (y + height > maxRows) y = Math.max(0, maxRows - height)
+      return { i: w.id, x, y, w: width, h: height }
+    })
+    updateAllLayouts(updated)
+  }, [config.widgets, config.grid, config.widgetStartY, config.showTopBar, updateAllLayouts])
 
   const showTopBar = config.showTopBar ?? true
   const showTopBarWeather = config.topBarWeather ?? true
@@ -204,6 +224,15 @@ export function DashboardGrid() {
           >
             <Settings size={18} />
           </button>
+          {editMode && (
+            <button
+              onClick={resetWidgetsIntoView}
+              className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+              title="Pull widgets back into view"
+            >
+              <RotateCcw size={18} />
+            </button>
+          )}
           <button
             onClick={() => setEditMode(!editMode)}
             className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
@@ -219,7 +248,7 @@ export function DashboardGrid() {
         <div
           className="fixed top-0 left-0 right-0 flex items-center justify-between px-5 z-50"
           style={{
-            height: `${config.topBarHeight ?? 60}px`,
+            height: `${config.topBarHeight ?? 90}px`,
             transform: `scale(${(config.topBarScale ?? 100) / 100})`,
             transformOrigin: 'top left',
             width: `${100 / ((config.topBarScale ?? 100) / 100)}%`,
@@ -231,6 +260,8 @@ export function DashboardGrid() {
             style={{
               fontFamily: topBarFont,
               textShadow: textShadowStyle,
+              transform: `scale(${(config.topBarClockScale ?? 100) / 100})`,
+              transformOrigin: 'center left',
             }}
           >
             <div className={`${sizeClasses.time} ${topBarBold ? 'font-bold' : 'font-light'} tracking-tight text-[var(--foreground)]`}>
@@ -243,7 +274,13 @@ export function DashboardGrid() {
 
           {/* Center: Weather */}
           {showTopBarWeather && (
-            <div className={`px-4 py-2 rounded-2xl ${topBarBg ? 'bg-black/30 backdrop-blur-sm' : ''}`}>
+            <div
+              className={`px-4 py-2 rounded-2xl ${topBarBg ? 'bg-black/30 backdrop-blur-sm' : ''}`}
+              style={{
+                transform: `scale(${(config.topBarWeatherScale ?? 100) / 100})`,
+                transformOrigin: 'center center',
+              }}
+            >
               <TopBarWeather
                 lat={weatherLat}
                 lon={weatherLon}
@@ -285,6 +322,15 @@ export function DashboardGrid() {
                 >
                   <Settings size={18} />
                 </button>
+                {editMode && (
+                  <button
+                    onClick={resetWidgetsIntoView}
+                    className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                    title="Pull widgets back into view"
+                  >
+                    <RotateCcw size={18} />
+                  </button>
+                )}
                 <button
                   onClick={() => setEditMode(!editMode)}
                   className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
@@ -352,7 +398,7 @@ export function DashboardGrid() {
 
         {editMode && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[var(--card)] border border-[var(--border)] rounded-lg px-4 py-2 text-sm text-[var(--muted-foreground)] z-50">
-            Drag and resize widgets · Tap the lock to save
+            Drag and resize widgets · Reset pulls widgets back on-screen · Tap the lock to save
           </div>
         )}
 
@@ -367,6 +413,7 @@ export function DashboardGrid() {
           haUrl={haUrl}
           haToken={haToken}
           pipelineId={config.voicePipelineId}
+          satelliteEntity={config.voiceSatelliteEntity}
           showBackground={topBarBg}
           onInteraction={wakeUp}
         />

@@ -1,0 +1,37 @@
+[Unit]
+Description=Grumpy Wyoming Satellite
+# Only meaningful once networking is up — we forward mic audio to the remote
+# wake word service and HA reaches us over the network.
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# User/WorkingDirectory/EnvironmentFile are filled in by setup.sh when it
+# copies this template into /etc/systemd/system/.
+User=__USER__
+Group=__USER__
+WorkingDirectory=__INSTALL_DIR__
+EnvironmentFile=__INSTALL_DIR__/config.env
+
+# Satellite advertises itself on ${SATELLITE_PORT} for HA to connect to.
+# Mic and speaker commands use the ALSA device IDs from config.env.
+# --vad gates audio streaming so we only send speech to STT, not silence.
+ExecStart=__INSTALL_DIR__/.venv/bin/python -m wyoming_satellite \
+    --name ${DEVICE_NAME} \
+    --uri tcp://0.0.0.0:${SATELLITE_PORT} \
+    --mic-command "arecord -D ${MIC_DEVICE} -r ${MIC_RATE} -c 1 -f S16_LE -t raw" \
+    --snd-command "aplay -D ${SPEAKER_DEVICE} -r ${SPEAKER_RATE} -c 1 -f S16_LE -t raw" \
+    --wake-uri tcp://${WAKE_HOST}:${WAKE_PORT} \
+    --wake-word-name ${WAKE_WORD_NAME} \
+    --vad
+
+Restart=on-failure
+RestartSec=3s
+
+# Low-level audio needs these; harmless on systems that don't enforce them.
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

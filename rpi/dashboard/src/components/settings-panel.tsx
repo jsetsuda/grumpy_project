@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Plus, Trash2, ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
+import { WIDGET_CATEGORY_ORDER, type WidgetCategory, type WidgetDefinition } from '@/widgets/types'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
 import { GooglePhotosAuth } from '@/widgets/photos/google-photos-auth'
 import { MicrosoftAuth } from '@/widgets/todo/microsoft-auth'
@@ -10,7 +11,7 @@ import { getTodoistProjects, type TodoistProject } from '@/widgets/todo/todoist-
 import { getMicrosoftTaskLists, type MicrosoftTaskList } from '@/widgets/todo/microsoft-api'
 import { getGoogleTaskLists, type GoogleTaskList } from '@/widgets/todo/google-tasks-api'
 import type { WidgetInstance, BackgroundPhotosConfig } from '@/config/types'
-import { themes, themeNames, type ThemeName } from '@/config/themes'
+import { themes, themeNames, type ThemeName, customPalette, DEFAULT_CUSTOM_ACCENT } from '@/config/themes'
 import { rssFeedsDb, rssCategories, type RssFeedEntry } from '@/lib/rss-feeds-db'
 import type { CameraFeed, CameraSourceType as CameraViewerSourceType, ViewLayout } from '@/widgets/camera-viewer/camera-viewer-widget'
 
@@ -95,6 +96,17 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
   return config
 }
 
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="pt-2 pb-1">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+        {label}
+      </div>
+      <div className="mt-1 h-px bg-[var(--border)]" />
+    </div>
+  )
+}
+
 interface SettingsPanelProps {
   open: boolean
   onClose: () => void
@@ -151,9 +163,12 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             </button>
           )}
 
+          <SectionHeader label="Appearance" />
+
           {/* Theme & Background section */}
           <ThemeBackgroundSettings
             theme={(config.theme || 'midnight') as ThemeName}
+            themeCustomAccent={config.themeCustomAccent || DEFAULT_CUSTOM_ACCENT}
             backgroundMode={config.backgroundMode || 'solid'}
             backgroundPhotos={config.backgroundPhotos}
             backgroundOverlay={config.backgroundOverlay ?? 60}
@@ -165,6 +180,7 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             onScreenRatioChange={(v) => updateConfig({ screenRatio: v })}
             onScreenRatioCustomChange={(v) => updateConfig({ screenRatioCustom: v })}
             onThemeChange={(t) => updateConfig({ theme: t })}
+            onThemeCustomAccentChange={(hex) => updateConfig({ themeCustomAccent: hex })}
             onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
             onBackgroundPhotosChange={(p) => updateConfig({ backgroundPhotos: p })}
             onOverlayChange={(o) => updateConfig({ backgroundOverlay: o })}
@@ -188,9 +204,13 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             onTopBarSizeChange={(v) => updateConfig({ topBarSize: v as any })}
             onTopBarBoldChange={(v) => updateConfig({ topBarBold: v })}
             topBarScale={config.topBarScale ?? 100}
-            topBarHeight={config.topBarHeight ?? 60}
+            topBarClockScale={config.topBarClockScale ?? 100}
+            topBarWeatherScale={config.topBarWeatherScale ?? 100}
+            topBarHeight={config.topBarHeight ?? 90}
             widgetStartY={config.widgetStartY ?? 90}
             onTopBarScaleChange={(v) => updateConfig({ topBarScale: v })}
+            onTopBarClockScaleChange={(v) => updateConfig({ topBarClockScale: v })}
+            onTopBarWeatherScaleChange={(v) => updateConfig({ topBarWeatherScale: v })}
             onTopBarHeightChange={(v) => updateConfig({ topBarHeight: v })}
             onWidgetStartYChange={(v) => updateConfig({ widgetStartY: v })}
             onTopBarBackgroundChange={(v) => updateConfig({ topBarBackground: v })}
@@ -205,6 +225,8 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             onTopBarForecastDaysChange={(v) => updateConfig({ topBarForecastDays: v })}
           />
 
+          <SectionHeader label="Voice Assistant" />
+
           {/* Voice Assistant section */}
           <VoiceAssistantSettings
             voiceEnabled={config.voiceEnabled ?? true}
@@ -214,6 +236,8 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             onVoicePipelineIdChange={(v) => updateConfig({ voicePipelineId: v || undefined })}
             onVoiceTtsVoiceChange={(v) => updateConfig({ voiceTtsVoice: v || undefined })}
           />
+
+          <SectionHeader label="Widgets" />
 
           {/* Zone widgets (when in zone mode) */}
           {isZoneMode && config.zoneLayout?.zones && config.zoneLayout.zones.filter(z => z.widgetType).length > 0 && (
@@ -295,35 +319,60 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             <Plus size={16} /> Add Widget
           </button>
 
-          {showAddWidget && (
-            <div className="border border-[var(--border)] rounded-lg p-3 space-y-2">
-              {Array.from(registry.values()).map(def => (
-                <button
-                  key={def.type}
-                  onClick={() => {
-                    const prefilledConfig = cachedCredentials
-                      ? applyCredentialsToWidget(def.type, cachedCredentials)
-                      : {}
-                    const newWidget: WidgetInstance = {
-                      id: `${def.type}-${Date.now().toString(36)}`,
-                      type: def.type,
-                      layout: { x: 0, y: Infinity, w: def.defaultSize.w, h: def.defaultSize.h },
-                      config: prefilledConfig,
-                    }
-                    addWidget(newWidget)
-                    setShowAddWidget(false)
-                    setExpandedWidget(newWidget.id)
-                  }}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-left"
-                >
-                  <div>
-                    <div className="text-sm font-medium">{def.name}</div>
-                    <div className="text-xs text-[var(--muted-foreground)]">{def.description}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          {showAddWidget && (() => {
+            const grouped = new Map<WidgetCategory, WidgetDefinition[]>()
+            for (const def of registry.values()) {
+              const list = grouped.get(def.category) ?? []
+              list.push(def)
+              grouped.set(def.category, list)
+            }
+            for (const list of grouped.values()) {
+              list.sort((a, b) => a.name.localeCompare(b.name))
+            }
+
+            const handleAdd = (def: WidgetDefinition) => {
+              const prefilledConfig = cachedCredentials
+                ? applyCredentialsToWidget(def.type, cachedCredentials)
+                : {}
+              const newWidget: WidgetInstance = {
+                id: `${def.type}-${Date.now().toString(36)}`,
+                type: def.type,
+                layout: { x: 0, y: Infinity, w: def.defaultSize.w, h: def.defaultSize.h },
+                config: prefilledConfig,
+              }
+              addWidget(newWidget)
+              setShowAddWidget(false)
+              setExpandedWidget(newWidget.id)
+            }
+
+            return (
+              <div className="border border-[var(--border)] rounded-lg p-3 space-y-4">
+                {WIDGET_CATEGORY_ORDER.map(category => {
+                  const defs = grouped.get(category)
+                  if (!defs || defs.length === 0) return null
+                  return (
+                    <div key={category} className="space-y-1">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)] px-2">
+                        {category}
+                      </div>
+                      {defs.map(def => (
+                        <button
+                          key={def.type}
+                          onClick={() => handleAdd(def)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-left"
+                        >
+                          <div>
+                            <div className="text-sm font-medium">{def.name}</div>
+                            <div className="text-xs text-[var(--muted-foreground)]">{def.description}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       </div>
     </div>
@@ -1973,6 +2022,7 @@ function MediaPlayerSettings({ config, onChange }: { config: Record<string, any>
 
 interface ThemeBackgroundSettingsProps {
   theme: ThemeName
+  themeCustomAccent: string
   backgroundMode: 'solid' | 'photo'
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
@@ -1984,6 +2034,7 @@ interface ThemeBackgroundSettingsProps {
   onScreenRatioChange: (ratio: string) => void
   onScreenRatioCustomChange: (ratio: string) => void
   onThemeChange: (theme: ThemeName) => void
+  onThemeCustomAccentChange: (hex: string) => void
   onBackgroundModeChange: (mode: 'solid' | 'photo') => void
   onBackgroundPhotosChange: (config: BackgroundPhotosConfig) => void
   onOverlayChange: (opacity: number) => void
@@ -1994,6 +2045,7 @@ interface ThemeBackgroundSettingsProps {
 
 function ThemeBackgroundSettings({
   theme,
+  themeCustomAccent,
   backgroundMode,
   backgroundPhotos,
   backgroundOverlay,
@@ -2005,6 +2057,7 @@ function ThemeBackgroundSettings({
   onScreenRatioChange,
   onScreenRatioCustomChange,
   onThemeChange,
+  onThemeCustomAccentChange,
   onBackgroundModeChange,
   onBackgroundPhotosChange,
   onOverlayChange,
@@ -2013,6 +2066,7 @@ function ThemeBackgroundSettings({
   onScreensaverTimeoutChange,
 }: ThemeBackgroundSettingsProps) {
   const [expanded, setExpanded] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const bgConfig: BackgroundPhotosConfig = backgroundPhotos || {
     provider: 'none',
     interval: 30,
@@ -2036,10 +2090,18 @@ function ThemeBackgroundSettings({
             {themeNames.map(name => {
               const t = themes[name]
               const isActive = name === theme
+              const isCustom = name === 'custom'
+              const swatchColor = isCustom ? (themeCustomAccent || DEFAULT_CUSTOM_ACCENT) : t.swatch
               return (
                 <button
                   key={name}
-                  onClick={() => onThemeChange(name)}
+                  onClick={() => {
+                    if (isCustom) {
+                      setPaletteOpen(true)
+                    } else {
+                      onThemeChange(name)
+                    }
+                  }}
                   className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-colors ${
                     isActive
                       ? 'border-[var(--primary)] bg-[var(--muted)]'
@@ -2048,7 +2110,7 @@ function ThemeBackgroundSettings({
                 >
                   <div
                     className="w-8 h-8 rounded-full border border-[var(--border)]"
-                    style={{ backgroundColor: t.swatch }}
+                    style={{ backgroundColor: swatchColor }}
                   />
                   <span className="text-[10px] font-medium leading-none">{t.label}</span>
                 </button>
@@ -2056,6 +2118,68 @@ function ThemeBackgroundSettings({
             })}
           </div>
         </div>
+
+        {paletteOpen && (
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+            onClick={() => setPaletteOpen(false)}
+          >
+            <div className="absolute inset-0 bg-black/60" />
+            <div
+              className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium">Pick an accent color</h3>
+                <button
+                  onClick={() => setPaletteOpen(false)}
+                  className="p-1 hover:bg-[var(--muted)] rounded-md transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {customPalette.map(color => {
+                  const isSelected = theme === 'custom' && color.hex.toLowerCase() === (themeCustomAccent || '').toLowerCase()
+                  return (
+                    <button
+                      key={color.hex}
+                      onClick={() => {
+                        onThemeCustomAccentChange(color.hex)
+                        onThemeChange('custom')
+                        setPaletteOpen(false)
+                      }}
+                      className={`flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-colors ${
+                        isSelected
+                          ? 'border-[var(--primary)] bg-[var(--muted)]'
+                          : 'border-[var(--border)] hover:bg-[var(--muted)]'
+                      }`}
+                      title={color.name}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full border border-[var(--border)]"
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      <span className="text-[10px] font-medium leading-none">{color.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                <label className="text-xs font-medium text-[var(--muted-foreground)] block mb-1.5">Or pick any color</label>
+                <input
+                  type="color"
+                  value={themeCustomAccent || DEFAULT_CUSTOM_ACCENT}
+                  onChange={(e) => {
+                    onThemeCustomAccentChange(e.target.value)
+                    onThemeChange('custom')
+                  }}
+                  className="w-full h-9 rounded-md border border-[var(--border)] bg-transparent cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Background mode */}
         <SettingsField label="Background">
@@ -2285,6 +2409,8 @@ interface TopOverlaySettingsProps {
   topBarSize: string
   topBarBold: boolean
   topBarScale: number
+  topBarClockScale: number
+  topBarWeatherScale: number
   topBarHeight: number
   widgetStartY: number
   topBarBackground: boolean
@@ -2299,6 +2425,8 @@ interface TopOverlaySettingsProps {
   onTopBarSizeChange: (size: string) => void
   onTopBarBoldChange: (bold: boolean) => void
   onTopBarScaleChange: (scale: number) => void
+  onTopBarClockScaleChange: (scale: number) => void
+  onTopBarWeatherScaleChange: (scale: number) => void
   onTopBarHeightChange: (height: number) => void
   onWidgetStartYChange: (y: number) => void
   onTopBarBackgroundChange: (bg: boolean) => void
@@ -2316,6 +2444,8 @@ function TopOverlaySettings({
   topBarSize,
   topBarBold,
   topBarScale,
+  topBarClockScale,
+  topBarWeatherScale,
   topBarHeight,
   widgetStartY,
   topBarBackground,
@@ -2330,6 +2460,8 @@ function TopOverlaySettings({
   onTopBarSizeChange,
   onTopBarBoldChange,
   onTopBarScaleChange,
+  onTopBarClockScaleChange,
+  onTopBarWeatherScaleChange,
   onTopBarHeightChange,
   onWidgetStartYChange,
   onTopBarBackgroundChange,
@@ -2395,6 +2527,26 @@ function TopOverlaySettings({
                 max="200"
                 value={topBarScale}
                 onChange={e => onTopBarScaleChange(parseInt(e.target.value))}
+                className="w-full accent-[var(--primary)]"
+              />
+            </SettingsField>
+            <SettingsField label={`Clock size (${topBarClockScale}%)`}>
+              <input
+                type="range"
+                min="50"
+                max="200"
+                value={topBarClockScale}
+                onChange={e => onTopBarClockScaleChange(parseInt(e.target.value))}
+                className="w-full accent-[var(--primary)]"
+              />
+            </SettingsField>
+            <SettingsField label={`Weather size (${topBarWeatherScale}%)`}>
+              <input
+                type="range"
+                min="50"
+                max="200"
+                value={topBarWeatherScale}
+                onChange={e => onTopBarWeatherScaleChange(parseInt(e.target.value))}
                 className="w-full accent-[var(--primary)]"
               />
             </SettingsField>

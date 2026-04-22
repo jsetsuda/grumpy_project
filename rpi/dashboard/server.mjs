@@ -20,6 +20,7 @@ const TLS = (process.env.TLS ?? 'true') !== 'false';
 const DIST_DIR = path.join(__dirname, 'dist');
 const DASHBOARDS_DIR = path.join(__dirname, 'dashboards');
 const DEVICES_PATH = path.join(__dirname, 'devices.json');
+const INSTANCES_DIR = path.join(__dirname, 'instances');
 const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const CERT_DIR = path.join(__dirname, '.certs');
@@ -277,6 +278,36 @@ async function handleRequest(req, res) {
     return send405(res);
   }
 
+  // ── Instance overrides API ──────────────────────────────────────────
+  // GET /api/instances/:deviceId   → returns stored overrides (or empty)
+  // POST /api/instances/:deviceId  → body is the InstanceFile JSON
+  if (pathname.startsWith('/api/instances/')) {
+    const rawId = pathname.slice('/api/instances/'.length).split('/')[0];
+    const deviceId = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!deviceId) { res.writeHead(400); return res.end('Invalid device id'); }
+    const filePath = path.join(INSTANCES_DIR, `${deviceId}.json`);
+
+    if (req.method === 'GET') {
+      if (fs.existsSync(filePath)) {
+        return sendJSON(res, fs.readFileSync(filePath, 'utf-8'));
+      }
+      return sendJSON(res, JSON.stringify({ version: 1, deviceId, updatedAt: '', overrides: {} }));
+    }
+    if (req.method === 'POST') {
+      if (!fs.existsSync(INSTANCES_DIR)) {
+        fs.mkdirSync(INSTANCES_DIR, { recursive: true });
+      }
+      const body = await readBody(req);
+      const parsed = JSON.parse(body);
+      parsed.updatedAt = new Date().toISOString();
+      parsed.deviceId = deviceId;
+      parsed.version = 1;
+      fs.writeFileSync(filePath, JSON.stringify(parsed, null, 2), 'utf-8');
+      return sendJSON(res, { ok: true });
+    }
+    return send405(res);
+  }
+
   // ── Credentials API ─────────────────────────────────────────────────
   if (pathname === '/api/credentials' || pathname === '/api/credentials/') {
     if (req.method === 'GET') {
@@ -359,8 +390,13 @@ async function handleRequest(req, res) {
       const proxyRes = await fetch(url, fetchOptions);
       const contentType = proxyRes.headers.get('content-type') || 'application/json';
       res.writeHead(proxyRes.status, { 'Content-Type': contentType });
-      const text = await proxyRes.text();
-      return res.end(text);
+      const isText = /^(text\/|application\/(json|xml|javascript))/.test(contentType);
+      if (isText) {
+        const text = await proxyRes.text();
+        return res.end(text);
+      }
+      const buffer = Buffer.from(await proxyRes.arrayBuffer());
+      return res.end(buffer);
     } catch (e) {
       res.writeHead(500);
       return res.end(`HA proxy failed: ${e}`);

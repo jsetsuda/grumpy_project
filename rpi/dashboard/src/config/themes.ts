@@ -21,7 +21,33 @@ export interface Theme {
   swatch: string
 }
 
-export type ThemeName = 'midnight' | 'slate' | 'nord' | 'sunset' | 'forest' | 'ocean' | 'rose' | 'light'
+export type ThemeName = 'midnight' | 'slate' | 'nord' | 'sunset' | 'forest' | 'ocean' | 'rose' | 'custom'
+
+export interface CustomPaletteColor {
+  name: string
+  hex: string
+}
+
+export const customPalette: CustomPaletteColor[] = [
+  { name: 'Violet', hex: '#8b5cf6' },
+  { name: 'Indigo', hex: '#6366f1' },
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Sky', hex: '#0ea5e9' },
+  { name: 'Cyan', hex: '#06b6d4' },
+  { name: 'Teal', hex: '#14b8a6' },
+  { name: 'Emerald', hex: '#10b981' },
+  { name: 'Green', hex: '#22c55e' },
+  { name: 'Lime', hex: '#84cc16' },
+  { name: 'Amber', hex: '#f59e0b' },
+  { name: 'Orange', hex: '#f97316' },
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Rose', hex: '#f43f5e' },
+  { name: 'Pink', hex: '#ec4899' },
+  { name: 'Fuchsia', hex: '#d946ef' },
+  { name: 'Purple', hex: '#a855f7' },
+]
+
+export const DEFAULT_CUSTOM_ACCENT = '#8b5cf6'
 
 export const themes: Record<ThemeName, Theme> = {
   midnight: {
@@ -171,24 +197,26 @@ export const themes: Record<ThemeName, Theme> = {
       '--radius': '0.75rem',
     },
   },
-  light: {
-    name: 'light',
-    label: 'Light',
-    swatch: '#f8f9fa',
+  custom: {
+    name: 'custom',
+    label: 'Custom',
+    swatch: DEFAULT_CUSTOM_ACCENT,
+    // These values are replaced at apply-time when the user picks an accent.
+    // They render a Midnight-like base with the default violet accent as a preview.
     colors: {
-      '--background': 'oklch(0.98 0 0)',
-      '--foreground': 'oklch(0.15 0 0)',
-      '--card': 'oklch(1.0 0 0)',
-      '--card-foreground': 'oklch(0.15 0 0)',
-      '--muted': 'oklch(0.93 0 0)',
-      '--muted-foreground': 'oklch(0.45 0 0)',
-      '--accent': 'oklch(0.92 0 0)',
-      '--accent-foreground': 'oklch(0.15 0 0)',
-      '--border': 'oklch(0.88 0 0)',
-      '--ring': 'oklch(0.55 0 0)',
-      '--primary': 'oklch(0.25 0 0)',
-      '--primary-foreground': 'oklch(0.98 0 0)',
-      '--destructive': 'oklch(0.55 0.2 27.33)',
+      '--background': 'oklch(0.145 0 0)',
+      '--foreground': 'oklch(0.985 0 0)',
+      '--card': 'oklch(0.178 0 0)',
+      '--card-foreground': 'oklch(0.985 0 0)',
+      '--muted': 'oklch(0.269 0 0)',
+      '--muted-foreground': 'oklch(0.708 0 0)',
+      '--accent': DEFAULT_CUSTOM_ACCENT,
+      '--accent-foreground': 'oklch(0.985 0 0)',
+      '--border': 'oklch(0.269 0 0)',
+      '--ring': DEFAULT_CUSTOM_ACCENT,
+      '--primary': DEFAULT_CUSTOM_ACCENT,
+      '--primary-foreground': 'oklch(0.145 0 0)',
+      '--destructive': 'oklch(0.596 0.215 27.33)',
       '--radius': '0.75rem',
     },
   },
@@ -196,12 +224,21 @@ export const themes: Record<ThemeName, Theme> = {
 
 export const themeNames = Object.keys(themes) as ThemeName[]
 
-export function applyTheme(themeName: ThemeName): void {
+export function applyTheme(themeName: ThemeName, customAccent?: string): void {
   const theme = themes[themeName]
   if (!theme) return
 
   const root = document.documentElement
+  const overrides: Partial<Theme['colors']> =
+    themeName === 'custom' && customAccent
+      ? {
+          '--accent': customAccent,
+          '--ring': customAccent,
+          '--primary': customAccent,
+        }
+      : {}
+
   for (const [key, value] of Object.entries(theme.colors)) {
-    root.style.setProperty(key, value)
+    root.style.setProperty(key, overrides[key as keyof Theme['colors']] ?? value)
   }
 }

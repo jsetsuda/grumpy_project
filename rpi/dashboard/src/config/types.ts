@@ -27,6 +27,7 @@ export interface BackgroundPhotosConfig {
 export interface DashboardConfig {
   version: 1
   theme: string
+  themeCustomAccent?: string // hex color for the 'custom' theme's accent
   backgroundMode: 'solid' | 'photo'
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
@@ -36,6 +37,8 @@ export interface DashboardConfig {
   topBarBold: boolean
   topBarBackground: boolean
   topBarScale: number // percentage, 100 = normal
+  topBarClockScale: number // percentage, 100 = normal — scales the clock/date element independently
+  topBarWeatherScale: number // percentage, 100 = normal — scales the weather element independently
   topBarHeight: number // px — actual height/padding of the top bar
   widgetStartY: number // px — where widgets begin below the top bar
   topBarShadow: boolean
@@ -57,6 +60,7 @@ export interface DashboardConfig {
   voiceEnabled: boolean
   voicePipelineId?: string
   voiceTtsVoice?: string
+  voiceSatelliteEntity?: string // assist_satellite.* entity for this device; drives the voice overlay when wake word fires
   widgets: WidgetInstance[]
   zoneLayout?: ZoneLayoutConfig
 }

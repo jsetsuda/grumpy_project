@@ -4,7 +4,7 @@ export interface VoiceCommandResult {
   responseText: string
 }
 
-const THEME_NAMES = ['midnight', 'slate', 'nord', 'sunset', 'forest', 'ocean', 'rose', 'light']
+const THEME_NAMES = ['midnight', 'slate', 'nord', 'sunset', 'forest', 'ocean', 'rose', 'custom']
 
 export function matchVoiceCommand(transcript: string): VoiceCommandResult | null {
   const text = transcript.toLowerCase().trim()

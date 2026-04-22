@@ -3,6 +3,7 @@ import type { DashboardConfig } from './types'
 export const defaultConfig: DashboardConfig = {
   version: 1,
   theme: 'midnight',
+  themeCustomAccent: '#8b5cf6',
   backgroundMode: 'solid',
   backgroundOverlay: 60,
   showTopBar: true,
@@ -11,7 +12,9 @@ export const defaultConfig: DashboardConfig = {
   topBarBold: false,
   topBarBackground: true,
   topBarScale: 100,
-  topBarHeight: 60,
+  topBarClockScale: 100,
+  topBarWeatherScale: 100,
+  topBarHeight: 90,
   widgetStartY: 90,
   topBarShadow: true,
   topBarShadowSize: 8,

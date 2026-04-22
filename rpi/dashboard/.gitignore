@@ -13,6 +13,8 @@ dist-ssr
 *.local
 config.json
 credentials.json
+devices.json
+instances/
 .certs/
 
 # Editor directories and files
