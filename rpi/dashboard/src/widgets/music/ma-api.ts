@@ -29,8 +29,9 @@ export interface MaMediaPlayer {
   entityId: string
   name: string
   state: string
-  // True if browse_media is known to work on this entity (MA-managed, etc.)
-  supportsBrowse?: boolean
+  // True if this entity is wrapped by Music Assistant (browse_media will
+  // return MA's library tree, play_media will use MA's providers).
+  isMa: boolean
 }
 
 export interface MaPlayerState {
@@ -159,6 +160,10 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
                   entityId: s.entity_id,
                   name: (s.attributes.friendly_name as string) || s.entity_id.replace('media_player.', '').replace(/_/g, ' '),
                   state: s.state,
+                  // MA tags entities it manages with `mass_player_type`.
+                  // Only those entities will return MA's library when
+                  // browsed and accept play_media via MA's providers.
+                  isMa: 'mass_player_type' in (s.attributes || {}),
                 }))
               setPlayers(list)
 
@@ -202,17 +207,20 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
 
           // Update our player list when any media_player changes state.
           if (entity.startsWith('media_player.')) {
+            const attrs = (newState.attributes as Record<string, unknown>) || {}
+            const isMa = 'mass_player_type' in attrs
             setPlayers(prev => {
               const idx = prev.findIndex(p => p.entityId === entity)
               if (idx < 0) {
                 return [...prev, {
                   entityId: entity,
-                  name: ((newState.attributes as Record<string, unknown>)?.friendly_name as string) || entity,
+                  name: (attrs.friendly_name as string) || entity,
                   state: newState.state as string,
+                  isMa,
                 }]
               }
               const next = prev.slice()
-              next[idx] = { ...next[idx], state: newState.state as string }
+              next[idx] = { ...next[idx], state: newState.state as string, isMa }
               return next
             })
           }

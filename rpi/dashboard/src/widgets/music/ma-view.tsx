@@ -36,15 +36,28 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<MaBrowseItem[]>([])
 
-  // If no target picked yet, try the preferred default as soon as we see the
-  // player list. Avoids user having to configure anything on first open.
+  // If no target picked yet, pick the best MA-managed player. Preference:
+  //  1. Exact preferredDefault match (when MA-managed).
+  //  2. Any MA player whose entity id contains the device slug.
+  //  3. The first MA player.
+  // Skip non-MA players entirely — browse/play won't work on those.
   useEffect(() => {
     if (targetPlayer || players.length === 0) return
-    const match = preferredDefault && players.find(p => p.entityId === preferredDefault)
-    if (match) {
-      onTargetPlayerChange(match.entityId)
+    const maPlayers = players.filter(p => p.isMa)
+    if (maPlayers.length === 0) return
+
+    let pick = preferredDefault && maPlayers.find(p => p.entityId === preferredDefault)
+    if (!pick && preferredDefault) {
+      // device id may not exactly match; try a substring match (e.g. the
+      // user has 'media_player.mass_pi_grumpy01_xyz' for device 'pi-grumpy01').
+      const slug = preferredDefault.replace('media_player.', '').replace(/_media_player$/, '')
+      pick = maPlayers.find(p => p.entityId.includes(slug))
     }
+    if (!pick) pick = maPlayers[0]
+    onTargetPlayerChange(pick.entityId)
   }, [players, targetPlayer, preferredDefault, onTargetPlayerChange])
+
+  const targetIsMa = targetPlayer ? !!players.find(p => p.entityId === targetPlayer)?.isMa : false
 
   // Load the root of the browse tree whenever the target changes.
   const loadRoot = useCallback(async () => {
@@ -161,6 +174,15 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
 
   return (
     <div className="flex flex-col h-full p-2 gap-2 min-h-0">
+      {/* Warn if the selected target isn't MA-managed (browse will return
+          HA's generic media sources, play won't go through MA providers). */}
+      {targetPlayer && !targetIsMa && (
+        <div className="px-2 py-1.5 rounded text-xs bg-yellow-500/10 text-yellow-300 border border-yellow-500/30">
+          Selected player isn't managed by Music Assistant. Pick an MA-managed
+          player in the Player tab, or add this player to MA at <code>:8095</code>.
+        </div>
+      )}
+
       {/* Now-playing header */}
       <div className="flex items-center gap-3 p-2 rounded-lg bg-[var(--muted)]/30">
         {albumArtUrl ? (
@@ -373,17 +395,32 @@ function DeviceList({
   if (players.length === 0) {
     return <div className="text-xs text-[var(--muted-foreground)] p-3">No media players found.</div>
   }
+  // MA-managed players first, others below.
+  const maPlayers = players.filter(p => p.isMa).sort((a, b) => a.name.localeCompare(b.name))
+  const otherPlayers = players.filter(p => !p.isMa).sort((a, b) => a.name.localeCompare(b.name))
+  const sorted = [...maPlayers, ...otherPlayers]
   return (
     <div className="flex flex-col gap-1 p-1">
-      {players.map(p => {
+      {maPlayers.length > 0 && (
+        <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+          Music Assistant players
+        </div>
+      )}
+      {sorted.map((p, i) => {
         const isSelected = p.entityId === selected
+        const showOthersHeader = i === maPlayers.length && otherPlayers.length > 0 && maPlayers.length > 0
         return (
+          <div key={p.entityId}>
+            {showOthersHeader && (
+              <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                Other media players (no MA library)
+              </div>
+            )}
           <button
-            key={p.entityId}
             onClick={() => onSelect(p.entityId)}
-            className={`flex items-center gap-2 px-2 py-1.5 text-left rounded transition-colors ${
+            className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded transition-colors ${
               isSelected ? 'bg-[var(--primary)]/20 text-[var(--foreground)]' : 'hover:bg-[var(--muted)]'
-            }`}
+            } ${!p.isMa ? 'opacity-60' : ''}`}
           >
             <Monitor size={14} className={isSelected ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'} />
             <div className="min-w-0 flex-1">
@@ -391,6 +428,7 @@ function DeviceList({
               <div className="text-[10px] text-[var(--muted-foreground)] truncate">{p.entityId} · {p.state}</div>
             </div>
           </button>
+          </div>
         )
       })}
     </div>
