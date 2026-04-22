@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Image, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { WidgetProps } from '../types'
+import { useSharedCredentials } from '@/config/credentials-provider'
 
 export interface PhotosConfig {
   provider: 'immich' | 'local' | 'google' | 'icloud' | 'amazon' | 'none'
@@ -33,12 +34,54 @@ interface PhotoItem {
   caption?: string
 }
 
-export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
+export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfig>) {
   const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const googleTokenRef = useRef<{ accessToken: string; expiry: number } | null>(null)
+  const { credentials: sharedCreds } = useSharedCredentials()
+
+  // Per-provider effective config: shared creds win, widget config is fallback.
+  const effectiveIcloud = useMemo(
+    () => sharedCreds?.icloud?.sharedAlbumUrl
+      ? { sharedAlbumUrl: sharedCreds.icloud.sharedAlbumUrl }
+      : config.icloud,
+    [sharedCreds?.icloud, config.icloud],
+  )
+  const effectiveGoogle = useMemo(
+    () => sharedCreds?.google?.refreshToken
+      ? { ...config.google, ...sharedCreds.google }
+      : config.google,
+    [sharedCreds?.google, config.google],
+  )
+
+  // Scrub once shared creds are loaded. Drop fields from widget config
+  // that duplicate shared creds, including ephemeral google access tokens.
+  const scrubbedRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedRef.current || sharedCreds === null) return
+    scrubbedRef.current = true
+    const next: PhotosConfig = { ...config }
+    let changed = false
+    if (config.icloud?.sharedAlbumUrl && sharedCreds?.icloud?.sharedAlbumUrl === config.icloud.sharedAlbumUrl) {
+      delete next.icloud; changed = true
+    }
+    if (config.google && sharedCreds?.google?.refreshToken === config.google.refreshToken && sharedCreds?.google?.refreshToken) {
+      // Keep an empty google object only if albumId is set (per-widget); otherwise drop.
+      const albumId = config.google.albumId
+      const cleaned = albumId ? { albumId } as PhotosConfig['google'] : undefined
+      next.google = cleaned
+      changed = true
+    } else if (config.google && (config.google.accessToken || config.google.tokenExpiry)) {
+      // Always strip ephemeral google tokens.
+      const { accessToken: _at, tokenExpiry: _exp, ...rest } = config.google
+      void _at; void _exp
+      next.google = rest as PhotosConfig['google']
+      changed = true
+    }
+    if (changed) onConfigChange(next)
+  }, [sharedCreds, config, onConfigChange])
 
   const provider = config.provider || 'none'
   const interval = (config.interval || 30) * 1000
@@ -51,13 +94,14 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
     if (provider === 'immich' && config.immich?.serverUrl && config.immich?.apiKey) {
       fetchImmichPhotos()
     }
-    if (provider === 'google' && config.google?.clientId && config.google?.clientSecret && config.google?.refreshToken) {
+    if (provider === 'google' && effectiveGoogle?.clientId && effectiveGoogle?.clientSecret && effectiveGoogle?.refreshToken) {
       fetchGooglePhotos()
     }
-    if (provider === 'icloud' && config.icloud?.sharedAlbumUrl) {
+    if (provider === 'icloud' && effectiveIcloud?.sharedAlbumUrl) {
       fetchICloudPhotos()
     }
-  }, [provider, config.immich?.serverUrl, config.immich?.apiKey, config.immich?.albumId, config.google?.refreshToken, config.google?.albumId, config.icloud?.sharedAlbumUrl])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, config.immich?.serverUrl, config.immich?.apiKey, config.immich?.albumId, effectiveGoogle?.refreshToken, effectiveGoogle?.albumId, effectiveIcloud?.sharedAlbumUrl])
 
   useEffect(() => {
     if (photos.length <= 1) return
@@ -68,7 +112,7 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
   }, [photos.length, interval])
 
   async function getGoogleAccessToken(): Promise<string> {
-    if (!config.google) throw new Error('Google config missing')
+    if (!effectiveGoogle) throw new Error('Google config missing')
 
     // Return cached token if still valid
     if (googleTokenRef.current && googleTokenRef.current.expiry > Date.now() + 60000) {
@@ -79,9 +123,9 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clientId: config.google.clientId,
-        clientSecret: config.google.clientSecret,
-        refreshToken: config.google.refreshToken,
+        clientId: effectiveGoogle.clientId,
+        clientSecret: effectiveGoogle.clientSecret,
+        refreshToken: effectiveGoogle.refreshToken,
       }),
     })
 
@@ -104,14 +148,17 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
       const accessToken = await getGoogleAccessToken()
       let mediaItems: any[] = []
 
-      if (config.google?.albumId) {
+      // albumId can be set per-widget (different albums per dashboard)
+      // even when shared creds provide the auth.
+      const albumId = config.google?.albumId || effectiveGoogle?.albumId
+      if (albumId) {
         const res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems:search', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ albumId: config.google.albumId, pageSize: 50 }),
+          body: JSON.stringify({ albumId, pageSize: 50 }),
         })
         if (!res.ok) throw new Error(`Google Photos album: ${res.status}`)
         const data = await res.json()
@@ -146,7 +193,7 @@ export function PhotosWidget({ config }: WidgetProps<PhotosConfig>) {
   async function fetchICloudPhotos() {
     setLoading(true)
     try {
-      const albumUrl = config.icloud!.sharedAlbumUrl.trim()
+      const albumUrl = effectiveIcloud!.sharedAlbumUrl.trim()
       // Extract token from URL like https://www.icloud.com/sharedalbum/#TOKEN
       const token = albumUrl.includes('#') ? albumUrl.split('#')[1] : albumUrl
 

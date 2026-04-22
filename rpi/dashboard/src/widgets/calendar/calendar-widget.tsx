@@ -23,6 +23,7 @@ import {
 } from 'date-fns'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { WidgetProps } from '../types'
+import { useSharedCredentials } from '@/config/credentials-provider'
 
 // --- Types ---
 
@@ -90,7 +91,7 @@ function useContainerSize(ref: React.RefObject<HTMLDivElement | null>): Containe
 
 // --- Main Widget ---
 
-export function CalendarWidget({ config }: WidgetProps<CalendarConfig>) {
+export function CalendarWidget({ config, onConfigChange }: WidgetProps<CalendarConfig>) {
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>([])
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>(config.defaultView || 'upcoming')
@@ -98,6 +99,29 @@ export function CalendarWidget({ config }: WidgetProps<CalendarConfig>) {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const containerSize = useContainerSize(containerRef)
+  const { credentials } = useSharedCredentials()
+
+  // Calendar URLs are personal data the user prefers to keep out of git.
+  // Shared credentials win when present; widget-local sources are a fallback.
+  const sources = useMemo(() => {
+    const shared = credentials?.calendar?.sources as CalendarConfig['sources'] | undefined
+    if (shared && shared.length > 0) return shared
+    return config.sources || []
+  }, [credentials?.calendar?.sources, config.sources])
+
+  // Scrub sources from widget config when they duplicate shared.
+  const scrubbedRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedRef.current || credentials === null) return
+    scrubbedRef.current = true
+    const shared = credentials?.calendar?.sources
+    if (Array.isArray(shared) && Array.isArray(config.sources) &&
+        JSON.stringify(shared) === JSON.stringify(config.sources)) {
+      const next = { ...config }
+      delete (next as Partial<CalendarConfig>).sources
+      onConfigChange(next as Partial<CalendarConfig>)
+    }
+  }, [credentials, config, onConfigChange])
 
   const timeFormat = config.timeFormat || '12h'
   const weekStartsOn = config.weekStartsOn ?? 0
@@ -109,7 +133,7 @@ export function CalendarWidget({ config }: WidgetProps<CalendarConfig>) {
 
   // Load calendar data
   useEffect(() => {
-    if (!config.sources || config.sources.length === 0) {
+    if (sources.length === 0) {
       setAllEvents([])
       return
     }
@@ -120,7 +144,7 @@ export function CalendarWidget({ config }: WidgetProps<CalendarConfig>) {
       try {
         const events: CalendarEvent[] = []
 
-        for (const source of config.sources) {
+        for (const source of sources) {
           if (!source.url) continue
           try {
             const proxyUrl = `/api/proxy?url=${encodeURIComponent(source.url)}`
@@ -148,12 +172,12 @@ export function CalendarWidget({ config }: WidgetProps<CalendarConfig>) {
     loadCalendars()
     const interval = setInterval(loadCalendars, 5 * 60 * 1000)
     return () => { cancelled = true; clearInterval(interval) }
-  }, [config.sources])
+  }, [sources])
 
   const isLarge = containerSize === 'large'
 
   // No sources configured
-  if (!config.sources || config.sources.length === 0) {
+  if (sources.length === 0) {
     return (
       <div ref={containerRef} className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] text-sm px-4">
         <p>No calendars configured</p>

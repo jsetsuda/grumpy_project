@@ -43,19 +43,15 @@ function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials):
     }
   }
   if (widgetType === 'photos') {
+    // Just preselect the provider; the actual creds are read from shared
+    // credentials at runtime, not baked into widget config.
     if ((creds as any).icloud?.sharedAlbumUrl) {
       config.provider = 'icloud'
-      config.icloud = { ...(creds as any).icloud }
     } else if (creds.google?.clientId) {
       config.provider = 'google'
-      config.google = { ...creds.google }
     }
   }
-  if (widgetType === 'calendar') {
-    if ((creds as any).calendar?.sources) {
-      config.sources = (creds as any).calendar.sources
-    }
-  }
+  // calendar sources read from shared credentials at runtime.
   // traffic, youtube and cameras creds now live in shared credentials;
   // widgets read them at runtime.
   if (widgetType === 'traffic') {

@@ -4,7 +4,7 @@
     "name": "Home",
     "layoutMode": "grid",
     "createdAt": "2026-04-21T03:50:10.169Z",
-    "updatedAt": "2026-04-22T20:13:50.825Z"
+    "updatedAt": "2026-04-22T21:29:56.687Z"
   },
   "config": {
     "version": 1,
@@ -45,12 +45,6 @@
           "h": 5
         },
         "config": {
-          "sources": [
-            {
-              "url": "https://calendar.google.com/calendar/ical/jason.setsuda%40gmail.com/private-125d5d101482d2c85eaf31da31e6a967/basic.ics",
-              "name": "Jason"
-            }
-          ],
           "maxEvents": 8
         }
       },
@@ -61,7 +55,7 @@
           "x": 6,
           "y": 5,
           "w": 6,
-          "h": 3
+          "h": 4
         },
         "config": {
           "provider": "spotify"
@@ -78,21 +72,22 @@
         },
         "config": {
           "entities": []
-        }
+        },
+        "hidden": true
       },
       {
-        "id": "music-moagzs0z",
+        "id": "music-moajtr1o",
         "type": "music",
         "layout": {
           "x": 0,
-          "y": 5,
-          "w": 6,
-          "h": 3
+          "y": null,
+          "w": 4,
+          "h": 4
         },
         "config": {
           "provider": "music-assistant",
           "ma": {
-            "targetPlayer": "media_player.pi_grumpy01_media_player"
+            "targetPlayer": "media_player.tcl_loft"
           }
         }
       }
