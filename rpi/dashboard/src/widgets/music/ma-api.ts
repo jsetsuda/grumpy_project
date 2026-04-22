@@ -69,6 +69,10 @@ interface UseMaClientReturn {
   browse: (mediaContentType?: string, mediaContentId?: string) => Promise<MaBrowseItem>
   playMedia: (mediaContentId: string, mediaContentType: string) => Promise<void>
   callService: (service: string, data?: Record<string, unknown>) => Promise<void>
+  /** Re-fetch the media_player entity list. Useful after registering a new
+   *  player in MA — idle entities don't emit state_changed events so the
+   *  initial subscribe doesn't pick them up automatically. */
+  refreshPlayers: () => void
 }
 
 function mapBrowseNode(raw: Record<string, unknown>): MaBrowseItem {
@@ -333,5 +337,26 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
     })
   }, [wsCall])
 
-  return { connected, error, players, targetState, browse, playMedia, callService }
+  const refreshPlayers = useCallback(() => {
+    if (!authedRef.current || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return
+    const id = msgIdRef.current++
+    pendingRef.current.set(id, {
+      resolve: (val) => {
+        const arr = val as Array<{ entity_id: string; state: string; attributes: Record<string, unknown> }>
+        const list: MaMediaPlayer[] = arr
+          .filter(s => s.entity_id.startsWith('media_player.'))
+          .map(s => ({
+            entityId: s.entity_id,
+            name: (s.attributes.friendly_name as string) || s.entity_id.replace('media_player.', '').replace(/_/g, ' '),
+            state: s.state,
+            isMa: 'mass_player_type' in (s.attributes || {}),
+          }))
+        setPlayers(list)
+      },
+      reject: () => {},
+    })
+    socketRef.current.send(JSON.stringify({ id, type: 'get_states' }))
+  }, [])
+
+  return { connected, error, players, targetState, browse, playMedia, callService, refreshPlayers }
 }

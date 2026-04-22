@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Monitor, Search, ChevronLeft,
-  Volume2, Loader2, Music,
+  Volume2, Loader2, Music, RefreshCw,
 } from 'lucide-react'
 import { useMaClient, type MaBrowseItem, type MaMediaPlayer } from './ma-api'
 
@@ -26,10 +26,18 @@ interface MaViewProps {
 type Tab = 'browse' | 'search' | 'devices'
 
 export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, credsLoading, preferredDefault }: MaViewProps) {
-  const { connected, error, players, targetState, browse, playMedia, callService } =
+  const { connected, error, players, targetState, browse, playMedia, callService, refreshPlayers } =
     useMaClient({ haUrl, haToken, targetPlayer })
 
   const [tab, setTab] = useState<Tab>('browse')
+
+  // When the user opens the Player tab, re-pull the entity list. New
+  // MA-managed players that appeared after the WS connected don't show
+  // up via state_changed (idle entities don't fire it) so we refresh
+  // explicitly.
+  useEffect(() => {
+    if (tab === 'devices' && connected) refreshPlayers()
+  }, [tab, connected, refreshPlayers])
   const [path, setPath] = useState<Array<{ title: string; type: string; id: string }>>([])
   const [node, setNode] = useState<MaBrowseItem | null>(null)
   const [loading, setLoading] = useState(false)
@@ -285,7 +293,12 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
           </div>
         )}
         {tab === 'devices' && (
-          <DeviceList players={players} selected={targetPlayer} onSelect={onTargetPlayerChange} />
+          <DeviceList
+            players={players}
+            selected={targetPlayer}
+            onSelect={onTargetPlayerChange}
+            onRefresh={refreshPlayers}
+          />
         )}
       </div>
     </div>
@@ -395,14 +408,24 @@ function ItemList({
 }
 
 function DeviceList({
-  players, selected, onSelect,
+  players, selected, onSelect, onRefresh,
 }: {
   players: MaMediaPlayer[]
   selected: string | undefined
   onSelect: (entityId: string) => void
+  onRefresh?: () => void
 }) {
   if (players.length === 0) {
-    return <div className="text-xs text-[var(--muted-foreground)] p-3">No media players found.</div>
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 text-xs text-[var(--muted-foreground)]">
+        <span>No media players found.</span>
+        {onRefresh && (
+          <button onClick={onRefresh} className="flex items-center gap-1 px-2 py-1 rounded hover:bg-[var(--muted)]">
+            <RefreshCw size={12} /> Refresh
+          </button>
+        )}
+      </div>
+    )
   }
   // MA-managed players first, others below.
   const maPlayers = players.filter(p => p.isMa).sort((a, b) => a.name.localeCompare(b.name))
@@ -410,11 +433,21 @@ function DeviceList({
   const sorted = [...maPlayers, ...otherPlayers]
   return (
     <div className="flex flex-col gap-1 p-1">
-      {maPlayers.length > 0 && (
-        <div className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-          Music Assistant players
-        </div>
-      )}
+      <div className="flex items-center justify-between px-2 pt-1">
+        {maPlayers.length > 0 ? (
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            Music Assistant players
+          </span>
+        ) : <span />}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            className="p-1 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]"
+            title="Refresh player list"
+          ><RefreshCw size={12} /></button>
+        )}
+      </div>
+      {maPlayers.length === 0 && <span />}
       {sorted.map((p, i) => {
         const isSelected = p.entityId === selected
         const showOthersHeader = i === maPlayers.length && otherPlayers.length > 0 && maPlayers.length > 0
