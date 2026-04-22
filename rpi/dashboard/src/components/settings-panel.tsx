@@ -35,14 +35,11 @@ async function fetchCredentials(): Promise<SharedCredentials> {
 
 function applyCredentialsToWidget(widgetType: string, creds: SharedCredentials): Record<string, unknown> {
   const config: Record<string, unknown> = {}
-  if (widgetType === 'ha-entities' || widgetType === 'scenes') {
-    if (creds.homeAssistant?.url) config.haUrl = creds.homeAssistant.url
-    if (creds.homeAssistant?.token) config.haToken = creds.homeAssistant.token
-  }
+  // HA and Spotify secrets now live in the shared credentials context —
+  // widgets read them at runtime. Don't copy into widget config.
   if (widgetType === 'music') {
     if (creds.spotify) {
       config.provider = 'spotify'
-      config.spotify = { ...creds.spotify }
     }
   }
   if (widgetType === 'photos') {

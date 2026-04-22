@@ -9,6 +9,7 @@ import { SettingsPanel } from './settings-panel'
 import { BackgroundLayer } from './background-layer'
 import { registerVoiceHandler } from '@/lib/voice-command-actions'
 import { useTheme } from '@/hooks/use-theme'
+import { useSharedCredentials } from '@/config/credentials-provider'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import { TopBarWeather } from './topbar-weather'
 import { NowPlayingOverlay } from './now-playing-overlay'
@@ -109,10 +110,13 @@ export function DashboardGrid() {
   const musicWidget = config.widgets.find(w => w.type === 'music')
   const spotifyConfig = musicWidget?.config?.spotify as any
 
-  // Get HA config from the first ha-entities widget for voice assistant
+  // HA creds come from shared credentials; fall back to the first
+  // ha-entities widget's config for legacy dashboards that haven't been
+  // scrubbed yet.
+  const { credentials: sharedCreds } = useSharedCredentials()
   const haWidget = config.widgets.find(w => w.type === 'ha-entities')
-  const haUrl = haWidget?.config?.haUrl as string | undefined
-  const haToken = haWidget?.config?.haToken as string | undefined
+  const haUrl = sharedCreds?.homeAssistant?.url || (haWidget?.config?.haUrl as string | undefined)
+  const haToken = sharedCreds?.homeAssistant?.token || (haWidget?.config?.haToken as string | undefined)
 
   const sizeClasses = {
     small: { time: 'text-2xl', date: 'text-base' },

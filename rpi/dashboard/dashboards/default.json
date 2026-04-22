@@ -4,7 +4,7 @@
     "name": "Home",
     "layoutMode": "grid",
     "createdAt": "2026-04-21T03:50:10.169Z",
-    "updatedAt": "2026-04-22T19:58:12.798Z"
+    "updatedAt": "2026-04-22T20:13:50.825Z"
   },
   "config": {
     "version": 1,
@@ -64,12 +64,7 @@
           "h": 3
         },
         "config": {
-          "provider": "spotify",
-          "spotify": {
-            "clientId": "a864f77dddd4437bb70abeebb6d87feb",
-            "clientSecret": "REDACTED_SPOTIFY_CLIENT_SECRET",
-            "refreshToken": "REDACTED_SPOTIFY_REFRESH_TOKEN"
-          }
+          "provider": "spotify"
         }
       },
       {
@@ -82,8 +77,6 @@
           "h": 3
         },
         "config": {
-          "haUrl": "http://192.168.2.94:8123",
-          "haToken": "REDACTED_HA_LONG_LIVED_TOKEN",
           "entities": []
         }
       },
@@ -98,11 +91,6 @@
         },
         "config": {
           "provider": "music-assistant",
-          "spotify": {
-            "clientId": "a864f77dddd4437bb70abeebb6d87feb",
-            "clientSecret": "REDACTED_SPOTIFY_CLIENT_SECRET",
-            "refreshToken": "REDACTED_SPOTIFY_REFRESH_TOKEN"
-          },
           "ma": {
             "targetPlayer": "media_player.pi_grumpy01_media_player"
           }

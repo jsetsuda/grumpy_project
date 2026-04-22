@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Lightbulb, Thermometer, Fan, Power, Eye } from 'lucide-react'
 import type { WidgetProps } from '../types'
+import { useSharedCredentials } from '@/config/credentials-provider'
 
 export interface HaEntitiesConfig {
-  haUrl: string
-  haToken: string
+  haUrl?: string // deprecated: read from shared credentials
+  haToken?: string // deprecated: read from shared credentials
   entities: EntityCardConfig[]
 }
 
@@ -21,14 +22,32 @@ interface EntityState {
   last_changed: string
 }
 
-export function HaEntitiesWidget({ config }: WidgetProps<HaEntitiesConfig>) {
+export function HaEntitiesWidget({ config, onConfigChange }: WidgetProps<HaEntitiesConfig>) {
   const [states, setStates] = useState<Map<string, EntityState>>(new Map())
   const [error, setError] = useState<string | null>(null)
-  // WebSocket state managed within the effect
+  const { credentials } = useSharedCredentials()
 
-  const haUrl = config.haUrl
-  const haToken = config.haToken
+  // Shared credentials win; widget config is legacy fallback.
+  const haUrl = credentials?.homeAssistant?.url || config.haUrl
+  const haToken = credentials?.homeAssistant?.token || config.haToken
   const entities = config.entities || []
+
+  // Scrub duplicated creds from widget config so they stop persisting to
+  // dashboard JSON. Runs once per widget lifetime, only if shared creds
+  // match what the config still holds.
+  const scrubbedRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedRef.current || !credentials) return
+    const sameUrl = !!config.haUrl && config.haUrl === credentials.homeAssistant?.url
+    const sameTok = !!config.haToken && config.haToken === credentials.homeAssistant?.token
+    if (sameUrl || sameTok) {
+      scrubbedRef.current = true
+      const next = { ...config }
+      if (sameUrl) delete next.haUrl
+      if (sameTok) delete next.haToken
+      onConfigChange(next)
+    }
+  }, [credentials, config, onConfigChange])
 
   useEffect(() => {
     if (!haUrl || !haToken) return

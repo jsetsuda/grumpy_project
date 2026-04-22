@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Music,
   Search, ChevronLeft, Monitor, ListMusic, Clock, Heart, Loader2,
@@ -13,6 +13,7 @@ import {
 import { registerVoiceHandler } from '@/lib/voice-command-actions'
 import { useSpotifyPlayer } from './use-spotify-player'
 import { useConfig } from '@/config/config-provider'
+import { useSharedCredentials } from '@/config/credentials-provider'
 import { MaView } from './ma-view'
 
 export interface MusicConfig {
@@ -96,34 +97,68 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
 
   const provider = config.provider || 'none'
 
-  // Keep a ref to config.spotify so getToken always reads fresh state
-  const configRef = useRef(config.spotify)
-  configRef.current = config.spotify
+  // Shared credentials win over widget-local config.
+  const { credentials: sharedCreds } = useSharedCredentials()
+  const effectiveSpotify = useMemo(() => {
+    if (sharedCreds?.spotify?.clientId && sharedCreds?.spotify?.clientSecret && sharedCreds?.spotify?.refreshToken) {
+      return {
+        clientId: sharedCreds.spotify.clientId,
+        clientSecret: sharedCreds.spotify.clientSecret,
+        refreshToken: sharedCreds.spotify.refreshToken,
+      }
+    }
+    return config.spotify
+  }, [sharedCreds?.spotify, config.spotify])
+
+  // Keep a ref to the effective spotify creds so getToken reads fresh state.
+  const configRef = useRef(effectiveSpotify)
+  configRef.current = effectiveSpotify
 
   // Spotify access tokens are ephemeral (1h lifetime). Keep them in memory
-  // only — never persist them to the dashboard JSON file, since that
-  // creates a diff every hour with no lasting value.
+  // only — never persist them to the dashboard JSON file.
   const tokenRef = useRef<{ accessToken?: string; tokenExpiry?: number }>({})
 
-  // One-time cleanup: if this dashboard JSON still has an accessToken /
-  // tokenExpiry on disk from the pre-fix era, seed the in-memory ref
-  // from them (so we don't force an immediate refresh) and scrub them
-  // from the persisted config.
+  // One-time cleanup: if this dashboard JSON still has Spotify secrets or
+  // ephemeral tokens persisted from the pre-fix era, scrub them. Shared
+  // creds in credentials.json are the canonical source.
   const scrubbedOnceRef = useRef(false)
   useEffect(() => {
     if (scrubbedOnceRef.current) return
-    scrubbedOnceRef.current = true
-    const s = configRef.current
-    if (!s) return
-    if (s.accessToken || s.tokenExpiry) {
-      tokenRef.current = { accessToken: s.accessToken, tokenExpiry: s.tokenExpiry }
-      const cleaned = { ...s }
-      delete cleaned.accessToken
-      delete cleaned.tokenExpiry
-      onConfigChange({ spotify: cleaned })
+    const localSpot = config.spotify
+    if (!localSpot) { scrubbedOnceRef.current = true; return }
+
+    // Seed in-memory token ref from any persisted ephemeral values so we
+    // don't force an immediate refresh on load.
+    if (localSpot.accessToken || localSpot.tokenExpiry) {
+      tokenRef.current = { accessToken: localSpot.accessToken, tokenExpiry: localSpot.tokenExpiry }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+
+    const shared = sharedCreds?.spotify
+    // Wait for shared creds to load before deciding what to strip.
+    if (sharedCreds === null) return
+    scrubbedOnceRef.current = true
+
+    const cleaned: typeof localSpot = { ...localSpot }
+    let changed = false
+    // Always drop ephemeral tokens — they don't belong in a persisted config.
+    if ('accessToken' in cleaned) { delete cleaned.accessToken; changed = true }
+    if ('tokenExpiry' in cleaned) { delete cleaned.tokenExpiry; changed = true }
+    // Drop durable creds when they duplicate shared credentials.
+    if (shared?.clientId && cleaned.clientId === shared.clientId) {
+      delete (cleaned as Record<string, unknown>).clientId; changed = true
+    }
+    if (shared?.clientSecret && cleaned.clientSecret === shared.clientSecret) {
+      delete (cleaned as Record<string, unknown>).clientSecret; changed = true
+    }
+    if (shared?.refreshToken && cleaned.refreshToken === shared.refreshToken) {
+      delete (cleaned as Record<string, unknown>).refreshToken; changed = true
+    }
+    if (changed) {
+      // If cleaned has nothing left, drop the spotify key entirely.
+      const hasContent = Object.keys(cleaned).length > 0
+      onConfigChange({ spotify: hasContent ? cleaned : undefined })
+    }
+  }, [sharedCreds, config.spotify, onConfigChange])
 
   // Get valid access token, refreshing if needed
   const getToken = useCallback(async (): Promise<string | null> => {
@@ -149,7 +184,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
 
   const { deviceId: localDeviceId, isReady: playerReady } = useSpotifyPlayer({
     getToken,
-    enabled: provider === 'spotify' && !!config.spotify?.refreshToken,
+    enabled: provider === 'spotify' && !!effectiveSpotify?.refreshToken,
     deviceName: spotifyDeviceName,
     volume: 0.5,
   })
@@ -176,12 +211,12 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
 
   useEffect(() => {
     if (provider === 'none') return
-    if (provider === 'spotify' && config.spotify?.refreshToken) {
+    if (provider === 'spotify' && effectiveSpotify?.refreshToken) {
       fetchSpotifyNowPlaying()
       const interval = setInterval(fetchSpotifyNowPlaying, 5000)
       return () => clearInterval(interval)
     }
-  }, [provider, config.spotify?.refreshToken])
+  }, [provider, effectiveSpotify?.refreshToken])
 
   // When nothing is playing, try to show the last played track instead of switching away
   const [lastPlayed, setLastPlayed] = useState<NowPlaying | null>(null)
@@ -195,7 +230,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
 
   // Fetch last played on mount if nothing is currently playing (delay to avoid 429)
   useEffect(() => {
-    if (!nowPlaying && !lastPlayed && config.spotify?.refreshToken) {
+    if (!nowPlaying && !lastPlayed && effectiveSpotify?.refreshToken) {
       const timer = setTimeout(async () => {
         const token = await getToken()
         if (!token) return
@@ -217,7 +252,8 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
       }, 3000)
       return () => clearTimeout(timer)
     }
-  }, [config.spotify?.refreshToken])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSpotify?.refreshToken])
 
   async function fetchSpotifyNowPlaying() {
     const spotify = configRef.current
@@ -577,21 +613,21 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     return <MaWrapper config={config} onConfigChange={onConfigChange} />
   }
 
-  if (provider === 'spotify' && !config.spotify?.refreshToken) {
+  if (provider === 'spotify' && !effectiveSpotify?.refreshToken) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] px-4">
         <Music size={32} className="mb-2 opacity-50" />
         <p className="text-sm mb-3">Spotify not authorized</p>
-        {config.spotify?.clientId && config.spotify?.clientSecret ? (
+        {effectiveSpotify?.clientId && effectiveSpotify?.clientSecret ? (
           <SpotifyAuth
-            clientId={config.spotify.clientId}
-            clientSecret={config.spotify.clientSecret}
+            clientId={effectiveSpotify.clientId}
+            clientSecret={effectiveSpotify.clientSecret}
             onAuthorized={(refreshToken) =>
-              onConfigChange({ spotify: { clientId: config.spotify!.clientId, clientSecret: config.spotify!.clientSecret, refreshToken } })
+              onConfigChange({ spotify: { clientId: effectiveSpotify.clientId, clientSecret: effectiveSpotify.clientSecret, refreshToken } })
             }
           />
         ) : (
-          <p className="text-xs">Add Client ID and Secret in settings</p>
+          <p className="text-xs">Add Client ID and Secret via Dashboard Manager → Shared Credentials</p>
         )}
       </div>
     )
@@ -1115,10 +1151,13 @@ function MaWrapper({
   config, onConfigChange,
 }: { config: MusicConfig; onConfigChange: (partial: Partial<MusicConfig>) => void }) {
   const { config: dashConfig, deviceId } = useConfig()
+  const { credentials: sharedCreds } = useSharedCredentials()
 
+  // Prefer shared credentials; fall back to an ha-entities widget's config
+  // on dashboards that haven't been scrubbed yet.
   const haWidget = dashConfig.widgets.find(w => w.type === 'ha-entities')
-  const haUrl = (haWidget?.config?.haUrl as string | undefined) || ''
-  const haToken = (haWidget?.config?.haToken as string | undefined) || ''
+  const haUrl = sharedCreds?.homeAssistant?.url || (haWidget?.config?.haUrl as string | undefined) || ''
+  const haToken = sharedCreds?.homeAssistant?.token || (haWidget?.config?.haToken as string | undefined) || ''
 
   // pi-grumpy01 → media_player.pi_grumpy01_media_player — matches the entity
   // name linux-voice-assistant / MA creates for each registered device.

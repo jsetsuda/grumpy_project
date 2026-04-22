@@ -1,4 +1,5 @@
 import { ConfigProvider, useConfig } from '@/config/config-provider'
+import { CredentialsProvider } from '@/config/credentials-provider'
 import { DashboardGrid } from '@/components/dashboard-grid'
 import { ZoneRenderer } from '@/components/zone-renderer'
 import { SpotifyCallback } from '@/widgets/music/spotify-callback'
@@ -35,8 +36,10 @@ export default function App() {
   }
 
   return (
-    <ConfigProvider>
-      <DashboardRouter />
-    </ConfigProvider>
+    <CredentialsProvider>
+      <ConfigProvider>
+        <DashboardRouter />
+      </ConfigProvider>
+    </CredentialsProvider>
   )
 }
