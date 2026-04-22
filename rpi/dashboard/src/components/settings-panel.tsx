@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Plus, Trash2, ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { X, Plus, Trash2, ChevronDown, ChevronRight, Search, Eye, EyeOff } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WIDGET_CATEGORY_ORDER, type WidgetCategory, type WidgetDefinition } from '@/widgets/types'
@@ -109,7 +109,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanelProps) {
-  const { config, dashboardMeta, updateConfig, updateWidgetConfig, addWidget, removeWidget } = useConfig()
+  const { config, dashboardMeta, updateConfig, updateWidgetConfig, addWidget, removeWidget, setWidgetHidden } = useConfig()
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null)
   const [showAddWidget, setShowAddWidget] = useState(false)
   const [cachedCredentials, setCachedCredentials] = useState<SharedCredentials | null>(null)
@@ -278,13 +278,23 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             const isExpanded = expandedWidget === widget.id
 
             return (
-              <div key={widget.id} className="border border-[var(--border)] rounded-lg overflow-hidden">
+              <div key={widget.id} className={`border border-[var(--border)] rounded-lg overflow-hidden ${widget.hidden ? 'opacity-60' : ''}`}>
                 <button
                   onClick={() => setExpandedWidget(isExpanded ? null : widget.id)}
                   className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
                 >
                   {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  <span className="flex-1 text-sm font-medium">{def?.name || widget.type} — {widget.id}</span>
+                  <span className="flex-1 text-sm font-medium">
+                    {def?.name || widget.type} — {widget.id}
+                    {widget.hidden && <span className="ml-2 text-xs text-[var(--muted-foreground)] font-normal">(hidden)</span>}
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setWidgetHidden(widget.id, !widget.hidden) }}
+                    className="p-1 hover:text-[var(--primary)] transition-colors"
+                    title={widget.hidden ? 'Show widget' : 'Hide widget (keeps config, removes from grid)'}
+                  >
+                    {widget.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeWidget(widget.id) }}
                     className="p-1 hover:text-[var(--destructive)] transition-colors"

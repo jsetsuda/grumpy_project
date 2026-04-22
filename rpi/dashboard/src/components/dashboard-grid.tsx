@@ -48,8 +48,20 @@ export function DashboardGrid() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
+  // Hidden widgets stay in the config (so their components still mount
+  // and any side effects — voice handlers, credential provisioning —
+  // still run) but are excluded from the grid layout.
+  const visibleWidgets = useMemo(
+    () => config.widgets.filter(w => !w.hidden),
+    [config.widgets]
+  )
+  const hiddenWidgets = useMemo(
+    () => config.widgets.filter(w => w.hidden),
+    [config.widgets]
+  )
+
   const layout: LayoutItem[] = useMemo(
-    () => config.widgets.map(w => ({
+    () => visibleWidgets.map(w => ({
       i: w.id,
       x: w.layout.x,
       y: w.layout.y,
@@ -58,7 +70,7 @@ export function DashboardGrid() {
       minW: registry.get(w.type)?.minSize?.w,
       minH: registry.get(w.type)?.minSize?.h,
     })),
-    [config.widgets]
+    [visibleWidgets]
   )
 
   const lastLayoutRef = useRef<string>('')
@@ -379,7 +391,7 @@ export function DashboardGrid() {
             autoSize
             className="layout"
           >
-            {config.widgets.map(widget => {
+            {visibleWidgets.map(widget => {
               const def = registry.get(widget.type)
               if (!def) return <div key={widget.id} />
 
@@ -406,6 +418,26 @@ export function DashboardGrid() {
           </div>
         )}
 
+        {/* Hidden widgets: mounted so their side effects run, but not
+            rendered to the user. Connector-style widgets (ha-entities
+            when used purely as a voice-integration anchor) go here. */}
+        {hiddenWidgets.length > 0 && (
+          <div style={{ display: 'none' }} aria-hidden="true">
+            {hiddenWidgets.map(widget => {
+              const def = registry.get(widget.type)
+              if (!def) return null
+              const WidgetComponent = def.component
+              return (
+                <WidgetComponent
+                  key={widget.id}
+                  id={widget.id}
+                  config={widget.config}
+                  onConfigChange={(partial) => updateWidgetConfig(widget.id, partial)}
+                />
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Timer overlay — centered */}

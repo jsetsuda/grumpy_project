@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { DashboardMeta } from '@/config/types'
+import { SpotifyAuth } from '@/widgets/music/spotify-auth'
 
 interface DeviceAssignments {
   [deviceName: string]: string
@@ -475,7 +476,18 @@ export function DashboardManager() {
                 { label: 'Client Secret', value: credentials.spotify?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['spotify', 'clientSecret'], v) },
                 { label: 'Refresh Token', value: credentials.spotify?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['spotify', 'refreshToken'], v) },
               ]}
-              note="Create app at developer.spotify.com → Dashboard → Create App. Set redirect URI to http://127.0.0.1:5173/spotify-callback. Use the Authorize button in the Music widget to get the refresh token."
+              note="Create app at developer.spotify.com → Dashboard → Create App. Set redirect URI to http://127.0.0.1:5173/spotify-callback. Enter the Client ID + Secret, then click Authorize to populate the refresh token."
+              extra={
+                credentials.spotify?.clientId && credentials.spotify?.clientSecret ? (
+                  <SpotifyAuth
+                    clientId={credentials.spotify.clientId}
+                    clientSecret={credentials.spotify.clientSecret}
+                    onAuthorized={(refreshToken) => updateCredentials(['spotify', 'refreshToken'], refreshToken)}
+                  />
+                ) : (
+                  <p className="text-xs text-gray-500 italic">Enter Client ID and Client Secret above to enable Authorize.</p>
+                )
+              }
             />
 
             {/* Google Photos */}
@@ -729,12 +741,13 @@ interface CredentialField {
   onChange: (value: string) => void
 }
 
-function CredentialCard({ title, status, fields, note, onDelete }: {
+function CredentialCard({ title, status, fields, note, onDelete, extra }: {
   title: string
   status: string
   fields: CredentialField[]
   note?: string
   onDelete?: () => void
+  extra?: React.ReactNode
 }) {
   const [expanded, setExpanded] = useState(false)
   const isConfigured = status !== 'not set'
@@ -777,6 +790,7 @@ function CredentialCard({ title, status, fields, note, onDelete }: {
             </div>
           ))}
           {note && <p className="text-xs text-gray-400 mt-1">{note}</p>}
+          {extra && <div className="mt-2">{extra}</div>}
         </div>
       )}
     </div>

@@ -68,6 +68,13 @@ export interface DashboardConfig {
 export interface WidgetInstance {
   id: string
   type: string
+  /**
+   * When true, the widget exists in the config (so any side effects like
+   * credential provisioning or registering voice handlers still run) but
+   * is not rendered in the grid. Useful for connector-style widgets like
+   * ha-entities that you want to keep around without taking screen space.
+   */
+  hidden?: boolean
   layout: {
     x: number
     y: number
