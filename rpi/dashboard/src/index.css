@@ -63,8 +63,10 @@ body {
   z-index: 2;
 }
 
-/* Resize handles: 8 axes, only rendered when grid is editable.
-   Always visible (no :hover) since touchscreens have no hover. */
+/* Resize handles: 8 axes. RGL renders all of them into the DOM
+   regardless of the resizeConfig.enabled flag, so we hide them via
+   CSS when the grid isn't in edit mode (controlled by the .editing
+   class on the GridLayout container). */
 .react-resizable-handle {
   position: absolute;
   background: var(--primary);
@@ -73,6 +75,7 @@ body {
   z-index: 3;
 }
 .react-resizable-handle:hover { opacity: 0.85; }
+.layout:not(.editing) .react-resizable-handle { display: none; }
 
 /* Side handles: thin bars centered on each edge, ~32px long for
    touch targets. */

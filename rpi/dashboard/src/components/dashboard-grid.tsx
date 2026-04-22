@@ -403,7 +403,7 @@ export function DashboardGrid() {
             compactor={noCompactor}
             onLayoutChange={editMode ? onLayoutChange : undefined}
             autoSize
-            className="layout"
+            className={editMode ? 'layout editing' : 'layout'}
           >
             {visibleWidgets.map(widget => {
               const def = registry.get(widget.type)
