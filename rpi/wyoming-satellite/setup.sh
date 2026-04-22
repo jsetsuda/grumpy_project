@@ -50,19 +50,36 @@ info "Device name: ${DEVICE_NAME}"
 # ── 4. Audio autodetect ────────────────────────────────────────────────────
 info "Detecting audio devices…"
 
-# Mic: parse `arecord -L` for named devices. Prefer USB, fall back to plughw.
+# USB headsets rarely have "USB" in their ALSA card name (e.g. Sennheiser SP 20
+# appears as CARD=Lync), so match on the snd-usb-audio driver in
+# /proc/asound/cards instead of the card name string.
+detect_usb_card() {
+    awk -F '[][]' '$3 ~ /USB[- ]Audio/{gsub(/ /,"",$2); print $2; exit}' \
+        /proc/asound/cards 2>/dev/null
+}
+
 detect_mic() {
-    local usb_dev default_dev first_plughw
-    usb_dev="$(arecord -L 2>/dev/null | grep -E '^plughw:CARD=.*USB' | head -1 || true)"
-    if [[ -n "$usb_dev" ]]; then echo "$usb_dev"; return; fi
+    local usb_card usb_dev default_dev first_plughw
+    usb_card="$(detect_usb_card)"
+    if [[ -n "$usb_card" ]]; then
+        usb_dev="$(arecord -L 2>/dev/null | grep -E "^plughw:CARD=${usb_card}," | head -1 || true)"
+        if [[ -n "$usb_dev" ]]; then echo "$usb_dev"; return; fi
+    fi
     default_dev="$(arecord -L 2>/dev/null | grep -E '^default$' | head -1 || true)"
     if [[ -n "$default_dev" ]]; then echo "$default_dev"; return; fi
     first_plughw="$(arecord -L 2>/dev/null | grep -E '^plughw:' | head -1 || true)"
     [[ -n "$first_plughw" ]] && echo "$first_plughw" || echo "default"
 }
 
+# Prefer USB (common when a USB speakerphone provides both mic and speaker),
+# then HDMI, then the 3.5mm jack, then whatever ALSA exposes.
 detect_speaker() {
-    local hdmi_dev jack_dev default_dev first_plughw
+    local usb_card usb_dev hdmi_dev jack_dev default_dev first_plughw
+    usb_card="$(detect_usb_card)"
+    if [[ -n "$usb_card" ]]; then
+        usb_dev="$(aplay -L 2>/dev/null | grep -E "^plughw:CARD=${usb_card}," | head -1 || true)"
+        if [[ -n "$usb_dev" ]]; then echo "$usb_dev"; return; fi
+    fi
     hdmi_dev="$(aplay -L 2>/dev/null | grep -iE '^plughw:CARD=.*(HDMI|vc4hdmi)' | head -1 || true)"
     jack_dev="$(aplay -L 2>/dev/null | grep -iE '^plughw:CARD=.*Headphones' | head -1 || true)"
     default_dev="$(aplay -L 2>/dev/null | grep -E '^default$' | head -1 || true)"
@@ -114,7 +131,12 @@ if [[ ! -d "$INSTALL_DIR/.venv" ]]; then
     python3 -m venv "$INSTALL_DIR/.venv"
 fi
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip wheel >/dev/null
-"$INSTALL_DIR/.venv/bin/pip" install --upgrade 'wyoming-satellite>=1.4,<2'
+# wyoming-satellite on PyPI is stuck at 1.0.0; newer code (with VAD support
+# this unit uses) lives on the upstream git main branch. pysilero-vad is the
+# runtime dep for the `--vad` flag.
+"$INSTALL_DIR/.venv/bin/pip" install --upgrade \
+    'git+https://github.com/rhasspy/wyoming-satellite.git' \
+    pysilero-vad
 
 # ── 6. Write config.env ───────────────────────────────────────────────────
 CONFIG_PATH="$INSTALL_DIR/config.env"
