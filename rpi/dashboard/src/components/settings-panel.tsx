@@ -875,12 +875,31 @@ function MusicSettings({ config, onChange }: { config: Record<string, any>; onCh
           onChange={v => onChange({ provider: v })}
           options={[
             { value: 'none', label: 'None' },
-            { value: 'spotify', label: 'Spotify' },
+            { value: 'spotify', label: 'Spotify (direct)' },
+            { value: 'music-assistant', label: 'Music Assistant (via HA)' },
             { value: 'youtube', label: 'YouTube Music (coming soon)' },
             { value: 'apple', label: 'Apple Music (coming soon)' },
           ]}
         />
       </SettingsField>
+
+      {provider === 'music-assistant' && (
+        <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">
+          <p className="text-xs text-[var(--muted-foreground)] mb-2">
+            Plays through Home Assistant's Music Assistant integration. HA credentials
+            are read from the <code className="text-xs">ha-entities</code> widget on this dashboard.
+            The target player is picked in the widget itself (Player tab) and defaults
+            to this device's media_player entity when available.
+          </p>
+          <SettingsField label="Target media_player (optional override)">
+            <TextInput
+              value={config.ma?.targetPlayer || ''}
+              onChange={v => onChange({ ma: { ...config.ma, targetPlayer: v || undefined } })}
+              placeholder="media_player.pi_grumpy01_media_player"
+            />
+          </SettingsField>
+        </div>
+      )}
 
       {provider === 'spotify' && (
         <div className="mt-3 p-3 bg-[var(--muted)] rounded-lg space-y-1">

@@ -13,9 +13,10 @@ import {
 import { registerVoiceHandler } from '@/lib/voice-command-actions'
 import { useSpotifyPlayer } from './use-spotify-player'
 import { useConfig } from '@/config/config-provider'
+import { MaView } from './ma-view'
 
 export interface MusicConfig {
-  provider: 'spotify' | 'youtube' | 'apple' | 'none'
+  provider: 'spotify' | 'youtube' | 'apple' | 'music-assistant' | 'none'
   spotify?: {
     clientId: string
     clientSecret: string
@@ -29,6 +30,9 @@ export interface MusicConfig {
   apple?: {
     developerToken: string
     musicUserToken: string
+  }
+  ma?: {
+    targetPlayer?: string // e.g. 'media_player.pi_grumpy01_media_player'
   }
 }
 
@@ -540,6 +544,13 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
         <p className="text-xs mt-1">Configure in widget settings</p>
       </div>
     )
+  }
+
+  // Music Assistant (via Home Assistant) — separate code path from Spotify
+  // direct. Grabs HA creds from the shared ha-entities widget (same pattern
+  // the voice assistant uses).
+  if (provider === 'music-assistant') {
+    return <MaWrapper config={config} onConfigChange={onConfigChange} />
   }
 
   if (provider === 'spotify' && !config.spotify?.refreshToken) {
@@ -1069,4 +1080,37 @@ function formatTime(ms: number): string {
   const min = Math.floor(s / 60)
   const sec = s % 60
   return `${min}:${sec.toString().padStart(2, '0')}`
+}
+
+/**
+ * Music Assistant provider wrapper. Pulls HA credentials from the first
+ * ha-entities widget on the dashboard (same pattern the voice overlay uses)
+ * and derives a preferred default target player from the current device id.
+ */
+function MaWrapper({
+  config, onConfigChange,
+}: { config: MusicConfig; onConfigChange: (partial: Partial<MusicConfig>) => void }) {
+  const { config: dashConfig, deviceId } = useConfig()
+
+  const haWidget = dashConfig.widgets.find(w => w.type === 'ha-entities')
+  const haUrl = (haWidget?.config?.haUrl as string | undefined) || ''
+  const haToken = (haWidget?.config?.haToken as string | undefined) || ''
+
+  // pi-grumpy01 → media_player.pi_grumpy01_media_player — matches the entity
+  // name linux-voice-assistant / MA creates for each registered device.
+  const preferredDefault = deviceId
+    ? `media_player.${deviceId.replace(/-/g, '_')}_media_player`
+    : undefined
+
+  return (
+    <MaView
+      haUrl={haUrl}
+      haToken={haToken}
+      targetPlayer={config.ma?.targetPlayer}
+      onTargetPlayerChange={(entityId) =>
+        onConfigChange({ ma: { ...config.ma, targetPlayer: entityId } })
+      }
+      preferredDefault={preferredDefault}
+    />
+  )
 }
