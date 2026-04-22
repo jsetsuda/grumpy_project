@@ -326,6 +326,15 @@ function BrowseList({
     return <div className="text-xs text-[var(--muted-foreground)] p-3">No library available on this player.</div>
   }
 
+  // At the root of an MA-managed entity, HA mixes in its generic media
+  // sources (AI Generated Images, Camera, Image Upload, Radio Browser,
+  // TTS, UniFi Protect, etc.) alongside MA's own categories. Filter
+  // those out — they're not music. Subtree browsing is unaffected.
+  const rawChildren = node.children || []
+  const items = path.length === 0
+    ? rawChildren.filter(c => !c.mediaContentId.startsWith('media-source://'))
+    : rawChildren
+
   return (
     <div className="flex flex-col gap-1 p-1">
       {/* Breadcrumb / back */}
@@ -337,7 +346,7 @@ function BrowseList({
           <ChevronLeft size={14} /> {path.map(p => p.title).join(' › ')}
         </button>
       )}
-      <ItemList items={node.children || []} onEnter={onEnter} onPlay={onPlay} />
+      <ItemList items={items} onEnter={onEnter} onPlay={onPlay} />
     </div>
   )
 }
