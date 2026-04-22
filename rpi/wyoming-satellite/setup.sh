@@ -34,9 +34,11 @@ fi
 info "Architecture: ${ARCH}"
 
 # ── 2. Install apt dependencies ───────────────────────────────────────────
+# pipewire-bin ships pw-record / pw-play; the satellite uses these instead of
+# arecord / aplay so it can share the USB mic/speaker with the Chromium kiosk.
 info "Installing system packages (may prompt for sudo)…"
 sudo apt-get update -qq
-sudo apt-get install -y -qq python3-venv python3-pip alsa-utils curl
+sudo apt-get install -y -qq python3-venv python3-pip alsa-utils pipewire-bin curl
 
 # ── 3. Collect device name ─────────────────────────────────────────────────
 DEVICE_NAME="${1:-}"
@@ -133,10 +135,13 @@ fi
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade pip wheel >/dev/null
 # wyoming-satellite on PyPI is stuck at 1.0.0; newer code (with VAD support
 # this unit uses) lives on the upstream git main branch. pysilero-vad is the
-# runtime dep for the `--vad` flag.
+# runtime dep for --vad. webrtc-noise-gain is the runtime dep for
+# --mic-auto-gain / --mic-noise-suppression (compiled from source on arm64,
+# takes a few minutes).
 "$INSTALL_DIR/.venv/bin/pip" install --upgrade \
     'git+https://github.com/rhasspy/wyoming-satellite.git' \
-    pysilero-vad
+    pysilero-vad \
+    webrtc-noise-gain
 
 # ── 6. Write config.env ───────────────────────────────────────────────────
 CONFIG_PATH="$INSTALL_DIR/config.env"
@@ -163,6 +168,7 @@ info "Wrote ${CONFIG_PATH}"
 info "Installing systemd unit at ${SYSTEMD_PATH}…"
 TMP_UNIT="$(mktemp)"
 sed -e "s|__USER__|$USER|g" \
+    -e "s|__USER_UID__|$(id -u)|g" \
     -e "s|__INSTALL_DIR__|$INSTALL_DIR|g" \
     "$SCRIPT_DIR/wyoming-satellite.service" > "$TMP_UNIT"
 sudo mv "$TMP_UNIT" "$SYSTEMD_PATH"

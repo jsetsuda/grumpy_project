@@ -98,3 +98,30 @@ the same HA pipeline, so responses are consistent.
 The dashboard watches HA events for this satellite's entity and
 animates the voice overlay accordingly, so saying the wake word
 triggers the visual UI too.
+
+## Mic sharing with the kiosk (PipeWire)
+
+The satellite and the Chromium kiosk both need the same USB mic.
+Direct ALSA (`arecord -D plughw:...`) locks the hardware exclusively,
+which silently breaks dashboard click-to-talk. To avoid that, this
+unit runs `pw-record` / `pw-play` — clients of PipeWire — so both the
+satellite and Chromium (via PipeWire's PulseAudio compat socket) share
+the device.
+
+Consequences:
+
+- `pipewire-bin` must be installed (the installer adds it).
+- The service needs `XDG_RUNTIME_DIR=/run/user/<uid>` so pw-record can
+  find the user's PipeWire daemon; the installer substitutes the UID.
+- `MIC_DEVICE` / `SPEAKER_DEVICE` in `config.env` are used only for
+  the optional sanity test in `setup.sh`; the running satellite just
+  uses the PipeWire default source/sink. To override, set the default
+  in PipeWire (e.g. `wpctl set-default <ID>`).
+
+## Wake-word sensitivity
+
+`backend/docker-compose.yml` sets `--threshold ${WAKE_THRESHOLD:-0.5}`.
+`0.5` is openWakeWord's default; some mics (notably conference
+speakerphones with heavy DSP like the Sennheiser SP 20) need `0.3`
+for reliable detection of `okay_nabu`. Edit the Backend VM's `.env`
+and restart the `openwakeword` service.
