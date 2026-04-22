@@ -1,7 +1,12 @@
 import { useEffect, useCallback, useRef } from 'react'
 
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize'
-const REDIRECT_URI = 'http://127.0.0.1:5173/spotify-callback'
+// Derive at runtime so the redirect matches whichever origin the user is on
+// (https://host:5173 in the deployed case, http://localhost:5173 for dev).
+// Remember to register the same URL in the Spotify app's redirect URIs.
+function getRedirectUri(): string {
+  return `${window.location.origin}/spotify-callback`
+}
 const SCOPES = [
   'user-read-currently-playing',
   'user-modify-playback-state',
@@ -39,7 +44,7 @@ export function SpotifyAuth({ clientId, clientSecret, onAuthorized }: SpotifyAut
           code: event.data.code,
           clientId,
           clientSecret,
-          redirectUri: REDIRECT_URI,
+          redirectUri: getRedirectUri(),
         }),
       })
 
@@ -63,7 +68,7 @@ export function SpotifyAuth({ clientId, clientSecret, onAuthorized }: SpotifyAut
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: getRedirectUri(),
       scope: SCOPES,
     })
 

@@ -476,7 +476,7 @@ export function DashboardManager() {
                 { label: 'Client Secret', value: credentials.spotify?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['spotify', 'clientSecret'], v) },
                 { label: 'Refresh Token', value: credentials.spotify?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['spotify', 'refreshToken'], v) },
               ]}
-              note="Create app at developer.spotify.com → Dashboard → Create App. Set redirect URI to http://127.0.0.1:5173/spotify-callback. Enter the Client ID + Secret, then click Authorize to populate the refresh token."
+              note={`Create app at developer.spotify.com → Dashboard → Create App. Add this page's origin as a redirect URI in the Spotify app settings: ${typeof window !== 'undefined' ? window.location.origin : 'https://<host>:5173'}/spotify-callback. Enter the Client ID + Secret, then click Authorize.`}
               extra={
                 credentials.spotify?.clientId && credentials.spotify?.clientSecret ? (
                   <SpotifyAuth
