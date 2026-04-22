@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { DashboardMeta } from '@/config/types'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
 
@@ -27,6 +27,10 @@ export function DashboardManager() {
   const [editingNameValue, setEditingNameValue] = useState('')
   const [credentials, setCredentials] = useState<SharedCredentials>({})
   const [credentialsSaving, setCredentialsSaving] = useState(false)
+  // Auto-save plumbing: suppress saves before the initial load finishes
+  // so we don't overwrite credentials.json with an empty object on mount.
+  const credentialsLoadedRef = useRef(false)
+  const credentialsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadDashboards = useCallback(async () => {
     try {
@@ -59,8 +63,36 @@ export function DashboardManager() {
       }
     } catch {
       // ignore
+    } finally {
+      credentialsLoadedRef.current = true
     }
   }, [])
+
+  // Debounced auto-save: any credential change (typing in a field, the
+  // Spotify auth callback, etc.) persists after 500ms of quiet. The
+  // explicit "Save All" button still works as a manual trigger.
+  useEffect(() => {
+    if (!credentialsLoadedRef.current) return
+    if (credentialsSaveTimerRef.current) {
+      clearTimeout(credentialsSaveTimerRef.current)
+    }
+    credentialsSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch('/api/credentials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+        })
+      } catch {
+        // ignore
+      }
+    }, 500)
+    return () => {
+      if (credentialsSaveTimerRef.current) {
+        clearTimeout(credentialsSaveTimerRef.current)
+      }
+    }
+  }, [credentials])
 
   useEffect(() => {
     loadDashboards()

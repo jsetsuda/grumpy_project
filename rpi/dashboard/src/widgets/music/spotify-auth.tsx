@@ -48,14 +48,21 @@ export function SpotifyAuth({ clientId, clientSecret, onAuthorized }: SpotifyAut
         }),
       })
 
-      if (!res.ok) throw new Error('Token exchange failed')
       const data = await res.json()
-
+      if (!res.ok || data.error) {
+        console.error('[spotify] token exchange failed:', data.error_description || data.error || res.status)
+        alert(`Spotify authorization failed: ${data.error_description || data.error || 'unknown error'}`)
+        return
+      }
       if (data.refresh_token) {
         onAuthorizedRef.current(data.refresh_token)
+      } else {
+        console.error('[spotify] response had no refresh_token:', data)
+        alert('Spotify returned no refresh token. Check that your app uses Authorization Code flow (not PKCE or Implicit).')
       }
     } catch (e) {
-      console.error('Spotify token exchange failed:', e)
+      console.error('[spotify] token exchange failed:', e)
+      alert(`Spotify authorization failed: ${e instanceof Error ? e.message : 'network error'}`)
     }
   }, [clientId, clientSecret])
 
