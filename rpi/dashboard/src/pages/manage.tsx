@@ -27,6 +27,7 @@ export function DashboardManager() {
   const [editingNameValue, setEditingNameValue] = useState('')
   const [credentials, setCredentials] = useState<SharedCredentials>({})
   const [credentialsSaving, setCredentialsSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<'main' | 'credentials'>('main')
   // Auto-save plumbing: suppress saves before the initial load finishes
   // so we don't overwrite credentials.json with an empty object on mount.
   const credentialsLoadedRef = useRef(false)
@@ -294,7 +295,7 @@ export function DashboardManager() {
     <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-white">Grumpy Dashboard Manager</h1>
           <a
             href="/"
@@ -304,6 +305,25 @@ export function DashboardManager() {
           </a>
         </div>
 
+        {/* Tab nav */}
+        <div className="flex gap-1 border-b border-gray-700 mb-8">
+          {([
+            ['main', 'Dashboards & Devices'],
+            ['credentials', 'Shared Credentials'],
+          ] as const).map(([tab, label]) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === tab
+                  ? 'text-white border-blue-500'
+                  : 'text-gray-400 border-transparent hover:text-gray-200'
+              }`}
+            >{label}</button>
+          ))}
+        </div>
+
+        {activeTab === 'main' && <>
         {/* Dashboards Section */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
@@ -471,6 +491,9 @@ export function DashboardManager() {
           </div>
         </section>
 
+        </>}
+
+        {activeTab === 'credentials' && <>
         {/* Shared Credentials Section */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
@@ -683,6 +706,9 @@ export function DashboardManager() {
           </div>
         </section>
 
+        </>}
+
+        {activeTab === 'main' && <>
         {/* Device Assignments Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -758,6 +784,7 @@ export function DashboardManager() {
             </button>
           </div>
         </section>
+        </>}
       </div>
     </div>
   )
