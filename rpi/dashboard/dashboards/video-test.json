@@ -4,31 +4,24 @@
     "name": "Video Test",
     "layoutMode": "grid",
     "createdAt": "2026-04-21T18:21:04.552Z",
-    "updatedAt": "2026-04-21T22:53:15.222Z"
+    "updatedAt": "2026-04-22T19:46:09.814Z"
   },
   "config": {
     "version": 1,
-    "theme": "midnight",
+    "theme": "custom",
     "backgroundMode": "solid",
     "backgroundOverlay": 60,
-    "showTopBar": true,
     "topBarFont": "system-ui",
     "topBarSize": "large",
     "topBarBold": false,
     "topBarBackground": true,
-    "topBarScale": 100,
-    "topBarHeight": 60,
-    "widgetStartY": 90,
     "topBarShadow": true,
     "topBarShadowSize": 8,
     "topBarShadowOpacity": 80,
     "topBarWeather": true,
-    "topBarWeatherMode": "current",
+    "topBarWeatherMode": "forecast",
     "topBarForecastDays": 5,
-    "screensaverEnabled": true,
-    "screensaverTimeout": 300,
-    "widgetOpacity": 100,
-    "voiceEnabled": false,
+    "voiceEnabled": true,
     "grid": {
       "cols": 12,
       "rowHeight": 80,
@@ -53,7 +46,7 @@
               "id": "netflix",
               "name": "Netflix",
               "url": "https://www.netflix.com/browse",
-              "icon": "🎬",
+              "icon": "\ud83c\udfac",
               "color": "#E50914",
               "enabled": true,
               "openMode": "overlay"
@@ -62,7 +55,7 @@
               "id": "hulu",
               "name": "Hulu",
               "url": "https://www.hulu.com/hub/home",
-              "icon": "📺",
+              "icon": "\ud83d\udcfa",
               "color": "#1CE783",
               "enabled": true,
               "openMode": "overlay"
@@ -71,7 +64,7 @@
               "id": "disney",
               "name": "Disney+",
               "url": "https://www.disneyplus.com/home",
-              "icon": "✨",
+              "icon": "\u2728",
               "color": "#113CCF",
               "enabled": true,
               "openMode": "overlay"
@@ -80,7 +73,7 @@
               "id": "prime",
               "name": "Prime Video",
               "url": "https://www.amazon.com/gp/video/storefront",
-              "icon": "📦",
+              "icon": "\ud83d\udce6",
               "color": "#00A8E1",
               "enabled": true,
               "openMode": "overlay"
@@ -89,7 +82,7 @@
               "id": "youtubetv",
               "name": "YouTube TV",
               "url": "https://tv.youtube.com",
-              "icon": "📡",
+              "icon": "\ud83d\udce1",
               "color": "#FF0000",
               "enabled": true,
               "openMode": "overlay"
@@ -98,7 +91,7 @@
               "id": "hbo",
               "name": "HBO Max",
               "url": "https://play.max.com",
-              "icon": "🎭",
+              "icon": "\ud83c\udfad",
               "color": "#5822B4",
               "enabled": true,
               "openMode": "overlay"
@@ -107,7 +100,7 @@
               "id": "paramount",
               "name": "Paramount+",
               "url": "https://www.paramountplus.com",
-              "icon": "⭐",
+              "icon": "\u2b50",
               "color": "#0064FF",
               "enabled": true,
               "openMode": "overlay"
@@ -116,7 +109,7 @@
               "id": "appletv",
               "name": "Apple TV+",
               "url": "https://tv.apple.com",
-              "icon": "🍎",
+              "icon": "\ud83c\udf4e",
               "color": "#000000",
               "enabled": true,
               "openMode": "overlay"
@@ -125,7 +118,7 @@
               "id": "peacock",
               "name": "Peacock",
               "url": "https://www.peacocktv.com",
-              "icon": "🦚",
+              "icon": "\ud83e\udd9a",
               "color": "#FFC300",
               "enabled": true,
               "openMode": "overlay"
@@ -134,7 +127,7 @@
               "id": "youtube",
               "name": "YouTube",
               "url": "https://www.youtube.com",
-              "icon": "▶️",
+              "icon": "\u25b6\ufe0f",
               "color": "#FF0000",
               "enabled": true,
               "openMode": "overlay"
@@ -143,7 +136,7 @@
               "id": "twitch",
               "name": "Twitch",
               "url": "https://www.twitch.tv",
-              "icon": "🎮",
+              "icon": "\ud83c\udfae",
               "color": "#9146FF",
               "enabled": true,
               "openMode": "overlay"
@@ -152,7 +145,7 @@
               "id": "spotify",
               "name": "Spotify",
               "url": "https://open.spotify.com",
-              "icon": "🎵",
+              "icon": "\ud83c\udfb5",
               "color": "#1DB954",
               "enabled": true,
               "openMode": "overlay"
@@ -161,7 +154,7 @@
               "id": "plex",
               "name": "Plex",
               "url": "http://192.168.2.93:32400",
-              "icon": "🎞️",
+              "icon": "\ud83c\udf9e\ufe0f",
               "color": "#E5A00D",
               "enabled": true,
               "openMode": "overlay"
@@ -201,7 +194,61 @@
         "config": {
           "apiKey": "AIzaSyDb1ybmji1m5Z_p5QhyalNMSehgE0E-aWw"
         }
+      },
+      {
+        "id": "ha-entities-moa40o89",
+        "type": "ha-entities",
+        "layout": {
+          "x": 8,
+          "y": 4,
+          "w": 3,
+          "h": 3
+        },
+        "config": {
+          "haUrl": "http://192.168.2.94:8123",
+          "haToken": "REDACTED_HA_LONG_LIVED_TOKEN"
+        }
+      },
+      {
+        "id": "music-moaelcxx",
+        "type": "music",
+        "layout": {
+          "x": 4,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "config": {
+          "provider": "spotify",
+          "spotify": {
+            "clientId": "a864f77dddd4437bb70abeebb6d87feb",
+            "clientSecret": "REDACTED_SPOTIFY_CLIENT_SECRET",
+            "refreshToken": "REDACTED_SPOTIFY_REFRESH_TOKEN"
+          }
+        }
+      },
+      {
+        "id": "music-moagj9lu",
+        "type": "music",
+        "layout": {
+          "x": 0,
+          "y": 4,
+          "w": 4,
+          "h": 4
+        },
+        "config": {
+          "provider": "music-assistant",
+          "spotify": {
+            "clientId": "a864f77dddd4437bb70abeebb6d87feb",
+            "clientSecret": "REDACTED_SPOTIFY_CLIENT_SECRET",
+            "refreshToken": "REDACTED_SPOTIFY_REFRESH_TOKEN"
+          },
+          "ma": {
+            "targetPlayer": "media_player.pi_grumpy01_media_player"
+          }
+        }
       }
-    ]
+    ],
+    "themeCustomAccent": "#16e92e"
   }
 }

@@ -4,7 +4,7 @@
     "name": "Unifi",
     "layoutMode": "grid",
     "createdAt": "2026-04-21T23:09:43.806Z",
-    "updatedAt": "2026-04-21T23:19:08.384Z"
+    "updatedAt": "2026-04-21T23:32:17.155Z"
   },
   "config": {
     "version": 1,
@@ -39,12 +39,12 @@
     },
     "widgets": [
       {
-        "id": "cameras-mo98nc9p",
+        "id": "cameras-mo99c1yc",
         "type": "cameras",
         "layout": {
-          "x": 1,
+          "x": 0,
           "y": null,
-          "w": 5,
+          "w": 7,
           "h": null
         },
         "config": {
@@ -56,83 +56,102 @@
               "id": "63cc64930075e903e40003ed",
               "name": "CCI Outdoor Back East",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "63cc64930075e903e40003ed"
             },
             {
               "id": "63cc6493005be903e40003ec",
               "name": "CCI Outdoor Side North",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "63cc6493005be903e40003ec"
             },
             {
               "id": "67cf2d3a01b6fb03e404a69a",
               "name": "CCI Outdoor Side South",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "67cf2d3a01b6fb03e404a69a"
             },
             {
               "id": "63cc649300a9e903e40003ef",
               "name": "CCI Outdoor Back West",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "63cc649300a9e903e40003ef"
             },
             {
               "id": "69330c5a01e76903e4a7ef4b",
               "name": "CCI 3D Printing Room",
               "enabled": true,
-              "sourceType": "unifi"
-            },
-            {
-              "id": "672129ad02b22e03e40004f1",
-              "name": "CCI Shop AI 360",
-              "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "69330c5a01e76903e4a7ef4b"
             },
             {
               "id": "68e42344003a7703e40de5c8",
               "name": "CCI Outdoor Front",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "68e42344003a7703e40de5c8"
             },
             {
               "id": "6866d060001b1c03e46d7da0",
               "name": "CCI Front Office",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "6866d060001b1c03e46d7da0"
             },
             {
               "id": "63cc64930163e903e40003f6",
               "name": "CCI Shop Front Machines",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "63cc64930163e903e40003f6"
             },
             {
               "id": "63cc649300f9e903e40003f2",
               "name": "CCI Shop Lathes",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "63cc649300f9e903e40003f2"
             },
             {
               "id": "676315c5027d9d03e401f4a0",
               "name": "CCI Server Room",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "676315c5027d9d03e401f4a0"
             },
             {
               "id": "63cc6493008ee903e40003ee",
               "name": "CCI Shop East Door",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "63cc6493008ee903e40003ee"
             },
             {
               "id": "691b9720002f6903e47ffed0",
               "name": "CCI Shop Back Door",
               "enabled": true,
-              "sourceType": "unifi"
+              "sourceType": "unifi",
+              "unifiHost": "https://192.168.5.10",
+              "unifiCameraId": "691b9720002f6903e47ffed0"
             }
           ],
+          "gridGap": 0,
           "layout": "grid",
-          "selectedCamera": "68e42344003a7703e40de5c8"
+          "gridColumns": 0
         }
       }
     ]

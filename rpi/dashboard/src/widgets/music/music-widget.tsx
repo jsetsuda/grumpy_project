@@ -100,12 +100,37 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
   const configRef = useRef(config.spotify)
   configRef.current = config.spotify
 
+  // Spotify access tokens are ephemeral (1h lifetime). Keep them in memory
+  // only — never persist them to the dashboard JSON file, since that
+  // creates a diff every hour with no lasting value.
+  const tokenRef = useRef<{ accessToken?: string; tokenExpiry?: number }>({})
+
+  // One-time cleanup: if this dashboard JSON still has an accessToken /
+  // tokenExpiry on disk from the pre-fix era, seed the in-memory ref
+  // from them (so we don't force an immediate refresh) and scrub them
+  // from the persisted config.
+  const scrubbedOnceRef = useRef(false)
+  useEffect(() => {
+    if (scrubbedOnceRef.current) return
+    scrubbedOnceRef.current = true
+    const s = configRef.current
+    if (!s) return
+    if (s.accessToken || s.tokenExpiry) {
+      tokenRef.current = { accessToken: s.accessToken, tokenExpiry: s.tokenExpiry }
+      const cleaned = { ...s }
+      delete cleaned.accessToken
+      delete cleaned.tokenExpiry
+      onConfigChange({ spotify: cleaned })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Get valid access token, refreshing if needed
   const getToken = useCallback(async (): Promise<string | null> => {
     const spotify = configRef.current
     if (!spotify) return null
-    let token = spotify.accessToken
-    const expiry = spotify.tokenExpiry || 0
+    let token = tokenRef.current.accessToken
+    const expiry = tokenRef.current.tokenExpiry || 0
 
     if (!token || Date.now() > expiry) {
       token = await refreshSpotifyToken() ?? undefined
@@ -199,8 +224,8 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     if (!spotify) return
 
     try {
-      let token: string | undefined = spotify.accessToken
-      const expiry = spotify.tokenExpiry || 0
+      let token: string | undefined = tokenRef.current.accessToken
+      const expiry = tokenRef.current.tokenExpiry || 0
 
       if (!token || Date.now() > expiry) {
         const refreshed = await refreshSpotifyToken()
@@ -264,13 +289,12 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
       if (!res.ok) throw new Error('Token refresh failed')
       const data = await res.json()
 
-      const newSpotify = {
-        ...spotify,
+      // In-memory only — do NOT persist. The dashboard JSON lives in git
+      // and an hourly-refreshing access token there is pure churn.
+      tokenRef.current = {
         accessToken: data.access_token,
         tokenExpiry: Date.now() + data.expires_in * 1000,
       }
-      configRef.current = newSpotify
-      onConfigChange({ spotify: newSpotify })
 
       return data.access_token
     } catch {
