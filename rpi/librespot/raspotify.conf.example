@@ -27,7 +27,7 @@ LIBRESPOT_VOLUME_NORMALISATION=true
 
 # Allow other Spotify clients to take over playback without
 # disconnecting first.
-LIBRESPOT_AUTOPLAY=true
+LIBRESPOT_AUTOPLAY=on
 
 # Disable dithering — needed if you hear audio glitches on PulseAudio.
 # LIBRESPOT_DITHER=none

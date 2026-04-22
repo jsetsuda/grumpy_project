@@ -11,10 +11,13 @@ services:
       - DISPLAY=${DISPLAY:-:0}
       - DASHBOARD_URL=${DASHBOARD_URL:-https://192.168.5.118:5173}
       - DEVICE_NAME=${DEVICE_NAME:-pi-unnamed}
+      - XDG_RUNTIME_DIR=/run/user/1000
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - PULSE_COOKIE=/tmp/pulse-cookie
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /run/user/1000/pulse:/run/user/1000/pulse
+      - /home/jason/.config/pulse/cookie:/tmp/pulse-cookie:ro
       - /dev/snd:/dev/snd
       - /dev/dri:/dev/dri
     devices:
