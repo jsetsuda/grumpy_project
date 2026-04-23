@@ -234,21 +234,35 @@ export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfi
         return
       }
 
-      // Collect photo GUIDs and their largest derivative checksums
+      // Collect photo GUIDs and their largest derivative checksums.
+      // Apple keys shared-album derivatives by their target longest-edge size
+      // (e.g. "290", "1920", "2048", "6144") and sometimes "original" for the
+      // full-res file. Rank by that key — it's orientation-independent, unlike
+      // comparing width alone (which underscored portraits).
+      const rankDerivative = (key: string, deriv: any): number => {
+        if (key === 'original') return Number.MAX_SAFE_INTEGER
+        const keyNum = parseInt(key, 10)
+        if (!Number.isNaN(keyNum) && keyNum > 0) return keyNum
+        // Fallback: use max(width, height) from the derivative object.
+        const w = parseInt(deriv?.width || '0', 10) || 0
+        const h = parseInt(deriv?.height || '0', 10) || 0
+        return Math.max(w, h)
+      }
       const photoMap: Map<string, { guid: string; checksum: string; caption?: string }> = new Map()
       for (const photo of data.photos.slice(0, 50)) {
-        if (photo.derivatives) {
-          const derivatives = Object.values(photo.derivatives) as any[]
-          const largest = derivatives.reduce((a: any, b: any) =>
-            (parseInt(a.width || '0') > parseInt(b.width || '0')) ? a : b
-          , derivatives[0])
-          if (largest?.checksum) {
-            photoMap.set(largest.checksum, {
-              guid: photo.photoGuid || photo.batchGuid || largest.checksum,
-              checksum: largest.checksum,
-              caption: photo.caption || undefined,
-            })
-          }
+        if (!photo.derivatives) continue
+        const entries = Object.entries(photo.derivatives) as [string, any][]
+        let best: { deriv: any; score: number } | null = null
+        for (const [key, deriv] of entries) {
+          const score = rankDerivative(key, deriv)
+          if (!best || score > best.score) best = { deriv, score }
+        }
+        if (best?.deriv?.checksum) {
+          photoMap.set(best.deriv.checksum, {
+            guid: photo.photoGuid || photo.batchGuid || best.deriv.checksum,
+            checksum: best.deriv.checksum,
+            caption: photo.caption || undefined,
+          })
         }
       }
 
