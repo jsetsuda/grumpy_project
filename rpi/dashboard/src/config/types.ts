@@ -69,6 +69,13 @@ export interface WidgetInstance {
   id: string
   type: string
   /**
+   * User-friendly name shown in the settings panel instead of the default
+   * widget type name. Lets users distinguish multiple instances of the
+   * same widget type (e.g. "Music — living room", "Music — kitchen").
+   * Doesn't affect runtime behavior.
+   */
+  label?: string
+  /**
    * When true, the widget exists in the config (so any side effects like
    * credential provisioning or registering voice handlers still run) but
    * is not rendered in the grid. Useful for connector-style widgets like

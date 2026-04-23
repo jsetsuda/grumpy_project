@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Plus, Trash2, ChevronDown, ChevronRight, Search, Eye, EyeOff } from 'lucide-react'
+import { X, Plus, Trash2, ChevronDown, ChevronRight, Search, Eye, EyeOff, Pencil, Check } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WIDGET_CATEGORY_ORDER, type WidgetCategory, type WidgetDefinition } from '@/widgets/types'
@@ -148,7 +148,9 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanelProps) {
-  const { config, dashboardMeta, updateConfig, updateWidgetConfig, addWidget, removeWidget, setWidgetHidden } = useConfig()
+  const { config, dashboardMeta, updateConfig, updateWidgetConfig, addWidget, removeWidget, setWidgetHidden, setWidgetLabel } = useConfig()
+  const [renamingWidget, setRenamingWidget] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null)
   const [showAddWidget, setShowAddWidget] = useState(false)
   const [cachedCredentials, setCachedCredentials] = useState<SharedCredentials | null>(null)
@@ -318,15 +320,51 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
 
             return (
               <div key={widget.id} className={`border border-[var(--border)] rounded-lg overflow-hidden ${widget.hidden ? 'opacity-60' : ''}`}>
-                <button
-                  onClick={() => setExpandedWidget(isExpanded ? null : widget.id)}
-                  className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
-                >
-                  {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  <span className="flex-1 text-sm font-medium">
-                    {def?.name || widget.type} — {widget.id}
-                    {widget.hidden && <span className="ml-2 text-xs text-[var(--muted-foreground)] font-normal">(hidden)</span>}
-                  </span>
+                <div className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors">
+                  <button
+                    onClick={() => setExpandedWidget(isExpanded ? null : widget.id)}
+                    className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                  >
+                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    {renamingWidget === widget.id ? (
+                      <input
+                        autoFocus
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          e.stopPropagation()
+                          if (e.key === 'Enter') {
+                            setWidgetLabel(widget.id, renameDraft)
+                            setRenamingWidget(null)
+                          } else if (e.key === 'Escape') {
+                            setRenamingWidget(null)
+                          }
+                        }}
+                        onBlur={() => { setWidgetLabel(widget.id, renameDraft); setRenamingWidget(null) }}
+                        placeholder={def?.name || widget.type}
+                        className="flex-1 text-sm font-medium bg-[var(--background)] border border-[var(--border)] rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                      />
+                    ) : (
+                      <span className="flex-1 text-sm font-medium truncate">
+                        {widget.label || def?.name || widget.type}
+                        {widget.hidden && <span className="ml-2 text-xs text-[var(--muted-foreground)] font-normal">(hidden)</span>}
+                      </span>
+                    )}
+                  </button>
+                  {renamingWidget === widget.id ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setWidgetLabel(widget.id, renameDraft); setRenamingWidget(null) }}
+                      className="p-1 hover:text-[var(--primary)] transition-colors"
+                      title="Save name"
+                    ><Check size={14} /></button>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRenameDraft(widget.label || ''); setRenamingWidget(widget.id) }}
+                      className="p-1 hover:text-[var(--primary)] transition-colors"
+                      title="Rename widget"
+                    ><Pencil size={14} /></button>
+                  )}
                   <button
                     onClick={(e) => { e.stopPropagation(); setWidgetHidden(widget.id, !widget.hidden) }}
                     className="p-1 hover:text-[var(--primary)] transition-colors"
@@ -341,7 +379,7 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
                   >
                     <Trash2 size={14} />
                   </button>
-                </button>
+                </div>
 
                 {isExpanded && (
                   <div className="p-3 pt-0 border-t border-[var(--border)]">

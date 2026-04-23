@@ -20,6 +20,7 @@ interface ConfigContextValue {
   addWidget: (widget: WidgetInstance) => void
   removeWidget: (widgetId: string) => void
   setWidgetHidden: (widgetId: string, hidden: boolean) => void
+  setWidgetLabel: (widgetId: string, label: string) => void
 }
 
 const ConfigContext = createContext<ConfigContextValue | null>(null)
@@ -314,6 +315,18 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     scheduleSave(true, false)
   }, [loaded, scheduleSave])
 
+  const setWidgetLabel = useCallback((widgetId: string, label: string) => {
+    if (!loaded) return
+    const trimmed = label.trim()
+    setConfig(prev => ({
+      ...prev,
+      widgets: prev.widgets.map(w =>
+        w.id === widgetId ? { ...w, label: trimmed ? trimmed : undefined } : w,
+      ),
+    }))
+    scheduleSave(true, false)
+  }, [loaded, scheduleSave])
+
   // Don't render children until config is loaded — prevents layout flash/jumping
   if (!loaded) {
     return (
@@ -324,7 +337,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ConfigContext.Provider value={{ config, dashboardId, deviceId, dashboardMeta, updateConfig, updateWidgetConfig, updateWidgetLayout, updateAllLayouts, addWidget, removeWidget, setWidgetHidden }}>
+    <ConfigContext.Provider value={{ config, dashboardId, deviceId, dashboardMeta, updateConfig, updateWidgetConfig, updateWidgetLayout, updateAllLayouts, addWidget, removeWidget, setWidgetHidden, setWidgetLabel }}>
       {children}
     </ConfigContext.Provider>
   )
