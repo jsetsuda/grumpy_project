@@ -24,76 +24,97 @@ interface TrackInfo {
 export function NowPlayingOverlay({ spotifyConfig, showBackground = true }: NowPlayingOverlayProps) {
   const [track, setTrack] = useState<TrackInfo | null>(null)
   const configRef = useRef(spotifyConfig)
-  const tokenRef = useRef<string | null>(null)
+  // In-memory token cache with expiry. Was a string-only ref before — that
+  // ignored expiry entirely and together with config.accessToken being
+  // unset (we stopped persisting tokens) caused a refresh request on
+  // every 3s poll, which tripped Spotify's 429 rate limit.
+  const tokenRef = useRef<{ token: string; expiry: number } | null>(null)
   configRef.current = spotifyConfig
 
   async function getToken(): Promise<string | null> {
     const config = configRef.current
     if (!config) return null
 
-    let token = config.accessToken
-    const expiry = config.tokenExpiry || 0
+    const cached = tokenRef.current
+    if (cached && cached.expiry > Date.now() + 60_000) return cached.token
 
-    if (!token || Date.now() > expiry) {
-      try {
-        const res = await fetch('https://accounts.spotify.com/api/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'refresh_token',
-            refresh_token: config.refreshToken,
-            client_id: config.clientId,
-            client_secret: config.clientSecret,
-          }),
-        })
-        if (!res.ok) return null
-        const data = await res.json()
-        token = data.access_token
-      } catch {
-        return null
+    try {
+      const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: config.refreshToken,
+          client_id: config.clientId,
+          client_secret: config.clientSecret,
+        }),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      if (!data.access_token) return null
+      tokenRef.current = {
+        token: data.access_token,
+        expiry: Date.now() + (data.expires_in || 3600) * 1000,
       }
+      return data.access_token
+    } catch {
+      return null
     }
-
-    tokenRef.current = token || null
-    return token || null
   }
 
   useEffect(() => {
     if (!spotifyConfig?.refreshToken) return
 
     let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    // Dynamic poll cadence so we can back off when Spotify pushes back.
+    let delayMs = 5000
 
     async function poll() {
+      if (cancelled) return
       const token = await getToken()
-      if (!token || cancelled) return
+      if (!token || cancelled) {
+        timer = setTimeout(poll, delayMs)
+        return
+      }
 
       try {
         const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
           headers: { Authorization: `Bearer ${token}` },
         })
-        if (res.status === 204 || !res.ok) {
+        if (res.status === 429) {
+          // Honor Retry-After if present; otherwise double the cadence
+          // up to 60s. Either way, back off — don't hammer.
+          const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10)
+          delayMs = Math.max(retryAfter * 1000, Math.min(delayMs * 2, 60_000))
+        } else if (res.status === 204 || !res.ok) {
           if (!cancelled) setTrack(null)
-          return
-        }
-        const data = await res.json()
-        if (!cancelled) {
-          setTrack({
-            title: data.item?.name || 'Unknown',
-            artist: data.item?.artists?.map((a: any) => a.name).join(', ') || 'Unknown',
-            albumArt: data.item?.album?.images?.[1]?.url || data.item?.album?.images?.[0]?.url,
-            isPlaying: data.is_playing,
-            progress: data.progress_ms || 0,
-            duration: data.item?.duration_ms || 0,
-          })
+          delayMs = 5000
+        } else {
+          const data = await res.json()
+          if (!cancelled) {
+            setTrack({
+              title: data.item?.name || 'Unknown',
+              artist: data.item?.artists?.map((a: any) => a.name).join(', ') || 'Unknown',
+              albumArt: data.item?.album?.images?.[1]?.url || data.item?.album?.images?.[0]?.url,
+              isPlaying: data.is_playing,
+              progress: data.progress_ms || 0,
+              duration: data.item?.duration_ms || 0,
+            })
+          }
+          delayMs = 5000
         }
       } catch {
         if (!cancelled) setTrack(null)
       }
+      timer = setTimeout(poll, delayMs)
     }
 
     poll()
-    const interval = setInterval(poll, 3000)
-    return () => { cancelled = true; clearInterval(interval) }
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
   }, [spotifyConfig?.refreshToken])
 
   const command = useCallback(async (cmd: 'play' | 'pause' | 'next' | 'previous') => {

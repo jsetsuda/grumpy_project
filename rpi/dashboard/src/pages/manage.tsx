@@ -30,7 +30,19 @@ export function DashboardManager() {
   const [editingNameValue, setEditingNameValue] = useState('')
   const [credentials, setCredentials] = useState<SharedCredentials>({})
   const [credentialsSaving, setCredentialsSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'main' | 'credentials'>('main')
+  const [activeTab, setActiveTab] = useState<'main' | 'credentials'>(() => {
+    try {
+      const saved = localStorage.getItem('grumpy-manager-tab')
+      if (saved === 'main' || saved === 'credentials') return saved
+    } catch { /* storage blocked — use default */ }
+    return 'main'
+  })
+
+  // Persist across reloads so the user stays on whichever tab they were
+  // using. localStorage may be unavailable in kiosk mode; catch silently.
+  useEffect(() => {
+    try { localStorage.setItem('grumpy-manager-tab', activeTab) } catch { /* ignore */ }
+  }, [activeTab])
   // Auto-save plumbing: suppress saves before the initial load finishes
   // so we don't overwrite credentials.json with an empty object on mount.
   const credentialsLoadedRef = useRef(false)
@@ -513,7 +525,11 @@ export function DashboardManager() {
             Shared across all dashboards. Individual widgets can override.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <h3 className="text-sm font-semibold text-gray-200 mb-2">Widget services</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Infrastructure and APIs widgets connect to — same account for everyone using this dashboard.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
             {/* Home Assistant */}
             <CredentialCard
               title="Home Assistant"
@@ -548,18 +564,6 @@ export function DashboardManager() {
               }
             />
 
-            {/* Google Photos */}
-            <CredentialCard
-              title="Google Photos"
-              status={credentials.google?.refreshToken ? 'configured' : 'not set'}
-              fields={[
-                { label: 'Client ID', value: credentials.google?.clientId || '', placeholder: 'Google Client ID', onChange: (v) => updateCredentials(['google', 'clientId'], v) },
-                { label: 'Client Secret', value: credentials.google?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['google', 'clientSecret'], v) },
-                { label: 'Refresh Token', value: credentials.google?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['google', 'refreshToken'], v) },
-              ]}
-              note="Create project at console.cloud.google.com → Enable Photos Library API → Create OAuth credentials. Set redirect URI to http://127.0.0.1:5173/google-callback"
-            />
-
             {/* Google Maps */}
             <CredentialCard
               title="Google Maps"
@@ -570,58 +574,6 @@ export function DashboardManager() {
               note="Get API key at console.cloud.google.com → Enable Distance Matrix API → Create API Key"
             />
 
-            {/* iCloud */}
-            <CredentialCard
-              title="iCloud Photos"
-              status={(credentials as any).icloud?.sharedAlbumUrl ? 'configured' : 'not set'}
-              fields={[
-                { label: 'Shared Album URL', value: (credentials as any).icloud?.sharedAlbumUrl || '', placeholder: 'https://www.icloud.com/sharedalbum/#...', onChange: (v) => updateCredentials(['icloud', 'sharedAlbumUrl'], v) },
-              ]}
-              note="In Photos app: create a Shared Album → enable Public Website in sharing options → copy the link"
-            />
-
-            {/* Calendar */}
-            <CredentialCard
-              title="Calendar (iCal)"
-              status={(credentials as any).calendar?.sources?.length ? `${(credentials as any).calendar.sources.length} source(s)` : 'not set'}
-              fields={[]}
-              note="Google Calendar: Settings → calendar → Secret address in iCal format. Outlook: Settings → View all Outlook settings → Calendar → Shared calendars → Publish"
-            />
-
-            {/* Todoist */}
-            <CredentialCard
-              title="Todoist"
-              status={(credentials as any).todoist?.apiToken ? 'configured' : 'not set'}
-              fields={[
-                { label: 'API Token', value: (credentials as any).todoist?.apiToken || '', placeholder: 'From todoist.com/prefs/integrations', type: 'password', onChange: (v) => updateCredentials(['todoist', 'apiToken'], v) },
-              ]}
-              note="Get API token at todoist.com → Settings → Integrations → Developer → API token"
-            />
-
-            {/* Microsoft */}
-            <CredentialCard
-              title="Microsoft (To Do)"
-              status={(credentials as any).microsoft?.refreshToken ? 'configured' : 'not set'}
-              fields={[
-                { label: 'Client ID', value: (credentials as any).microsoft?.clientId || '', placeholder: 'Azure AD Client ID', onChange: (v) => updateCredentials(['microsoft', 'clientId'], v) },
-                { label: 'Client Secret', value: (credentials as any).microsoft?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'clientSecret'], v) },
-                { label: 'Refresh Token', value: (credentials as any).microsoft?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'refreshToken'], v) },
-              ]}
-              note="Register app at portal.azure.com → Azure AD → App registrations. Set redirect URI to http://127.0.0.1:5173/microsoft-callback. Add Tasks.ReadWrite permission."
-            />
-
-            {/* Google Tasks */}
-            <CredentialCard
-              title="Google Tasks"
-              status={(credentials as any).googleTasks?.refreshToken ? 'configured' : 'not set'}
-              fields={[
-                { label: 'Client ID', value: (credentials as any).googleTasks?.clientId || '', placeholder: 'Google Client ID', onChange: (v) => updateCredentials(['googleTasks', 'clientId'], v) },
-                { label: 'Client Secret', value: (credentials as any).googleTasks?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'clientSecret'], v) },
-                { label: 'Refresh Token', value: (credentials as any).googleTasks?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'refreshToken'], v) },
-              ]}
-              note="Same Google Cloud project as Photos. Enable Tasks API. Use same OAuth credentials with tasks scope."
-            />
-
             {/* YouTube — API key for public data (search, channel info) */}
             <CredentialCard
               title="YouTube (API Key)"
@@ -630,29 +582,6 @@ export function DashboardManager() {
                 { label: 'API Key', value: (credentials as any).youtube?.apiKey || '', placeholder: 'YouTube Data API v3 Key', type: 'password', onChange: (v) => updateCredentials(['youtube', 'apiKey'], v) },
               ]}
               note="console.cloud.google.com → Enable YouTube Data API v3 → Create API Key. Good for search and public channel content."
-            />
-
-            {/* YouTube OAuth — for personal data (subscriptions, liked, playlists) */}
-            <CredentialCard
-              title="YouTube (OAuth)"
-              status={credentials.youtubeOauth?.refreshToken ? 'configured' : 'not set'}
-              fields={[
-                { label: 'Client ID', value: credentials.youtubeOauth?.clientId || '', placeholder: 'OAuth Client ID', onChange: (v) => updateCredentials(['youtubeOauth', 'clientId'], v) },
-                { label: 'Client Secret', value: credentials.youtubeOauth?.clientSecret || '', placeholder: 'OAuth Client Secret', type: 'password', onChange: (v) => updateCredentials(['youtubeOauth', 'clientSecret'], v) },
-                { label: 'Refresh Token', value: credentials.youtubeOauth?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['youtubeOauth', 'refreshToken'], v) },
-              ]}
-              note={`console.cloud.google.com → same project → OAuth client ID (Web application) → Authorized redirect URIs must include ${typeof window !== 'undefined' ? window.location.origin : 'https://<host>'}/google-callback. Enable the YouTube Data API v3. Needed for subscriptions / liked / playlists.`}
-              extra={
-                credentials.youtubeOauth?.clientId && credentials.youtubeOauth?.clientSecret ? (
-                  <YouTubeAuth
-                    clientId={credentials.youtubeOauth.clientId}
-                    clientSecret={credentials.youtubeOauth.clientSecret}
-                    onAuthorized={(refreshToken) => updateCredentials(['youtubeOauth', 'refreshToken'], refreshToken)}
-                  />
-                ) : (
-                  <p className="text-xs text-gray-500 italic">Enter Client ID and Client Secret above to enable Authorize.</p>
-                )
-              }
             />
 
             {/* Plex */}
@@ -701,9 +630,106 @@ export function DashboardManager() {
               note="UniFi Protect controller credentials. Use the same account you log in to the Dream Machine / Cloud Key with."
             />
 
+          </div>
+
+          <h3 className="text-sm font-semibold text-gray-200 mb-2">Personal accounts</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Accounts tied to you — photo libraries, personal calendars, task lists.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+            {/* Google Photos */}
+            <CredentialCard
+              title="Google Photos"
+              status={credentials.google?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: credentials.google?.clientId || '', placeholder: 'Google Client ID', onChange: (v) => updateCredentials(['google', 'clientId'], v) },
+                { label: 'Client Secret', value: credentials.google?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['google', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: credentials.google?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['google', 'refreshToken'], v) },
+              ]}
+              note="Create project at console.cloud.google.com → Enable Photos Library API → Create OAuth credentials. Set redirect URI to http://127.0.0.1:5173/google-callback"
+            />
+
+            {/* iCloud */}
+            <CredentialCard
+              title="iCloud Photos"
+              status={(credentials as any).icloud?.sharedAlbumUrl ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Shared Album URL', value: (credentials as any).icloud?.sharedAlbumUrl || '', placeholder: 'https://www.icloud.com/sharedalbum/#...', onChange: (v) => updateCredentials(['icloud', 'sharedAlbumUrl'], v) },
+              ]}
+              note="In Photos app: create a Shared Album → enable Public Website in sharing options → copy the link"
+            />
+
+            {/* Calendar */}
+            <CredentialCard
+              title="Calendar (iCal)"
+              status={(credentials as any).calendar?.sources?.length ? `${(credentials as any).calendar.sources.length} source(s)` : 'not set'}
+              fields={[]}
+              note="Google Calendar: Settings → calendar → Secret address in iCal format. Outlook: Settings → View all Outlook settings → Calendar → Shared calendars → Publish"
+            />
+
+            {/* YouTube OAuth — personal (subscriptions, liked, playlists) */}
+            <CredentialCard
+              title="YouTube (OAuth)"
+              status={credentials.youtubeOauth?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: credentials.youtubeOauth?.clientId || '', placeholder: 'OAuth Client ID', onChange: (v) => updateCredentials(['youtubeOauth', 'clientId'], v) },
+                { label: 'Client Secret', value: credentials.youtubeOauth?.clientSecret || '', placeholder: 'OAuth Client Secret', type: 'password', onChange: (v) => updateCredentials(['youtubeOauth', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: credentials.youtubeOauth?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['youtubeOauth', 'refreshToken'], v) },
+              ]}
+              note={`Needed for subscriptions / liked / playlists. Personal Gmail + sensitive scope = refresh tokens expire after 7 days (Google limitation); re-auth via developers.google.com/oauthplayground when that happens.`}
+              extra={
+                credentials.youtubeOauth?.clientId && credentials.youtubeOauth?.clientSecret ? (
+                  <YouTubeAuth
+                    clientId={credentials.youtubeOauth.clientId}
+                    clientSecret={credentials.youtubeOauth.clientSecret}
+                    onAuthorized={(refreshToken) => updateCredentials(['youtubeOauth', 'refreshToken'], refreshToken)}
+                  />
+                ) : (
+                  <p className="text-xs text-gray-500 italic">Enter Client ID and Client Secret above to enable Authorize.</p>
+                )
+              }
+            />
+
+            {/* Todoist */}
+            <CredentialCard
+              title="Todoist"
+              status={(credentials as any).todoist?.apiToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'API Token', value: (credentials as any).todoist?.apiToken || '', placeholder: 'From todoist.com/prefs/integrations', type: 'password', onChange: (v) => updateCredentials(['todoist', 'apiToken'], v) },
+              ]}
+              note="Get API token at todoist.com → Settings → Integrations → Developer → API token"
+            />
+
+            {/* Microsoft */}
+            <CredentialCard
+              title="Microsoft (To Do)"
+              status={(credentials as any).microsoft?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: (credentials as any).microsoft?.clientId || '', placeholder: 'Azure AD Client ID', onChange: (v) => updateCredentials(['microsoft', 'clientId'], v) },
+                { label: 'Client Secret', value: (credentials as any).microsoft?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: (credentials as any).microsoft?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['microsoft', 'refreshToken'], v) },
+              ]}
+              note="Register app at portal.azure.com → Azure AD → App registrations. Set redirect URI to http://127.0.0.1:5173/microsoft-callback. Add Tasks.ReadWrite permission."
+            />
+
+            {/* Google Tasks */}
+            <CredentialCard
+              title="Google Tasks"
+              status={(credentials as any).googleTasks?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: (credentials as any).googleTasks?.clientId || '', placeholder: 'Google Client ID', onChange: (v) => updateCredentials(['googleTasks', 'clientId'], v) },
+                { label: 'Client Secret', value: (credentials as any).googleTasks?.clientSecret || '', placeholder: 'Client Secret', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: (credentials as any).googleTasks?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['googleTasks', 'refreshToken'], v) },
+              ]}
+              note="Same Google Cloud project as Photos. Enable Tasks API. Use same OAuth credentials with tasks scope."
+            />
+          </div>
+
+          <h3 className="text-sm font-semibold text-gray-200 mb-2">Custom</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Custom credentials */}
             {Object.entries(credentials as any).filter(([k]) =>
-              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar', 'todoist', 'microsoft', 'googleTasks', 'youtube', 'plex', 'jellyfin', 'immich', 'unifi'].includes(k)
+              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar', 'todoist', 'microsoft', 'googleTasks', 'youtube', 'youtubeOauth', 'plex', 'jellyfin', 'immich', 'unifi'].includes(k)
             ).map(([key, value]) => (
               <CredentialCard
                 key={key}
