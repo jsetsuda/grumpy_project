@@ -12,6 +12,7 @@ import { NowPlayingOverlay } from './now-playing-overlay'
 import { VoiceOverlay } from './voice-overlay'
 import { getTemplate } from '@/config/zone-templates'
 import { useTheme } from '@/hooks/use-theme'
+import { useSharedCredentials } from '@/config/credentials-provider'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import type { ZoneRegion } from '@/config/zone-types'
 
@@ -54,8 +55,13 @@ export function ZoneRenderer() {
   const topBarBg = config.topBarBackground ?? true
   const topBarSize = config.topBarSize || 'large'
 
+  const { credentials: sharedCreds } = useSharedCredentials()
+
   const musicWidget = config.widgets.find(w => w.type === 'music')
-  const spotifyConfig = musicWidget?.config?.spotify as { clientId: string; clientSecret: string; refreshToken: string; accessToken?: string; tokenExpiry?: number } | undefined
+  const widgetSpotify = musicWidget?.config?.spotify as
+    | { clientId: string; clientSecret: string; refreshToken: string; accessToken?: string; tokenExpiry?: number }
+    | undefined
+  const spotifyConfig = sharedCreds?.spotify?.refreshToken ? sharedCreds.spotify : widgetSpotify
 
   const haWidget = config.widgets.find(w => w.type === 'ha-entities')
   const haUrl = haWidget?.config?.haUrl as string | undefined

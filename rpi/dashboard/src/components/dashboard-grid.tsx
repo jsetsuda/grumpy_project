@@ -126,14 +126,17 @@ export function DashboardGrid() {
   const topBarBg = config.topBarBackground ?? true
   const topBarSize = config.topBarSize || 'large'
 
-  // Get Spotify config from music widget for the now-playing overlay
-  const musicWidget = config.widgets.find(w => w.type === 'music')
-  const spotifyConfig = musicWidget?.config?.spotify as any
-
-  // HA creds come from shared credentials; fall back to the first
-  // ha-entities widget's config for legacy dashboards that haven't been
-  // scrubbed yet.
+  // Shared credentials — one source of truth for HA + Spotify. Legacy
+  // widget-local configs are a fallback for dashboards that predate the
+  // credential migration.
   const { credentials: sharedCreds } = useSharedCredentials()
+
+  const musicWidget = config.widgets.find(w => w.type === 'music')
+  const widgetSpotify = musicWidget?.config?.spotify as
+    | { clientId: string; clientSecret: string; refreshToken: string }
+    | undefined
+  const spotifyConfig = sharedCreds?.spotify?.refreshToken ? sharedCreds.spotify : widgetSpotify
+
   const haWidget = config.widgets.find(w => w.type === 'ha-entities')
   const haUrl = sharedCreds?.homeAssistant?.url || (haWidget?.config?.haUrl as string | undefined)
   const haToken = sharedCreds?.homeAssistant?.token || (haWidget?.config?.haToken as string | undefined)
