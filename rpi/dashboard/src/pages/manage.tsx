@@ -816,7 +816,16 @@ export function DashboardManager() {
                         {getDeviceUrl(deviceName)}
                       </code>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <a
+                        href={getDeviceUrl(deviceName)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block px-2 py-1 mr-2 bg-gray-700 hover:bg-gray-600 rounded text-xs transition-colors"
+                        title="Open this device's dashboard in a new tab"
+                      >
+                        Open
+                      </a>
                       <button
                         onClick={() => handleReloadDevice(deviceName)}
                         disabled={reloadingDevice === deviceName}
