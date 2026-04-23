@@ -19,6 +19,23 @@ interface YouTubeAuthProps {
 // fire the same code twice (Google revokes reused auth codes).
 const processedCodes = new Set<string>()
 
+// A stable-ish device identifier that persists across reloads on the same
+// browser (when storage is available) and otherwise falls back to a
+// per-session UUID. Used to satisfy Google's device_id requirement for
+// OAuth flows targeting a private-IP redirect.
+function getOrCreateDeviceId(): string {
+  const KEY = 'grumpy-oauth-device-id'
+  try {
+    const existing = localStorage.getItem(KEY)
+    if (existing) return existing
+    const fresh = crypto.randomUUID()
+    localStorage.setItem(KEY, fresh)
+    return fresh
+  } catch {
+    return crypto.randomUUID()
+  }
+}
+
 export function YouTubeAuth({ clientId, clientSecret, onAuthorized }: YouTubeAuthProps) {
   const onAuthorizedRef = useRef(onAuthorized)
   onAuthorizedRef.current = onAuthorized
@@ -72,6 +89,11 @@ export function YouTubeAuth({ clientId, clientSecret, onAuthorized }: YouTubeAut
       scope: SCOPES,
       access_type: 'offline',
       prompt: 'consent',
+      // Google requires device_id + device_name for OAuth requests whose
+      // redirect_uri points at a private IP. Values are per-install
+      // identifiers; they don't need to be registered anywhere.
+      device_id: getOrCreateDeviceId(),
+      device_name: 'Grumpy Dashboard',
     })
 
     const width = 500
