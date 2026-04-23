@@ -25,6 +25,7 @@ export interface SharedCredentials {
   }
   googleMaps?: { apiKey: string }
   youtube?: { apiKey: string }
+  youtubeOauth?: { clientId: string; clientSecret: string; refreshToken: string }
   unifi?: {
     host: string
     username: string

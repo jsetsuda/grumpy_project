@@ -29,7 +29,13 @@ interface SearchResult {
   publishedAt?: string
 }
 
-type Tab = 'search' | 'channels' | 'queue'
+type Tab = 'search' | 'subscriptions' | 'channels' | 'queue'
+
+interface SubscribedChannel {
+  channelId: string
+  name: string
+  thumbnail: string
+}
 
 function extractVideoId(input: string): string | null {
   if (/^[\w-]{11}$/.test(input.trim())) {
@@ -82,13 +88,22 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
   const [tab, setTab] = useState<Tab>('search')
   const [channelInput, setChannelInput] = useState('')
   const [channelVideos, setChannelVideos] = useState<SearchResult[]>([])
+  const [subscriptions, setSubscriptions] = useState<SubscribedChannel[]>([])
+  const [subsLoading, setSubsLoading] = useState(false)
+  const [viewingChannelId, setViewingChannelId] = useState<string | null>(null)
+  const [viewingChannelName, setViewingChannelName] = useState<string>('')
 
   const { credentials } = useSharedCredentials()
   const apiKey = credentials?.youtube?.apiKey || config.apiKey
   const hasApiKey = !!apiKey
+  const oauth = credentials?.youtubeOauth
+  const hasOauth = !!(oauth?.clientId && oauth?.clientSecret && oauth?.refreshToken)
   const channels = config.channels || []
   const watchLater = config.watchLater || []
   const isMini = config.miniPlayer === true
+
+  // In-memory OAuth access token cache.
+  const oauthTokenRef = useRef<{ token: string; expiry: number } | null>(null)
 
   // Scrub duplicated apiKey from widget config.
   const scrubbedRef = useRef(false)
@@ -275,6 +290,105 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
     }
   }, [apiKey])
 
+  // --- OAuth helpers for personal data (subscriptions, etc.) ---
+
+  const getOauthToken = useCallback(async (): Promise<string | null> => {
+    if (!oauth?.clientId || !oauth?.clientSecret || !oauth?.refreshToken) return null
+    const cached = oauthTokenRef.current
+    if (cached && cached.expiry > Date.now() + 60_000) return cached.token
+
+    try {
+      const res = await fetch('/api/google/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: oauth.clientId,
+          clientSecret: oauth.clientSecret,
+          refreshToken: oauth.refreshToken,
+        }),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      if (!data.access_token) return null
+      oauthTokenRef.current = {
+        token: data.access_token,
+        expiry: Date.now() + (data.expires_in || 3600) * 1000,
+      }
+      return data.access_token
+    } catch {
+      return null
+    }
+  }, [oauth?.clientId, oauth?.clientSecret, oauth?.refreshToken])
+
+  const loadSubscriptions = useCallback(async () => {
+    if (!hasOauth) return
+    setSubsLoading(true)
+    setError('')
+    try {
+      const token = await getOauthToken()
+      if (!token) { setError('Failed to get OAuth token'); return }
+
+      // Paginate until done (or cap at 100 to be API-quota friendly).
+      let pageToken = ''
+      const all: SubscribedChannel[] = []
+      for (let i = 0; i < 2; i++) {
+        const params = new URLSearchParams({
+          part: 'snippet',
+          mine: 'true',
+          maxResults: '50',
+          order: 'alphabetical',
+        })
+        if (pageToken) params.set('pageToken', pageToken)
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/subscriptions?${params}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          const body = await res.text().catch(() => '')
+          console.error('[youtube] subscriptions fetch failed:', res.status, body)
+          setError(`Subscriptions fetch failed: ${res.status}`)
+          return
+        }
+        const data = await res.json()
+        for (const item of data.items || []) {
+          const s = item.snippet
+          all.push({
+            channelId: s?.resourceId?.channelId || '',
+            name: s?.title || '',
+            thumbnail: s?.thumbnails?.medium?.url || s?.thumbnails?.default?.url || '',
+          })
+        }
+        if (!data.nextPageToken) break
+        pageToken = data.nextPageToken
+      }
+      setSubscriptions(all.filter(c => c.channelId))
+    } catch (e) {
+      console.error('[youtube] subscriptions failed:', e)
+      setError('Subscriptions fetch failed')
+    } finally {
+      setSubsLoading(false)
+    }
+  }, [hasOauth, getOauthToken])
+
+  // Auto-load subscriptions when OAuth is configured and the tab is opened.
+  useEffect(() => {
+    if (tab === 'subscriptions' && hasOauth && subscriptions.length === 0) {
+      loadSubscriptions()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, hasOauth])
+
+  const openSubscribedChannel = useCallback(async (ch: SubscribedChannel) => {
+    setViewingChannelId(ch.channelId)
+    setViewingChannelName(ch.name)
+    await loadChannelVideos(ch.channelId)
+  }, [loadChannelVideos])
+
+  const closeSubscribedChannel = useCallback(() => {
+    setViewingChannelId(null)
+    setViewingChannelName('')
+    setChannelVideos([])
+  }, [])
+
   // Auto-play next from queue when video ends (check periodically is not feasible with iframe)
   // Instead we provide a "Next" button
 
@@ -364,6 +478,14 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
         >
           <Search size={12} /> Search
         </button>
+        {hasOauth && (
+          <button
+            onClick={() => setTab('subscriptions')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs transition-colors min-h-[32px] ${tab === 'subscriptions' ? 'bg-[var(--primary)] text-[var(--primary-foreground)]' : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--muted)]/80'}`}
+          >
+            <User size={12} /> Subscriptions{subscriptions.length > 0 ? ` (${subscriptions.length})` : ''}
+          </button>
+        )}
         {hasApiKey && (
           <button
             onClick={() => setTab('channels')}
@@ -419,6 +541,67 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
               <Link size={16} />
             </button>
           </div>
+        </>
+      )}
+
+      {/* Subscriptions Tab — needs OAuth */}
+      {tab === 'subscriptions' && hasOauth && (
+        <>
+          {viewingChannelId ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={closeSubscribedChannel}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]"
+              >← Back</button>
+              <span className="text-sm font-medium truncate">{viewingChannelName}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {subsLoading ? 'Loading…' : `${subscriptions.length} subscriptions`}
+              </span>
+              <button
+                onClick={loadSubscriptions}
+                disabled={subsLoading}
+                className="px-2 py-1 rounded text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50"
+              >Refresh</button>
+            </div>
+          )}
+
+          {/* Channel grid */}
+          {!viewingChannelId && (
+            <div className="flex-1 overflow-y-auto">
+              {subsLoading && subscriptions.length === 0 ? (
+                <p className="text-xs text-[var(--muted-foreground)] text-center py-6">Loading subscriptions…</p>
+              ) : subscriptions.length === 0 ? (
+                <p className="text-xs text-[var(--muted-foreground)] text-center py-6">No subscriptions found.</p>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 p-1">
+                  {subscriptions.map(ch => (
+                    <button
+                      key={ch.channelId}
+                      onClick={() => openSubscribedChannel(ch)}
+                      className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-[var(--muted)] transition-colors"
+                      title={ch.name}
+                    >
+                      {ch.thumbnail ? (
+                        <img src={ch.thumbnail} alt="" className="w-14 h-14 rounded-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-full bg-[var(--muted)] flex items-center justify-center">
+                          <User size={20} className="text-[var(--muted-foreground)]" />
+                        </div>
+                      )}
+                      <span className="text-[11px] text-center text-[var(--foreground)] line-clamp-2 leading-tight">{ch.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* When a channel is opened, the regular channelVideos grid below
+              (rendered by the existing 'channels' tab branch) takes over —
+              we reuse that state so we don't duplicate the list UI. */}
         </>
       )}
 
@@ -556,7 +739,7 @@ export function YouTubeWidget({ config, onConfigChange }: WidgetProps<YouTubeCon
         </div>
       )}
 
-      {tab === 'channels' && channelVideos.length > 0 && (
+      {((tab === 'channels') || (tab === 'subscriptions' && viewingChannelId)) && channelVideos.length > 0 && (
         <div className="flex-1 overflow-y-auto space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-[var(--muted-foreground)]">Latest Videos</span>

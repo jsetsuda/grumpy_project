@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { DashboardMeta } from '@/config/types'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
+import { YouTubeAuth } from '@/widgets/youtube/youtube-auth'
 
 interface DeviceAssignments {
   [deviceName: string]: string
@@ -11,6 +12,8 @@ interface SharedCredentials {
   spotify?: { clientId: string; clientSecret: string; refreshToken: string }
   google?: { clientId: string; clientSecret: string; refreshToken: string }
   googleMaps?: { apiKey: string }
+  youtube?: { apiKey?: string }
+  youtubeOauth?: { clientId: string; clientSecret: string; refreshToken: string }
   unifi?: { host: string; username: string; password: string }
 }
 
@@ -619,14 +622,37 @@ export function DashboardManager() {
               note="Same Google Cloud project as Photos. Enable Tasks API. Use same OAuth credentials with tasks scope."
             />
 
-            {/* YouTube */}
+            {/* YouTube — API key for public data (search, channel info) */}
             <CredentialCard
-              title="YouTube"
+              title="YouTube (API Key)"
               status={(credentials as any).youtube?.apiKey ? 'configured' : 'not set'}
               fields={[
                 { label: 'API Key', value: (credentials as any).youtube?.apiKey || '', placeholder: 'YouTube Data API v3 Key', type: 'password', onChange: (v) => updateCredentials(['youtube', 'apiKey'], v) },
               ]}
-              note="console.cloud.google.com → Enable YouTube Data API v3 → Create API Key (no OAuth needed)"
+              note="console.cloud.google.com → Enable YouTube Data API v3 → Create API Key. Good for search and public channel content."
+            />
+
+            {/* YouTube OAuth — for personal data (subscriptions, liked, playlists) */}
+            <CredentialCard
+              title="YouTube (OAuth)"
+              status={credentials.youtubeOauth?.refreshToken ? 'configured' : 'not set'}
+              fields={[
+                { label: 'Client ID', value: credentials.youtubeOauth?.clientId || '', placeholder: 'OAuth Client ID', onChange: (v) => updateCredentials(['youtubeOauth', 'clientId'], v) },
+                { label: 'Client Secret', value: credentials.youtubeOauth?.clientSecret || '', placeholder: 'OAuth Client Secret', type: 'password', onChange: (v) => updateCredentials(['youtubeOauth', 'clientSecret'], v) },
+                { label: 'Refresh Token', value: credentials.youtubeOauth?.refreshToken || '', placeholder: 'Refresh Token', type: 'password', onChange: (v) => updateCredentials(['youtubeOauth', 'refreshToken'], v) },
+              ]}
+              note={`console.cloud.google.com → same project → OAuth client ID (Web application) → Authorized redirect URIs must include ${typeof window !== 'undefined' ? window.location.origin : 'https://<host>'}/google-callback. Enable the YouTube Data API v3. Needed for subscriptions / liked / playlists.`}
+              extra={
+                credentials.youtubeOauth?.clientId && credentials.youtubeOauth?.clientSecret ? (
+                  <YouTubeAuth
+                    clientId={credentials.youtubeOauth.clientId}
+                    clientSecret={credentials.youtubeOauth.clientSecret}
+                    onAuthorized={(refreshToken) => updateCredentials(['youtubeOauth', 'refreshToken'], refreshToken)}
+                  />
+                ) : (
+                  <p className="text-xs text-gray-500 italic">Enter Client ID and Client Secret above to enable Authorize.</p>
+                )
+              }
             />
 
             {/* Plex */}
