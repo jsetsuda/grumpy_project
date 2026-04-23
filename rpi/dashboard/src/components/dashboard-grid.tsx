@@ -10,6 +10,7 @@ import { BackgroundLayer } from './background-layer'
 import { registerVoiceHandler } from '@/lib/voice-command-actions'
 import { useTheme } from '@/hooks/use-theme'
 import { useSharedCredentials } from '@/config/credentials-provider'
+import { useDeviceSignal } from '@/hooks/use-device-signal'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import { TopBarWeather } from './topbar-weather'
 import { NowPlayingOverlay } from './now-playing-overlay'
@@ -18,7 +19,8 @@ import { VoiceOverlay } from './voice-overlay'
 import { useTimers } from '@/hooks/use-timers'
 
 export function DashboardGrid() {
-  const { config, updateConfig, updateWidgetConfig, updateAllLayouts } = useConfig()
+  const { config, deviceId, updateConfig, updateWidgetConfig, updateAllLayouts } = useConfig()
+  useDeviceSignal(deviceId)
   const [editMode, setEditMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [width, setWidth] = useState(window.innerWidth - 24)

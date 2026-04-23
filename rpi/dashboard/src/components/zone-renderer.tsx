@@ -13,11 +13,13 @@ import { VoiceOverlay } from './voice-overlay'
 import { getTemplate } from '@/config/zone-templates'
 import { useTheme } from '@/hooks/use-theme'
 import { useSharedCredentials } from '@/config/credentials-provider'
+import { useDeviceSignal } from '@/hooks/use-device-signal'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import type { ZoneRegion } from '@/config/zone-types'
 
 export function ZoneRenderer() {
-  const { config, updateConfig } = useConfig()
+  const { config, deviceId, updateConfig } = useConfig()
+  useDeviceSignal(deviceId)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [zoneEditorOpen, setZoneEditorOpen] = useState(false)
   const [manualSlideshow, setManualSlideshow] = useState(false)

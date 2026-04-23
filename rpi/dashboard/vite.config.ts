@@ -232,13 +232,52 @@ function configApiPlugin(): Plugin {
       })
 
       // --- Device assignments API ---
-      // GET  /api/devices           → full {name: dashboardId} map
-      // POST /api/devices           → replace the whole map (manage UI)
-      // PUT  /api/devices/:name     → idempotent register; no-op if name exists
+      // GET  /api/devices                     → full {name: dashboardId} map
+      // POST /api/devices                     → replace the whole map
+      // PUT  /api/devices/:name               → idempotent register; no-op if name exists
+      // POST /api/devices/:name/signal        → push a signal (reload) to the device
+      // GET  /api/devices/:name/signal        → pulled by the device every 30s
+      //
+      // Signals are in-memory only — stored as the latest-pushed entry per
+      // device. If the server restarts the signal is dropped, which is
+      // fine: Pis reconnect on restart anyway.
+      const deviceSignals = new Map<string, { id: string; type: string; createdAt: string }>()
 
       server.middlewares.use('/api/devices', async (req, res) => {
         const url = req.url || '/'
         const segments = url.split('?')[0].split('/').filter(Boolean)
+
+        // GET/POST /api/devices/:name/signal
+        if (segments.length === 2 && segments[1] === 'signal') {
+          const name = segments[0].replace(/[^a-zA-Z0-9_-]/g, '')
+          if (!name) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Invalid device name' }))
+            return
+          }
+          if (req.method === 'GET') {
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ signal: deviceSignals.get(name) || null }))
+            return
+          }
+          if (req.method === 'POST') {
+            const body = await readBody(req)
+            const parsed = body ? JSON.parse(body) : {}
+            const type = parsed.type || 'reload'
+            const sig = {
+              id: (globalThis.crypto?.randomUUID?.() || `sig-${Date.now()}-${Math.random().toString(36).slice(2)}`),
+              type,
+              createdAt: new Date().toISOString(),
+            }
+            deviceSignals.set(name, sig)
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ ok: true, signal: sig }))
+            return
+          }
+          res.statusCode = 405
+          res.end('Method not allowed')
+          return
+        }
 
         // Per-device PUT for auto-registration.
         if (req.method === 'PUT' && segments.length === 1) {

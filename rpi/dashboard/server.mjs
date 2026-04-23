@@ -22,6 +22,10 @@ const DASHBOARDS_DIR = path.join(__dirname, 'dashboards');
 const DEVICES_PATH = path.join(__dirname, 'devices.json');
 const INSTANCES_DIR = path.join(__dirname, 'instances');
 const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
+
+// In-memory per-device signal store. One latest-signal per device.
+// Dropped on process restart (Pis reconnect anyway).
+const deviceSignals = new Map();
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const CERT_DIR = path.join(__dirname, '.certs');
 const CERT_PATH = path.join(CERT_DIR, 'cert.pem');
@@ -279,7 +283,7 @@ async function handleRequest(req, res) {
   }
 
   // PUT /api/devices/:name — idempotent auto-register.
-  if (pathname.startsWith('/api/devices/') && req.method === 'PUT') {
+  if (pathname.startsWith('/api/devices/') && !pathname.endsWith('/signal') && req.method === 'PUT') {
     const rawName = pathname.slice('/api/devices/'.length).split('/')[0];
     const name = rawName.replace(/[^a-zA-Z0-9_-]/g, '');
     if (!name) { res.writeHead(400); return res.end('Invalid device name'); }
@@ -292,6 +296,29 @@ async function handleRequest(req, res) {
       fs.writeFileSync(DEVICES_PATH, JSON.stringify(existing, null, 2), 'utf-8');
     }
     return sendJSON(res, { ok: true, added });
+  }
+
+  // GET/POST /api/devices/:name/signal — push a reload signal to a device.
+  if (pathname.startsWith('/api/devices/') && pathname.endsWith('/signal')) {
+    const middle = pathname.slice('/api/devices/'.length, -'/signal'.length);
+    const name = middle.replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!name) { res.writeHead(400); return res.end('Invalid device name'); }
+    if (req.method === 'GET') {
+      return sendJSON(res, { signal: deviceSignals.get(name) || null });
+    }
+    if (req.method === 'POST') {
+      const body = await readBody(req);
+      const parsed = body ? JSON.parse(body) : {};
+      const type = parsed.type || 'reload';
+      const sig = {
+        id: (globalThis.crypto?.randomUUID?.() || `sig-${Date.now()}-${Math.random().toString(36).slice(2)}`),
+        type,
+        createdAt: new Date().toISOString(),
+      };
+      deviceSignals.set(name, sig);
+      return sendJSON(res, { ok: true, signal: sig });
+    }
+    return send405(res);
   }
 
   // ── Instance overrides API ──────────────────────────────────────────

@@ -259,6 +259,25 @@ export function DashboardManager() {
     })
   }
 
+  // Push a reload signal to the device. Each Pi polls every 30s; the
+  // reload fires on their next poll after we post the signal.
+  const [reloadingDevice, setReloadingDevice] = useState<string | null>(null)
+  async function handleReloadDevice(deviceName: string) {
+    setReloadingDevice(deviceName)
+    try {
+      await fetch(`/api/devices/${deviceName}/signal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'reload' }),
+      })
+    } catch {
+      // ignore — user can retry
+    } finally {
+      // Keep the button feedback state briefly so the user sees something happened.
+      setTimeout(() => setReloadingDevice(null), 2000)
+    }
+  }
+
   async function handleSaveCredentials() {
     setCredentialsSaving(true)
     try {
@@ -798,6 +817,14 @@ export function DashboardManager() {
                       </code>
                     </td>
                     <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleReloadDevice(deviceName)}
+                        disabled={reloadingDevice === deviceName}
+                        className="px-2 py-1 mr-2 bg-blue-700/50 hover:bg-blue-600 disabled:opacity-50 rounded text-xs transition-colors"
+                        title="Push reload signal to this device (picks up on its next 30s poll)"
+                      >
+                        {reloadingDevice === deviceName ? 'Sent' : 'Reload'}
+                      </button>
                       <button
                         onClick={() => handleRemoveDevice(deviceName)}
                         className="px-2 py-1 bg-red-700/50 hover:bg-red-600 rounded text-xs transition-colors"
