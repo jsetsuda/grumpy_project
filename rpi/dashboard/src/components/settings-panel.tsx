@@ -4,6 +4,8 @@ import { useConfig } from '@/config/config-provider'
 import { registry } from '@/widgets/registry'
 import { WIDGET_CATEGORY_ORDER, type WidgetCategory, type WidgetDefinition } from '@/widgets/types'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
+import { AddressAutocomplete } from '@/widgets/traffic/address-autocomplete'
+import { useSharedCredentials } from '@/config/credentials-provider'
 import { GooglePhotosAuth } from '@/widgets/photos/google-photos-auth'
 import { MicrosoftAuth } from '@/widgets/todo/microsoft-auth'
 import { GoogleTasksAuth } from '@/widgets/todo/google-tasks-auth'
@@ -1605,6 +1607,8 @@ function TrafficSettings({ config, onChange }: { config: Record<string, any>; on
     destination?: string
   }
   const destinations: Dest[] = config.destinations || []
+  const { credentials } = useSharedCredentials()
+  const mapsApiKey = credentials?.googleMaps?.apiKey || config.apiKey
 
   function addDestination() {
     onChange({ destinations: [...destinations, { name: '', address: '', direction: 'to' }] })
@@ -1622,14 +1626,16 @@ function TrafficSettings({ config, onChange }: { config: Record<string, any>; on
   return (
     <div>
       <SettingsField label="Home address">
-        <TextInput
+        <AddressAutocomplete
           value={config.homeAddress || ''}
           onChange={v => onChange({ homeAddress: v })}
-          placeholder="123 Main St, Your City, ST"
+          apiKey={mapsApiKey}
+          placeholder="Start typing an address…"
         />
       </SettingsField>
       <p className="text-xs text-[var(--muted-foreground)] -mt-1 mb-3">
         Anchor point for all commute legs. Each destination is traveled to or from here.
+        {!mapsApiKey && ' (Address search needs a Google Maps API key in Shared Credentials.)'}
       </p>
 
       <div className="mt-3">
@@ -1653,12 +1659,22 @@ function TrafficSettings({ config, onChange }: { config: Record<string, any>; on
                 <TextInput value={dest.origin || ''} onChange={v => updateDestination(i, 'origin', v)} placeholder="Origin address (legacy)" />
                 <TextInput value={dest.destination || ''} onChange={v => updateDestination(i, 'destination', v)} placeholder="Destination address (legacy)" />
                 <p className="text-[11px] text-[var(--muted-foreground)]">
-                  This destination uses the old two-address format. Add an address below to migrate — the legacy fields will then be ignored.
+                  This destination uses the old two-address format. Pick an address below to migrate — the legacy fields will then be ignored.
                 </p>
-                <TextInput value={dest.address || ''} onChange={v => updateDestination(i, 'address', v)} placeholder="Address (new format)" />
+                <AddressAutocomplete
+                  value={dest.address || ''}
+                  onChange={v => updateDestination(i, 'address', v)}
+                  apiKey={mapsApiKey}
+                  placeholder="Start typing to search"
+                />
               </>
             ) : (
-              <TextInput value={dest.address || ''} onChange={v => updateDestination(i, 'address', v)} placeholder="Destination address" />
+              <AddressAutocomplete
+                value={dest.address || ''}
+                onChange={v => updateDestination(i, 'address', v)}
+                apiKey={mapsApiKey}
+                placeholder="Start typing to search"
+              />
             )}
             <SettingsField label="Direction">
               <SelectInput
