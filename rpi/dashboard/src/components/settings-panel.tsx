@@ -1596,13 +1596,21 @@ function ScenesSettings({ config, onChange }: { config: Record<string, any>; onC
 }
 
 function TrafficSettings({ config, onChange }: { config: Record<string, any>; onChange: (c: any) => void }) {
-  const destinations: Array<{ name: string; origin: string; destination: string }> = config.destinations || []
+  interface Dest {
+    name?: string
+    address?: string
+    direction?: 'to' | 'from' | 'both'
+    // Legacy — still accepted, displayed for migration.
+    origin?: string
+    destination?: string
+  }
+  const destinations: Dest[] = config.destinations || []
 
   function addDestination() {
-    onChange({ destinations: [...destinations, { name: '', origin: '', destination: '' }] })
+    onChange({ destinations: [...destinations, { name: '', address: '', direction: 'to' }] })
   }
 
-  function updateDestination(index: number, field: string, value: string) {
+  function updateDestination(index: number, field: keyof Dest, value: string) {
     const updated = destinations.map((d, i) => i === index ? { ...d, [field]: value } : d)
     onChange({ destinations: updated })
   }
@@ -1613,28 +1621,59 @@ function TrafficSettings({ config, onChange }: { config: Record<string, any>; on
 
   return (
     <div>
-      <SettingsField label="Google Maps API Key">
-        <TextInput value={config.apiKey || ''} onChange={v => onChange({ apiKey: v })} type="password" placeholder="Google Maps API Key" />
+      <SettingsField label="Home address">
+        <TextInput
+          value={config.homeAddress || ''}
+          onChange={v => onChange({ homeAddress: v })}
+          placeholder="123 Main St, Your City, ST"
+        />
       </SettingsField>
+      <p className="text-xs text-[var(--muted-foreground)] -mt-1 mb-3">
+        Anchor point for all commute legs. Each destination is traveled to or from here.
+      </p>
 
       <div className="mt-3">
         <label className="text-xs font-medium text-[var(--muted-foreground)]">Destinations</label>
         <p className="text-xs text-[var(--muted-foreground)] mt-1">
-          Add commute destinations with origin and destination addresses.
+          Name + single address. "Direction" decides whether the commute is home→address, address→home, or both.
         </p>
 
-        {destinations.map((dest, i) => (
+        {destinations.map((dest, i) => {
+          const isLegacy = !dest.address && !!(dest.origin || dest.destination)
+          return (
           <div key={i} className="mt-2 p-2 bg-[var(--muted)] rounded-lg space-y-2">
             <div className="flex items-center gap-2">
-              <TextInput value={dest.name} onChange={v => updateDestination(i, 'name', v)} placeholder="Destination name" />
+              <TextInput value={dest.name || ''} onChange={v => updateDestination(i, 'name', v)} placeholder="Name (e.g. Office)" />
               <button onClick={() => removeDestination(i)} className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
                 <Trash2 size={14} />
               </button>
             </div>
-            <TextInput value={dest.origin} onChange={v => updateDestination(i, 'origin', v)} placeholder="Origin address" />
-            <TextInput value={dest.destination} onChange={v => updateDestination(i, 'destination', v)} placeholder="Destination address" />
+            {isLegacy ? (
+              <>
+                <TextInput value={dest.origin || ''} onChange={v => updateDestination(i, 'origin', v)} placeholder="Origin address (legacy)" />
+                <TextInput value={dest.destination || ''} onChange={v => updateDestination(i, 'destination', v)} placeholder="Destination address (legacy)" />
+                <p className="text-[11px] text-[var(--muted-foreground)]">
+                  This destination uses the old two-address format. Add an address below to migrate — the legacy fields will then be ignored.
+                </p>
+                <TextInput value={dest.address || ''} onChange={v => updateDestination(i, 'address', v)} placeholder="Address (new format)" />
+              </>
+            ) : (
+              <TextInput value={dest.address || ''} onChange={v => updateDestination(i, 'address', v)} placeholder="Destination address" />
+            )}
+            <SettingsField label="Direction">
+              <SelectInput
+                value={dest.direction || 'to'}
+                onChange={v => updateDestination(i, 'direction', v)}
+                options={[
+                  { value: 'to', label: 'To destination (home → address)' },
+                  { value: 'from', label: 'From destination (address → home)' },
+                  { value: 'both', label: 'Both (render two rows)' },
+                ]}
+              />
+            </SettingsField>
           </div>
-        ))}
+          )
+        })}
 
         <button
           onClick={addDestination}
