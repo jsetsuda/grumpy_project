@@ -58,6 +58,23 @@ After editing `.env`, restart the container:
 ./manage.sh update    # Pull latest code, rebuild, restart
 ```
 
+## Scheduled restart
+
+The installer also enables a systemd timer (`grumpy-kiosk-restart.timer`)
+that restarts the kiosk every 12 hours. Long-running Chromium in kiosk
+mode leaks memory over days, and a scheduled cycle keeps the dashboard
+fresh without manual touch.
+
+```bash
+systemctl list-timers grumpy-kiosk-restart.timer   # next / last firing
+sudo systemctl disable --now grumpy-kiosk-restart.timer  # turn it off
+sudo systemctl enable --now grumpy-kiosk-restart.timer   # turn it on
+```
+
+To change the interval, edit `/etc/systemd/system/grumpy-kiosk-restart.timer`
+(`OnUnitActiveSec=`) and run `sudo systemctl daemon-reload && sudo
+systemctl restart grumpy-kiosk-restart.timer`.
+
 ## Troubleshooting
 
 ### Black screen / Chromium does not start

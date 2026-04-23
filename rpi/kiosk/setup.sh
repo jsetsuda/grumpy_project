@@ -134,6 +134,48 @@ sudo systemctl daemon-reload
 sudo systemctl enable grumpy-kiosk.service
 info "Systemd service installed and enabled"
 
+# ── 8b. Periodic-restart timer ─────────────────────────────────────────────
+# Long-running Chromium in kiosk mode leaks memory over days. A scheduled
+# restart every 12 hours keeps the dashboard fresh without manual touch.
+# Disable anytime with:  sudo systemctl disable --now grumpy-kiosk-restart.timer
+RESTART_SERVICE="/etc/systemd/system/grumpy-kiosk-restart.service"
+RESTART_TIMER="/etc/systemd/system/grumpy-kiosk-restart.timer"
+
+sudo tee "$RESTART_SERVICE" >/dev/null <<EOF
+[Unit]
+Description=Grumpy Kiosk — scheduled restart
+Requires=grumpy-kiosk.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart grumpy-kiosk.service
+EOF
+
+sudo tee "$RESTART_TIMER" >/dev/null <<EOF
+[Unit]
+Description=Grumpy Kiosk — restart every 12 hours
+
+[Timer]
+# Every 12 hours, anchored to boot. Runs once ~12h after the kiosk
+# starts and again 12h later, and so on.
+OnBootSec=12h
+OnUnitActiveSec=12h
+# Spread across Pis (avoids N kiosks restarting in lockstep if you
+# ever have more than one on the same schedule).
+RandomizedDelaySec=15m
+# Catch up a missed restart if the Pi was off when the timer should
+# have fired. Prevents drift over power outages.
+Persistent=true
+Unit=grumpy-kiosk-restart.service
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now grumpy-kiosk-restart.timer
+info "Scheduled restart timer installed (every 12h)"
+
 # ── 9. Done ─────────────────────────────────────────────────────────────────
 echo ""
 echo "════════════════════════════════════════════════════════════"
@@ -143,4 +185,7 @@ echo "  Dashboard: ${DASHBOARD_URL}?device=${DEVICE_NAME}"
 echo "  Manage:    ./manage.sh {up|down|logs|restart|status|url|update}"
 echo ""
 echo "  The kiosk will start automatically on boot."
+echo "  Auto-restarts every 12h to clear Chromium memory leaks."
+echo "    check:   systemctl list-timers grumpy-kiosk-restart.timer"
+echo "    disable: sudo systemctl disable --now grumpy-kiosk-restart.timer"
 echo "════════════════════════════════════════════════════════════"
