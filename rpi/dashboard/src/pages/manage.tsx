@@ -15,6 +15,7 @@ interface SharedCredentials {
   youtube?: { apiKey?: string }
   youtubeOauth?: { clientId: string; clientSecret: string; refreshToken: string }
   unifi?: { host: string; username: string; password: string }
+  deviceConfigs?: Record<string, Record<string, string>>
 }
 
 export function DashboardManager() {
@@ -744,11 +745,42 @@ export function DashboardManager() {
             />
           </div>
 
+          <h3 className="text-sm font-semibold text-gray-200 mb-2">Per-device config</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Free-form key/value storage attached to a specific device. Useful
+            for things you want close at hand but not on a real widget — e.g.
+            the linux-voice-assistant ESPHome encryption key for each Pi.
+          </p>
+          <div className="space-y-3 mb-8">
+            {Object.keys(devices).length === 0 && (
+              <p className="text-xs text-gray-500 italic">
+                No devices registered. Devices auto-register when their dashboard
+                URL is loaded the first time.
+              </p>
+            )}
+            {Object.keys(devices).sort().map(deviceName => (
+              <DeviceConfigCard
+                key={deviceName}
+                deviceName={deviceName}
+                fields={credentials.deviceConfigs?.[deviceName] || {}}
+                onChange={(next) => {
+                  const updatedConfigs = { ...(credentials.deviceConfigs || {}) }
+                  if (!next || Object.keys(next).length === 0) {
+                    delete updatedConfigs[deviceName]
+                  } else {
+                    updatedConfigs[deviceName] = next
+                  }
+                  setCredentials({ ...credentials, deviceConfigs: updatedConfigs })
+                }}
+              />
+            ))}
+          </div>
+
           <h3 className="text-sm font-semibold text-gray-200 mb-2">Custom</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Custom credentials */}
             {Object.entries(credentials as any).filter(([k]) =>
-              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar', 'todoist', 'microsoft', 'googleTasks', 'youtube', 'youtubeOauth', 'plex', 'jellyfin', 'immich', 'unifi'].includes(k)
+              !['homeAssistant', 'spotify', 'google', 'googleMaps', 'icloud', 'calendar', 'todoist', 'microsoft', 'googleTasks', 'youtube', 'youtubeOauth', 'plex', 'jellyfin', 'immich', 'unifi', 'deviceConfigs'].includes(k)
             ).map(([key, value]) => (
               <CredentialCard
                 key={key}
@@ -886,6 +918,107 @@ interface CredentialField {
   placeholder: string
   type?: string
   onChange: (value: string) => void
+}
+
+// Per-device free-form key/value editor. Collapsed by default.
+function DeviceConfigCard({
+  deviceName, fields, onChange,
+}: {
+  deviceName: string
+  fields: Record<string, string>
+  onChange: (next: Record<string, string>) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [newKey, setNewKey] = useState('')
+  const [newValue, setNewValue] = useState('')
+
+  const entries = Object.entries(fields)
+  const count = entries.length
+
+  function update(key: string, value: string) {
+    onChange({ ...fields, [key]: value })
+  }
+  function remove(key: string) {
+    const next = { ...fields }
+    delete next[key]
+    onChange(next)
+  }
+  function addPair() {
+    const k = newKey.trim()
+    if (!k) return
+    onChange({ ...fields, [k]: newValue })
+    setNewKey('')
+    setNewValue('')
+  }
+
+  return (
+    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-3 hover:bg-gray-750 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${count > 0 ? 'bg-green-500' : 'bg-gray-500'}`} />
+          <span className="text-sm font-medium text-gray-200">{deviceName}</span>
+        </div>
+        <span className="text-xs text-gray-400">{count} {count === 1 ? 'entry' : 'entries'}</span>
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2 border-t border-gray-700 pt-2">
+          {entries.length === 0 && (
+            <p className="text-xs text-gray-500 italic">No entries yet.</p>
+          )}
+          {entries.map(([key, value]) => (
+            <div key={key} className="flex items-start gap-2">
+              <div className="flex-1 grid grid-cols-[120px_1fr] gap-2">
+                <div className="text-xs text-gray-400 pt-2 truncate" title={key}>{key}</div>
+                <textarea
+                  value={value}
+                  onChange={e => update(key, e.target.value)}
+                  rows={value.length > 60 ? 2 : 1}
+                  className="resize-y px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white font-mono break-all focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <button
+                onClick={() => remove(key)}
+                className="p-1.5 mt-0.5 text-gray-500 hover:text-red-400 transition-colors"
+                title="Remove"
+              >
+                <span className="text-sm">✕</span>
+              </button>
+            </div>
+          ))}
+
+          {/* Add new pair */}
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-700/50">
+            <input
+              type="text"
+              value={newKey}
+              onChange={e => setNewKey(e.target.value)}
+              placeholder="key (e.g. lvaApiKey)"
+              className="w-32 px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+            <input
+              type="text"
+              value={newValue}
+              onChange={e => setNewValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addPair() }}
+              placeholder="value"
+              className="flex-1 px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+            <button
+              onClick={addPair}
+              disabled={!newKey.trim()}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:opacity-50 rounded text-xs font-medium transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function CredentialCard({ title, status, fields, note, onDelete, extra }: {

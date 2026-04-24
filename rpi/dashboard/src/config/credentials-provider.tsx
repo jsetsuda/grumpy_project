@@ -26,6 +26,15 @@ export interface SharedCredentials {
   googleMaps?: { apiKey: string }
   youtube?: { apiKey: string }
   youtubeOauth?: { clientId: string; clientSecret: string; refreshToken: string }
+  /**
+   * Per-device free-form key/value storage. Lives in shared credentials so
+   * it stays gitignored alongside the rest. Useful for things like the
+   * linux-voice-assistant ESPHome encryption key the user needs to paste
+   * into HA when adding a new Pi.
+   *
+   * Shape: { [deviceId]: { [key]: value } }.
+   */
+  deviceConfigs?: Record<string, Record<string, string>>
   unifi?: {
     host: string
     username: string
