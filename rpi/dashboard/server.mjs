@@ -446,6 +446,39 @@ async function handleRequest(req, res) {
     }
   }
 
+  // ── HA camera snapshot proxy ────────────────────────────────────────
+  // Browser <img> tags can't set Authorization headers. Inject the HA
+  // token from credentials.json here and return the JPEG for the
+  // requested camera entity. Used by the motion/doorbell popup.
+  if (pathname === '/api/ha-camera/snapshot') {
+    const entity = parsedUrl.searchParams.get('entity');
+    if (!entity || !/^[a-z_]+\.[a-zA-Z0-9_]+$/.test(entity)) {
+      res.writeHead(400); return res.end('Missing or invalid entity');
+    }
+    try {
+      const creds = fs.existsSync(CREDENTIALS_PATH)
+        ? JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'))
+        : {};
+      const haUrl = creds?.homeAssistant?.url;
+      const haToken = creds?.homeAssistant?.token;
+      if (!haUrl || !haToken) {
+        res.writeHead(503); return res.end('Home Assistant credentials not configured');
+      }
+      const target = `${haUrl.replace(/\/$/, '')}/api/camera_proxy/${entity}`;
+      const upstream = await fetch(target, {
+        headers: { Authorization: `Bearer ${haToken}` },
+      });
+      res.writeHead(upstream.status, {
+        'Content-Type': upstream.headers.get('content-type') || 'image/jpeg',
+        'Cache-Control': 'no-cache, no-store',
+      });
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      return res.end(buf);
+    } catch (e) {
+      res.writeHead(502); return res.end(`HA camera fetch failed: ${e}`);
+    }
+  }
+
   // ── Generic proxy (iCal, images, etc.) ──────────────────────────────
   if (pathname === '/api/proxy' || pathname === '/api/proxy/') {
     if (req.method !== 'GET' && req.method !== 'POST') return send405(res);

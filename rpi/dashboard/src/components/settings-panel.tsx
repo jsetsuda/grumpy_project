@@ -275,6 +275,13 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             onVoiceTtsVoiceChange={(v) => updateConfig({ voiceTtsVoice: v || undefined })}
           />
 
+          <SectionHeader label="Motion alerts" />
+
+          <MotionAlertsSettings
+            config={config.motionAlerts}
+            onChange={(next) => updateConfig({ motionAlerts: next })}
+          />
+
           <SectionHeader label="Widgets" />
 
           {/* Zone widgets (when in zone mode) */}
@@ -2829,6 +2836,113 @@ const PIPER_VOICES = [
   { value: 'en_GB-alba-medium', label: 'Alba (GB, Medium)' },
   { value: 'custom', label: 'Custom...' },
 ]
+
+// --- Motion Alerts Settings ---
+
+interface MotionAlertsConfig {
+  enabled?: boolean
+  triggers: Array<{ name?: string; triggerEntity: string; cameraEntity: string; durationSec?: number }>
+}
+
+function MotionAlertsSettings({
+  config,
+  onChange,
+}: {
+  config: MotionAlertsConfig | undefined
+  onChange: (next: MotionAlertsConfig) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const current: MotionAlertsConfig = config || { enabled: true, triggers: [] }
+  const triggers = current.triggers || []
+
+  function update(next: Partial<MotionAlertsConfig>) {
+    onChange({ ...current, ...next })
+  }
+  function addTrigger() {
+    update({ triggers: [...triggers, { name: '', triggerEntity: '', cameraEntity: '', durationSec: 20 }] })
+  }
+  function updateTrigger(i: number, patch: Partial<MotionAlertsConfig['triggers'][number]>) {
+    update({ triggers: triggers.map((t, idx) => idx === i ? { ...t, ...patch } : t) })
+  }
+  function removeTrigger(i: number) {
+    update({ triggers: triggers.filter((_, idx) => idx !== i) })
+  }
+
+  return (
+    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+      >
+        {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className="flex-1 text-sm font-medium">
+          Motion / Doorbell alerts
+          <span className="ml-2 text-xs text-[var(--muted-foreground)] font-normal">
+            {triggers.length} trigger{triggers.length === 1 ? '' : 's'}
+          </span>
+        </span>
+      </button>
+
+      {expanded && <div className="p-3 pt-0 border-t border-[var(--border)] space-y-3">
+        <p className="text-xs text-[var(--muted-foreground)]">
+          When a trigger entity flips to <code>on</code>, a full-screen camera
+          popup appears for the configured duration. Dismissable on tap.
+        </p>
+        <Toggle
+          checked={current.enabled ?? true}
+          onChange={(v) => update({ enabled: v })}
+          label="Enabled"
+        />
+        {triggers.map((t, i) => (
+          <div key={i} className="p-3 bg-[var(--muted)] rounded-lg space-y-2">
+            <div className="flex items-center gap-2">
+              <TextInput
+                value={t.name || ''}
+                onChange={(v) => updateTrigger(i, { name: v })}
+                placeholder="Display name (e.g. Front Door)"
+              />
+              <button
+                onClick={() => removeTrigger(i)}
+                className="p-1 text-[var(--muted-foreground)] hover:text-[var(--destructive)]"
+              ><Trash2 size={14} /></button>
+            </div>
+            <SettingsField label="Trigger entity">
+              <TextInput
+                value={t.triggerEntity}
+                onChange={(v) => updateTrigger(i, { triggerEntity: v })}
+                placeholder="binary_sensor.front_door_motion"
+              />
+            </SettingsField>
+            <SettingsField label="Camera entity">
+              <TextInput
+                value={t.cameraEntity}
+                onChange={(v) => updateTrigger(i, { cameraEntity: v })}
+                placeholder="camera.front_door"
+              />
+            </SettingsField>
+            <SettingsField label={`Duration (${t.durationSec ?? 20}s)`}>
+              <input
+                type="range"
+                min="5"
+                max="120"
+                step="5"
+                value={t.durationSec ?? 20}
+                onChange={(e) => updateTrigger(i, { durationSec: parseInt(e.target.value, 10) })}
+                className="w-full accent-[var(--primary)]"
+              />
+            </SettingsField>
+          </div>
+        ))}
+        <button
+          onClick={addTrigger}
+          className="flex items-center gap-1 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        >
+          <Plus size={14} /> Add trigger
+        </button>
+      </div>}
+    </div>
+  )
+}
 
 function VoiceAssistantSettings({
   voiceEnabled,

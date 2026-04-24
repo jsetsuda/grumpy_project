@@ -16,6 +16,8 @@ import { TopBarWeather } from './topbar-weather'
 import { NowPlayingOverlay } from './now-playing-overlay'
 import { TimerOverlay } from './timer-overlay'
 import { VoiceOverlay } from './voice-overlay'
+import { MotionPopup } from './motion-popup'
+import { useMotionAlerts } from '@/hooks/use-motion-alerts'
 import { useTimers } from '@/hooks/use-timers'
 
 export function DashboardGrid() {
@@ -142,6 +144,13 @@ export function DashboardGrid() {
   const haWidget = config.widgets.find(w => w.type === 'ha-entities')
   const haUrl = sharedCreds?.homeAssistant?.url || (haWidget?.config?.haUrl as string | undefined)
   const haToken = sharedCreds?.homeAssistant?.token || (haWidget?.config?.haToken as string | undefined)
+
+  // Motion / doorbell popup alerts.
+  const motionTriggers = config.motionAlerts?.triggers || []
+  const motionEnabled = (config.motionAlerts?.enabled ?? true) && motionTriggers.length > 0
+  const { alert: motionAlert, dismiss: dismissMotionAlert } = useMotionAlerts({
+    haUrl, haToken, triggers: motionTriggers, enabled: motionEnabled,
+  })
 
   const sizeClasses = {
     small: { time: 'text-2xl', date: 'text-base' },
@@ -461,6 +470,11 @@ export function DashboardGrid() {
 
       {/* Timer overlay — centered */}
       <TimerOverlay timers={timers} onCancel={cancelTimer} onDismiss={dismissTimer} />
+
+      {/* Motion / doorbell popup — takes over the screen when a trigger fires */}
+      {motionAlert && (
+        <MotionPopup alert={motionAlert} onDismiss={dismissMotionAlert} />
+      )}
 
       {/* Voice overlay — bottom right */}
       {(config.voiceEnabled ?? true) && haUrl && haToken && (

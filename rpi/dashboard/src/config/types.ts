@@ -61,6 +61,21 @@ export interface DashboardConfig {
   voicePipelineId?: string
   voiceTtsVoice?: string
   voiceSatelliteEntity?: string // assist_satellite.* entity for this device; drives the voice overlay when wake word fires
+  /**
+   * Motion/doorbell popup triggers. When any of the listed binary_sensor
+   * entities flips to 'on', the dashboard pops up a full-screen view of
+   * the paired camera for `durationSec` seconds (default 20). Tap to
+   * dismiss. Behaves like Echo Show's doorbell camera popup.
+   */
+  motionAlerts?: {
+    enabled?: boolean
+    triggers: Array<{
+      name?: string
+      triggerEntity: string
+      cameraEntity: string
+      durationSec?: number
+    }>
+  }
   widgets: WidgetInstance[]
   zoneLayout?: ZoneLayoutConfig
 }

@@ -560,6 +560,45 @@ function configApiPlugin(): Plugin {
         }
       })
 
+      // --- HA camera snapshot proxy ---
+      // Browser <img src> can't set Authorization headers, but we need auth
+      // to hit HA's /api/camera_proxy/. Read the HA token from the
+      // server-side credentials.json and inject it here. Used by the
+      // motion/doorbell popup to display live snapshots.
+      server.middlewares.use('/api/ha-camera/snapshot', async (req, res) => {
+        const parsedUrl = new URL(req.url || '', 'http://localhost')
+        const entity = parsedUrl.searchParams.get('entity')
+        if (!entity || !/^[a-z_]+\.[a-zA-Z0-9_]+$/.test(entity)) {
+          res.statusCode = 400
+          res.end('Missing or invalid entity')
+          return
+        }
+        try {
+          const creds = fs.existsSync(CREDENTIALS_PATH)
+            ? JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'))
+            : {}
+          const haUrl = creds?.homeAssistant?.url
+          const haToken = creds?.homeAssistant?.token
+          if (!haUrl || !haToken) {
+            res.statusCode = 503
+            res.end('Home Assistant credentials not configured')
+            return
+          }
+          const target = `${haUrl.replace(/\/$/, '')}/api/camera_proxy/${entity}`
+          const upstream = await fetch(target, {
+            headers: { Authorization: `Bearer ${haToken}` },
+          })
+          res.statusCode = upstream.status
+          res.setHeader('Content-Type', upstream.headers.get('content-type') || 'image/jpeg')
+          res.setHeader('Cache-Control', 'no-cache, no-store')
+          const buf = Buffer.from(await upstream.arrayBuffer())
+          res.end(buf)
+        } catch (e) {
+          res.statusCode = 502
+          res.end(`HA camera fetch failed: ${e}`)
+        }
+      })
+
       // --- UniFi Protect proxy (cookie-based auth) ---
       const unifiTokens = new Map<string, string>()
 
