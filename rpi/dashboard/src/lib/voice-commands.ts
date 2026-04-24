@@ -115,6 +115,23 @@ export function matchVoiceCommand(transcript: string): VoiceCommandResult | null
     return { action: 'settings:open', params: {}, responseText: 'Opening settings' }
   }
 
+  // Grocery: "add milk to the grocery list" / "add bread to shopping list"
+  // / "put eggs on the list". Captures the item name and routes to the
+  // grocery widget's voice handler.
+  {
+    const groceryMatch = text.match(/^(?:add|put)\s+(.+?)(?:\s+(?:to|on|in)\s+(?:the\s+)?(?:grocery|shopping)(?:\s+list)?)?$/i)
+    if (groceryMatch && /(?:grocery|shopping|list)/i.test(text)) {
+      const item = groceryMatch[1].trim()
+      if (item) {
+        return {
+          action: 'grocery:add',
+          params: { item },
+          responseText: `Added ${item} to the shopping list`,
+        }
+      }
+    }
+  }
+
   // Streaming: "open netflix" / "launch hulu" / "close streaming"
   {
     const streamingMatch = parseStreamingCommand(text)

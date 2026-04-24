@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Plus, Check, X } from 'lucide-react'
 import type { WidgetProps } from '../types'
+import { registerVoiceHandler } from '@/lib/voice-command-actions'
 
 const CATEGORIES = [
   'Produce',
@@ -105,6 +106,41 @@ export function GroceryWidget({ config, onConfigChange }: WidgetProps<GroceryCon
   const removeItem = useCallback((id: string) => {
     onConfigChange({ items: items.filter(item => item.id !== id) })
   }, [items, onConfigChange])
+
+  // Keep a ref to the current items + onConfigChange so the voice handler
+  // always operates on fresh state without re-registering on every render.
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+  const onConfigChangeRef = useRef(onConfigChange)
+  onConfigChangeRef.current = onConfigChange
+
+  // Voice: "add milk to grocery list" lands here via voice-commands.ts.
+  // Parses optional quantity (e.g. "3 apples") and categorises the item.
+  useEffect(() => {
+    const unregister = registerVoiceHandler(async (action, params) => {
+      if (action !== 'grocery:add') return false
+      const raw = (params.item || '').trim()
+      if (!raw) return false
+      // Support "<n> <thing>" or "<thing> x<n>" for quantity.
+      let text = raw
+      let quantity: number | undefined
+      const qtyStart = text.match(/^(\d+)\s+(.+)$/)
+      const qtyEnd = text.match(/^(.+?)\s*x(\d+)$/i)
+      if (qtyStart) { quantity = parseInt(qtyStart[1]); text = qtyStart[2] }
+      else if (qtyEnd) { quantity = parseInt(qtyEnd[2]); text = qtyEnd[1].trim() }
+
+      const newItem: GroceryItem = {
+        id: Date.now().toString(36),
+        text,
+        category: autoCategorize(text),
+        completed: false,
+        quantity,
+      }
+      onConfigChangeRef.current({ items: [...itemsRef.current, newItem] })
+      return true
+    })
+    return unregister
+  }, [])
 
   const clearCompleted = useCallback(() => {
     onConfigChange({ items: items.filter(item => !item.completed) })

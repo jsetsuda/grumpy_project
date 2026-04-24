@@ -18,6 +18,7 @@ import { TimerOverlay } from './timer-overlay'
 import { VoiceOverlay } from './voice-overlay'
 import { MotionPopup } from './motion-popup'
 import { useMotionAlerts } from '@/hooks/use-motion-alerts'
+import { MorningBriefing } from './morning-briefing'
 import { useTimers } from '@/hooks/use-timers'
 
 export function DashboardGrid() {
@@ -151,6 +152,19 @@ export function DashboardGrid() {
   const { alert: motionAlert, dismiss: dismissMotionAlert } = useMotionAlerts({
     haUrl, haToken, triggers: motionTriggers, enabled: motionEnabled,
   })
+
+  // Detect idle → active transition for the morning briefing overlay.
+  const prevInSlideshowRef = useRef(inSlideshow)
+  const [justWoken, setJustWoken] = useState(false)
+  useEffect(() => {
+    if (prevInSlideshowRef.current && !inSlideshow) {
+      // Coming out of slideshow → user touched the screen.
+      setJustWoken(true)
+      const reset = setTimeout(() => setJustWoken(false), 500)
+      return () => clearTimeout(reset)
+    }
+    prevInSlideshowRef.current = inSlideshow
+  }, [inSlideshow])
 
   const sizeClasses = {
     small: { time: 'text-2xl', date: 'text-base' },
@@ -475,6 +489,14 @@ export function DashboardGrid() {
       {motionAlert && (
         <MotionPopup alert={motionAlert} onDismiss={dismissMotionAlert} />
       )}
+
+      {/* Morning briefing — brief overlay when the user wakes the dashboard */}
+      <MorningBriefing
+        lat={weatherLat}
+        lon={weatherLon}
+        units={weatherUnits}
+        justWoken={justWoken}
+      />
 
       {/* Voice overlay — bottom right */}
       {(config.voiceEnabled ?? true) && haUrl && haToken && (
