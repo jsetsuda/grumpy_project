@@ -2510,6 +2510,7 @@ function ThemeBackgroundSettings({
               { value: 'auto', label: 'Auto (fit to screen)' },
               { value: '16:9', label: '16:9 Landscape (HD/4K TV)' },
               { value: '16:10', label: '16:10 Landscape (MacBook)' },
+              { value: '1024:600', label: '1024×600 (~1.71:1) — 7" Pi touchscreen' },
               { value: '4:3', label: '4:3 Landscape (iPad/Classic)' },
               { value: '3:2', label: '3:2 Landscape (Surface)' },
               { value: '21:9', label: '21:9 Ultrawide' },
