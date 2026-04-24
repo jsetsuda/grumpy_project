@@ -25,7 +25,8 @@ Design principles:
 2. **The Pi is a thin client.** All compute lives on the backend VM.
    The Pi is replaceable; work on Pi 4 and Pi 5 without code changes.
 3. **Composable, not monolithic.** Each layer talks over a well-known
-   protocol (Wyoming, WebSocket, HTTP) so any component can be swapped.
+   protocol (Wyoming, ESPHome native API, WebSocket, HTTP) so any
+   component can be swapped.
 4. **Built on Home Assistant.** Don't reinvent device integrations —
    lean on HA for what HA does well and build the UX layer on top.
 
@@ -36,175 +37,184 @@ Design principles:
 Grumpy spans three machines. Each has a specific, limited role.
 
 ```
-┌───────────────────────┐           ┌──────────────────────────┐
-│  Raspberry Pi 4 / 5   │           │  Home Assistant VM       │
-│  ──────────────────   │           │  ──────────────────────  │
-│  Chromium kiosk       │◄─────────►│  HA core                 │
-│  React dashboard      │ WebSocket │  Assist pipeline         │
-│  Mic + speakers       │ + Assist  │  Device integrations     │
-│                       │  API      │  Wyoming integrations ───┼──┐
-│  "pi-client/"         │           │                          │  │
-│  "dashboard/"         │           │  (existing VM,           │  │
-│                       │           │   not in this repo)      │  │
-└───────────────────────┘           └──────────────────────────┘  │
-                                                                  │
-                                                                  │ Wyoming
-                                                                  │ protocol
-                                                                  │
-                                    ┌──────────────────────────┐  │
-                                    │  Grumpy Backend VM       │◄─┘
-                                    │  ──────────────────────  │
-                                    │  RTX 3090 passthrough    │
-                                    │  Docker Compose stack:   │
-                                    │                          │
-                                    │    Whisper     (GPU)     │  :10300
-                                    │    Piper       (CPU)     │  :10200
-                                    │    openWakeWord (CPU)    │  :10400
-                                    │    Ollama      (GPU) P2  │  :11434
-                                    │                          │
-                                    │  "backend/"              │
-                                    └──────────────────────────┘
+┌────────────────────────────┐         ┌──────────────────────────┐
+│  Raspberry Pi 4 / 5        │         │  Home Assistant VM       │
+│  ────────────────────────  │         │  ──────────────────────  │
+│  Chromium kiosk (Docker)   │◄───────►│  HA core                 │
+│  React dashboard           │WebSocket│  Assist pipeline         │
+│  linux-voice-assistant ────┼─ESPHome─►  ESPHome integration     │
+│  librespot (Spotify Connect)│ :6053   │  Music Assistant addon  │
+│  Mic + speakers (PipeWire) │         │  Wyoming integrations ───┼──┐
+│                            │         │                          │  │
+│  "rpi/kiosk/"              │         │  (existing VM,           │  │
+│  "rpi/dashboard/" (opt)    │         │   not in this repo)      │  │
+│  "rpi/linux-voice-assistant/"│       │                          │  │
+│  "rpi/librespot/"          │         │                          │  │
+└────────────────────────────┘         └──────────────────────────┘  │
+                                                                     │
+                                                                     │ Wyoming
+                                                                     │ protocol
+                                                                     │
+                                       ┌──────────────────────────┐  │
+                                       │  Grumpy Backend VM       │◄─┘
+                                       │  ──────────────────────  │
+                                       │  RTX 3090 passthrough    │
+                                       │  Docker Compose stack:   │
+                                       │                          │
+                                       │    Whisper     (GPU)     │  :10300
+                                       │    Piper       (CPU)     │  :10200
+                                       │    openWakeWord (CPU)    │  :10400
+                                       │    Ollama      (GPU)     │  :11434
+                                       │    Dashboard   (Vite)    │  :5173
+                                       │                          │
+                                       │  "backend/"              │
+                                       │  "rpi/dashboard/"        │
+                                       └──────────────────────────┘
 ```
 
 ### Machine Roles
 
 **Raspberry Pi (4 or 5)** — *the display and I/O endpoint*
-- Runs Raspberry Pi OS Desktop in kiosk mode
-- Chromium fullscreen displays the React dashboard
-- USB microphone captures voice for the Assist pipeline
-- USB or HDMI speakers play TTS responses
-- Holds no state. Replaceable. Identical codebase on Pi 4 and Pi 5.
+- Raspberry Pi OS Bookworm Desktop with PipeWire audio
+- Chromium fullscreen (Docker container managed by systemd; auto
+  restarts every 12 h to clear memory leaks)
+- `linux-voice-assistant` advertises a wake-word satellite over the
+  ESPHome native API (HA pairs with it like any ESPHome device)
+- `librespot` registers the Pi as a native Spotify Connect target
+  (Chromium on Pi OS lacks Widevine, so Web Playback SDK can't)
+- USB or HDMI speakers play TTS, music, and timer/alarm tones
+- Identical codebase on Pi 4 and Pi 5
 
 **Home Assistant VM** — *the orchestrator* (already running; not in this repo)
 - Knows about every device, entity, and automation
 - Runs the Assist pipeline that stitches wake → STT → intent → TTS
-- Talks to the Grumpy backend via the Wyoming Protocol integration
+- Pairs with the Pi's `linux-voice-assistant` via the ESPHome
+  integration; pairs with the Backend VM via Wyoming
+- Runs the Music Assistant addon for unified Spotify/Apple Music/etc.
 - Exposes everything the dashboard needs over WebSocket API
 - Stays authoritative for all device state
 
 **Grumpy Backend VM** — *the brain* (this repo's `backend/`)
 - Runs on Proxmox with **RTX 3090 GPU passthrough**
 - Hosts the voice AI stack as Docker containers
-- Later hosts Ollama for local LLM conversation
-- Never talks to the Pi directly — HA mediates everything
+- Hosts Ollama for local LLM conversation
+- Usually serves the dashboard over HTTPS on `:5173` so all Pis can
+  load the same instance (per-Pi local dashboard server is optional)
+- Never talks to the Pi directly — HA mediates everything voice-related
 
 ### What Connects to What
 
 | From | To | Protocol | Purpose |
 |------|-----|---------|---------|
+| Pi Chromium | Backend VM | HTTPS (5173) | Loads the dashboard SPA |
 | Pi dashboard | HA VM | WebSocket (8123) | Entity state, service calls, Assist events |
-| Pi microphone | HA VM | Assist pipeline | Voice input for processing |
+| Pi `linux-voice-assistant` | HA VM | ESPHome native API (6053) | Wake-word satellite + audio I/O |
+| Pi `librespot` | Spotify Cloud | HTTPS (outbound) | Spotify Connect device |
 | HA VM | Backend VM | Wyoming (10200) | Piper TTS requests |
 | HA VM | Backend VM | Wyoming (10300) | Whisper STT requests |
 | HA VM | Backend VM | Wyoming (10400) | openWakeWord detection |
-| HA VM | Backend VM | HTTP (11434) | Ollama LLM conversation (Phase 2) |
-| HA VM | Anthropic API | HTTPS | Claude cloud fallback (Phase 2) |
+| HA VM | Backend VM | HTTP (11434) | Ollama LLM conversation |
+| HA VM | Anthropic API | HTTPS | Claude cloud fallback (optional) |
 
-The Pi never speaks directly to the backend VM. This is deliberate —
-HA is always in the loop so it can apply policy, log, and route.
+The Pi never speaks directly to the Backend VM for voice. This is
+deliberate — HA is always in the loop so it can apply policy, log,
+and route. The dashboard SPA is the only thing the Pi loads from the
+Backend VM directly.
 
 ---
 
 ## Repo Layout
 
-Organized by machine — clone the repo anywhere, work in the directory for
-the machine you're on.
+Organized by machine — clone the repo anywhere, work in the directory
+for the machine you're on.
 
 ```
 grumpy/
-├── README.md              This file — overall project scope
-├── CLAUDE.md              Context and conventions for AI agents
-├── backend/               Backend VM: voice stack + LLM services
+├── README.md                       This file — overall project scope
+├── CLAUDE.md                       Context and conventions for AI agents
+├── backend/                        Backend VM: voice stack + LLM services
 │   ├── docker-compose.yml
 │   ├── .env.example
 │   ├── manage.sh
 │   └── README.md
-├── homeassistant/         HA VM: integration configs, blueprints, automations
+├── homeassistant/                  HA VM: integration notes + setup
 │   └── README.md
-├── rpi/                   Raspberry Pi: dashboard app + kiosk provisioning
-│   └── README.md
-└── docs/                  Architecture diagrams, decision records, runbooks
+├── rpi/                            Everything that runs on a Pi
+│   ├── README.md                   Pi deployment overview
+│   ├── kiosk/                      Chromium kiosk (Docker + systemd)
+│   ├── linux-voice-assistant/      Wake word + voice satellite
+│   ├── librespot/                  Native Spotify Connect target
+│   └── dashboard/                  React dashboard (also runs on Backend VM)
+└── docs/                           Architecture notes + runbooks
+    ├── README.md
+    ├── future_tasks.md
+    └── SECRETS-ROTATION.md
 ```
 
 ---
 
 ## Implementation Phases
 
-Each phase produces something working end-to-end before moving on. No
-big-bang integration at the end.
+Each phase produces something working end-to-end. Phases 1-5 are
+deployed; ongoing work focuses on widget polish and Echo-Show-parity
+features.
 
 ### Phase 1 — Voice Stack Backend &nbsp;&nbsp;`backend/`
-Deploy Wyoming Whisper + Piper + openWakeWord on the backend VM. Wire
-into the HA VM's Assist pipeline. Validate by talking to HA through the
-companion app on a phone.
-
-**Done when:** Voice command in the HA companion app gets transcribed,
-handled, and the TTS response plays back. The Pi is not involved yet.
+Deploy Wyoming Whisper + Piper + openWakeWord on the Backend VM. Wire
+into the HA VM's Assist pipeline.
 
 ### Phase 2 — LLM Conversation Agents &nbsp;&nbsp;`backend/`
-Add Ollama to the backend VM's compose stack (shares the 3090 with
-Whisper — plenty of VRAM). Register it in HA as a conversation agent.
-Add the Anthropic integration for cloud fallback. Configure the Assist
-pipeline to route general-knowledge queries to Ollama, with Claude as
-a fallback or per-pipeline option.
-
-**Done when:** "What's the capital of Portugal?" routes through HA's
-conversation agent and gets answered by Ollama (or Claude if selected).
+Ollama on the Backend VM (shares the 3090 with Whisper). Registered in
+HA as a conversation agent. Anthropic integration available for cloud
+fallback.
 
 ### Phase 2.5 — Custom "Hey Grumpy" Wake Word &nbsp;&nbsp;`backend/`
-Optional but fun. Train a custom openWakeWord model, drop into
-`backend/data/openwakeword/`, update the Assist pipeline.
+Optional. Uses the openWakeWord trainer; drop the model into
+`backend/data/openwakeword/`.
 
-### Phase 3 — Dashboard Web App &nbsp;&nbsp;`dashboard/`
-React + Tailwind + shadcn/ui, built with Vite. Widget grid layout.
-Connects to the HA VM's WebSocket API for state and service calls.
-Core widgets:
-- Clock + date
-- Weather (Open-Meteo, no API key)
-- Calendar (CalDAV)
-- Photo rotation (local folder or Immich API)
-- Home Assistant entity cards (lights, climate, cameras)
-- Voice interaction surface (wake indicator, transcript, response)
+### Phase 3 — Dashboard Web App &nbsp;&nbsp;`rpi/dashboard/`
+React + TypeScript + Tailwind + Vite. Widget grid layout with
+react-grid-layout. Connects to HA over WebSocket. Currently 17+
+widgets including Clock, Weather, Calendar, Photos (iCloud + Immich),
+Spotify (with native player + MA), Music Assistant browse, Traffic,
+YouTube, Twitch, Plex/Jellyfin, HA entity cards, Grocery, Timers,
+Alarms, and more.
 
-Developed entirely on Jason's workstation against the real HA VM. No
-Pi involvement during development.
+Shared credentials live in a gitignored `credentials.json`; per-device
+overrides live in `instances/<deviceId>.json`. Edited via the Manager
+page (separate route from the dashboard itself).
 
-**Done when:** Dashboard runs in a desktop browser, shows live HA
-state, service calls work (tap a light, it turns on).
+### Phase 4 — Pi Deployment &nbsp;&nbsp;`rpi/`
+Three independent services per Pi (kiosk, linux-voice-assistant,
+librespot) plus an optional local dashboard server. Each subdirectory
+has a `setup.sh` and its own README. Kiosk auto-restarts every 12 h
+via a systemd timer.
 
-### Phase 4 — Pi Deployment &nbsp;&nbsp;`pi-client/`
-Flash Raspberry Pi OS, install kiosk dependencies, autostart Chromium
-pointed at the dashboard URL. Tune for the chosen touchscreen
-(resolution, orientation, touch calibration). Test on both Pi 4 and
-Pi 5.
-
-**Done when:** Pi boots directly into the dashboard, touch works,
-dashboard is identical across Pi 4 and Pi 5.
-
-### Phase 5 — Voice UI in the Dashboard &nbsp;&nbsp;`dashboard/` + `pi-client/`
-Wire the Pi's microphone into the HA Assist pipeline. Add visual
-feedback in the dashboard: wake word indicator, live transcript,
-response display, quiet-listening state.
-
-**Done when:** "Hey Grumpy, turn off the kitchen lights" from across
-the room works end-to-end — Pi captures audio, HA processes via the
-backend stack, lights turn off, dashboard shows the interaction.
+### Phase 5 — Voice UI in the Dashboard &nbsp;&nbsp;`rpi/dashboard/`
+Dashboard mic button + wake-word trigger both route through HA Assist.
+Voice commands cover: timer/alarm set + cancel, Spotify control,
+YouTube/Twitch search, theme switching, weather views, slideshow
+control, grocery list add, streaming-service launch.
 
 ---
 
 ## Starting Point
 
-Start with [`backend/README.md`](./backend/README.md). It has the
-Phase 1 deployment steps: prereqs, GPU setup, `docker compose up`,
-and HA wiring.
+- Setting up the **Backend VM**: start with
+  [`backend/README.md`](./backend/README.md).
+- Provisioning a **Raspberry Pi**: start with
+  [`rpi/README.md`](./rpi/README.md) — deployment overview with
+  install order, post-install checklist, and troubleshooting.
+- Working on the **dashboard** itself: see
+  [`rpi/dashboard/README.md`](./rpi/dashboard/README.md).
 
 ## Status
 
 | Phase | Status |
 |-------|--------|
-| 1. Voice stack backend | 🟢 Scaffolded, ready to deploy |
-| 2. LLM conversation agents | ⬜ Planned |
-| 2.5. Custom wake word | ⬜ Optional |
-| 3. Dashboard web app | ⬜ Planned |
-| 4. Pi deployment | ⬜ Planned |
-| 5. Voice UI integration | ⬜ Planned |
+| 1. Voice stack backend | 🟢 Deployed |
+| 2. LLM conversation agents | 🟢 Deployed (Ollama + optional Claude fallback) |
+| 2.5. Custom wake word | ⬜ Optional, not done |
+| 3. Dashboard web app | 🟢 Deployed (17+ widgets, Manager UI, shared credentials) |
+| 4. Pi deployment | 🟢 Deployed (kiosk + LVA + librespot, multiple Pis) |
+| 5. Voice UI integration | 🟢 Deployed (browser mic + LVA wake-word satellite) |
