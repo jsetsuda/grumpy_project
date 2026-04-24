@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "id": "grumpy-7",
+    "name": "Grumpy-7",
+    "layoutMode": "grid",
+    "createdAt": "2026-04-24T20:04:04.479Z",
+    "updatedAt": "2026-04-24T20:08:50.262Z"
+  },
+  "config": {
+    "version": 1,
+    "grid": {
+      "cols": 12,
+      "rowHeight": 80,
+      "margin": [
+        12,
+        12
+      ]
+    },
+    "widgets": [
+      {
+        "id": "ha-entities-mo80o96h",
+        "type": "ha-entities",
+        "layout": {
+          "x": 5,
+          "y": 0,
+          "w": 3,
+          "h": 3
+        },
+        "config": {
+          "entities": []
+        },
+        "hidden": true
+      },
+      {
+        "id": "music-moakz3pf",
+        "type": "music",
+        "layout": {
+          "x": 6,
+          "y": 0,
+          "w": 6,
+          "h": 5
+        },
+        "config": {
+          "provider": "spotify"
+        }
+      },
+      {
+        "id": "music-moam3brs",
+        "type": "music",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "w": 6,
+          "h": 5
+        },
+        "config": {
+          "provider": "music-assistant",
+          "ma": {
+            "targetPlayer": "media_player.pi_grumpy01_media_player_2"
+          }
+        }
+      }
+    ],
+    "theme": "forest",
+    "backgroundMode": "photo",
+    "backgroundPhotos": {
+      "provider": "icloud",
+      "interval": 30,
+      "icloud": {
+        "sharedAlbumUrl": "https://www.icloud.com/sharedalbum/#B1hJtdOXmJfqRVS"
+      }
+    },
+    "topBarWeatherMode": "forecast",
+    "topBarBackground": false,
+    "topBarWeather": true,
+    "topBarFont": "'Segoe UI', sans-serif"
+  }
+}
