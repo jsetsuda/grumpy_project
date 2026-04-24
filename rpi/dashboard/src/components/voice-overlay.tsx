@@ -80,76 +80,72 @@ export function VoiceOverlay({
     )
   }
 
-  // Active state: expanded card
+  // Colors per state for the mic icon.
+  const iconColor =
+    state === 'error' ? 'text-red-400'
+    : state === 'listening' ? 'text-blue-400'
+    : state === 'processing' ? 'text-yellow-400'
+    : 'text-green-400'
+
+  const Glyph = state === 'error' ? MicOff : Mic
+
+  // Active state: full-screen takeover. Big, readable from across the room
+  // — the Echo Show presentation style. Dismissable via the X or tapping
+  // outside the content column.
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 w-[300px] rounded-2xl flex flex-col gap-3 px-4 py-4 transition-all ${
-        showBackground ? 'bg-black/40 backdrop-blur-sm' : 'bg-black/30'
-      }`}
-      style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-8 p-8 bg-black/70 backdrop-blur-md"
+      style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
+      onClick={handleCancel}
     >
-      {/* Top row: mic icon with ring + status + cancel */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleMicClick}
-          className={`relative w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-            state === 'listening' ? 'bg-blue-500/20' : 'bg-white/10'
+      <button
+        onClick={(e) => { e.stopPropagation(); handleCancel() }}
+        className="absolute top-4 right-4 p-3 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+        title="Cancel (or tap anywhere)"
+        aria-label="Cancel"
+      >
+        <X size={28} />
+      </button>
+
+      {/* Big pulsing mic */}
+      <div
+        className="relative"
+        onClick={(e) => { e.stopPropagation(); handleMicClick() }}
+      >
+        <div
+          className={`absolute inset-0 rounded-full border-4 ${ringColor} ${
+            state === 'listening' ? 'animate-pulse' : ''
           }`}
-        >
-          {/* Pulsing ring */}
-          <div
-            className={`absolute inset-0 rounded-full border-2 ${ringColor} transition-colors ${
-              state === 'listening' ? 'animate-pulse' : ''
-            }`}
-          />
-          {state === 'error' ? (
-            <MicOff size={20} className="text-red-400" />
-          ) : (
-            <Mic
-              size={20}
-              className={
-                state === 'listening'
-                  ? 'text-blue-400'
-                  : state === 'processing'
-                  ? 'text-yellow-400'
-                  : 'text-green-400'
-              }
-            />
-          )}
-        </button>
-
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white">{statusText}</div>
+        />
+        <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center">
+          <Glyph size={56} className={iconColor} />
         </div>
-
-        <button
-          onClick={handleCancel}
-          className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
-          title="Cancel"
-        >
-          <X size={16} />
-        </button>
       </div>
 
-      {/* Transcript */}
+      {/* Status */}
+      <div className="text-3xl sm:text-4xl font-medium text-white tracking-tight">{statusText}</div>
+
+      {/* Transcript — what the user said (large, center-aligned) */}
       {transcript && (
-        <div className="text-sm text-white/90 leading-snug">
-          <span className="text-xs text-white/50 block mb-0.5">You said:</span>
-          {transcript}
+        <div className="max-w-3xl w-full text-center">
+          <div className="text-xs uppercase tracking-widest text-white/40 mb-2">You said</div>
+          <div className="text-2xl sm:text-3xl text-white/95 leading-snug">{transcript}</div>
         </div>
       )}
 
-      {/* Response */}
+      {/* Response — what the assistant replied */}
       {response && (
-        <div className="text-sm text-white leading-snug">
-          <span className="text-xs text-white/50 block mb-0.5">Response:</span>
-          {response}
+        <div className="max-w-3xl w-full text-center">
+          <div className="text-xs uppercase tracking-widest text-white/40 mb-2">Response</div>
+          <div className="text-2xl sm:text-3xl text-white/90 leading-snug">{response}</div>
         </div>
       )}
 
       {/* Error */}
       {error && (
-        <div className="text-sm text-red-300 leading-snug">{error}</div>
+        <div className="max-w-3xl w-full text-center">
+          <div className="text-xl text-red-300 leading-snug">{error}</div>
+        </div>
       )}
     </div>
   )
