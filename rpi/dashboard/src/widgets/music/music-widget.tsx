@@ -46,6 +46,7 @@ interface NowPlaying {
   progress: number
   duration: number
   contextUri?: string
+  trackUri?: string
 }
 
 type ViewState =
@@ -246,6 +247,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
               isPlaying: false,
               progress: 0,
               duration: track.duration_ms,
+              trackUri: track.uri,
             })
           }
         } catch { /* ignore */ }
@@ -296,6 +298,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
         progress: data.progress_ms || 0,
         duration: data.item?.duration_ms || 0,
         contextUri: data.context?.uri,
+        trackUri: data.item?.uri,
       })
       setError(null)
     } catch (e) {
@@ -763,7 +766,23 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             <SkipBack size={18} />
           </button>
           <button
-            onClick={() => spotifyCommand(displayTrack.isPlaying ? 'pause' : 'play')}
+            onClick={() => {
+              if (displayTrack.isPlaying) {
+                spotifyCommand('pause')
+              } else if (nowPlaying) {
+                // There's an active (paused) session — resume it.
+                spotifyCommand('play')
+              } else if (displayTrack.trackUri) {
+                // Showing "last played" with no active session — Spotify's
+                // /play endpoint has nothing to resume. Start the track
+                // explicitly instead.
+                playTrack(displayTrack.trackUri, displayTrack.contextUri)
+              } else {
+                // Final fallback — try to resume anyway; if there's truly
+                // nothing, user gets a log message.
+                spotifyCommand('play')
+              }
+            }}
             className="p-3 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-full hover:opacity-90 transition-opacity min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             {displayTrack.isPlaying ? <Pause size={20} /> : <Play size={20} />}

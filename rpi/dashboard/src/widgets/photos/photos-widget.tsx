@@ -32,6 +32,8 @@ interface PhotoItem {
   id: string
   url: string
   caption?: string
+  /** True when the item is a video (renders as <video> instead of <img>). */
+  isVideo?: boolean
 }
 
 export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfig>) {
@@ -105,11 +107,15 @@ export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfi
 
   useEffect(() => {
     if (photos.length <= 1) return
+    // If the current slide is a video, don't schedule an auto-advance — the
+    // <video> onEnded handler does it. Otherwise use the configured interval.
+    const current = photos[currentIndex]
+    if (current?.isVideo) return
     const timer = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % photos.length)
     }, interval)
     return () => clearInterval(timer)
-  }, [photos.length, interval])
+  }, [photos.length, interval, currentIndex, photos])
 
   async function getGoogleAccessToken(): Promise<string> {
     if (!effectiveGoogle) throw new Error('Google config missing')
@@ -234,11 +240,15 @@ export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfi
         return
       }
 
-      // Collect photo GUIDs and their largest derivative checksums.
+      // Collect item GUIDs and their largest derivative checksums.
       // Apple keys shared-album derivatives by their target longest-edge size
       // (e.g. "290", "1920", "2048", "6144") and sometimes "original" for the
       // full-res file. Rank by that key — it's orientation-independent, unlike
       // comparing width alone (which underscored portraits).
+      //
+      // For video items (photo.mediaAssetType === 'video'), the same ranking
+      // applies: Apple exposes video derivatives at multiple sizes; the one
+      // with the highest target-edge key is the best-quality playable asset.
       const rankDerivative = (key: string, deriv: any): number => {
         if (key === 'original') return Number.MAX_SAFE_INTEGER
         const keyNum = parseInt(key, 10)
@@ -248,9 +258,11 @@ export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfi
         const h = parseInt(deriv?.height || '0', 10) || 0
         return Math.max(w, h)
       }
-      const photoMap: Map<string, { guid: string; checksum: string; caption?: string }> = new Map()
+      const photoMap: Map<string, { guid: string; checksum: string; caption?: string; isVideo?: boolean }> = new Map()
       for (const photo of data.photos.slice(0, 50)) {
         if (!photo.derivatives) continue
+        const isVideo = typeof photo.mediaAssetType === 'string'
+          && /^video$/i.test(photo.mediaAssetType)
         const entries = Object.entries(photo.derivatives) as [string, any][]
         let best: { deriv: any; score: number } | null = null
         for (const [key, deriv] of entries) {
@@ -262,6 +274,7 @@ export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfi
             guid: photo.photoGuid || photo.batchGuid || best.deriv.checksum,
             checksum: best.deriv.checksum,
             caption: photo.caption || undefined,
+            isVideo,
           })
         }
       }
@@ -291,6 +304,7 @@ export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfi
               id: photoInfo?.guid || checksum,
               url: `/api/proxy?url=${encodeURIComponent(photoUrl)}`,
               caption: photoInfo?.caption,
+              isVideo: photoInfo?.isVideo,
             })
           }
         }
@@ -408,11 +422,30 @@ export function PhotosWidget({ config, onConfigChange }: WidgetProps<PhotosConfi
 
   return (
     <div className="relative h-full w-full group overflow-hidden rounded-xl">
-      <img
-        src={current.url}
-        alt={current.caption || ''}
-        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
-      />
+      {current.isVideo ? (
+        <video
+          key={current.id /* force remount when the slide changes so autoplay re-fires */}
+          src={current.url}
+          className="absolute inset-0 w-full h-full object-cover"
+          autoPlay
+          muted /* required for autoplay without user gesture */
+          playsInline /* iOS/Safari: don't force fullscreen */
+          controls={false}
+          onEnded={goNext /* advance the slideshow when the clip finishes */}
+          onError={(e) => {
+            // Usually means Chromium can't decode this codec (HEVC on ARM).
+            // Log and skip to next; the rest of the album stays viewable.
+            console.warn('[photos] video playback failed, skipping:', e)
+            setTimeout(goNext, 500)
+          }}
+        />
+      ) : (
+        <img
+          src={current.url}
+          alt={current.caption || ''}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+        />
+      )}
 
       {/* Caption overlay */}
       {current.caption && (
