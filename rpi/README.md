@@ -67,6 +67,25 @@ git clone git@github.com:jsetsuda/grumpy_project.git ~/grumpy
 
 Everything below runs from `~/grumpy/rpi/`.
 
+### One-command install
+
+For a fresh Pi, the top-level orchestrator runs steps 1-3 in order
+and asks for the dashboard URL + device name only once:
+
+```bash
+cd ~/grumpy/rpi
+./setup.sh
+```
+
+Useful flags:
+- `--dashboard-url URL` / `--device-name NAME` — non-interactive
+- `--skip-kiosk` / `--skip-lva` / `--skip-librespot` — re-run a subset
+
+The per-service `setup.sh` files below still work and stay the
+"advanced" path — useful when something fails partway and you want to
+re-run a single piece, or when you're managing one service in
+isolation.
+
 ### 1. Kiosk (`rpi/kiosk/`)
 
 Chromium in kiosk mode, launched via a Docker container managed by

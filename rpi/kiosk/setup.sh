@@ -9,16 +9,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
-
-# ── Colours ─────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # ── 1. Architecture check ──────────────────────────────────────────────────
 ARCH="$(uname -m)"
@@ -30,20 +21,8 @@ if [[ "$ARCH" != "aarch64" && "$ARCH" != "armv7l" ]]; then
 fi
 info "Architecture: ${ARCH}"
 
-# ── 2. Install Docker if missing ───────────────────────────────────────────
-if command -v docker &>/dev/null; then
-    info "Docker already installed: $(docker --version)"
-else
-    info "Installing Docker…"
-    curl -fsSL https://get.docker.com | sh
-    sudo usermod -aG docker "$USER"
-    info "Docker installed. You may need to log out and back in for group membership."
-fi
-
-# Ensure docker compose plugin is available
-if ! docker compose version &>/dev/null; then
-    error "docker compose plugin not found. Please install docker-compose-plugin."
-fi
+# ── 2. Docker (install if missing) ─────────────────────────────────────────
+require_docker --install
 
 # ── 3. Collect configuration ───────────────────────────────────────────────
 DASHBOARD_URL="${1:-}"
@@ -55,7 +34,7 @@ if [[ -z "$DASHBOARD_URL" ]]; then
 fi
 
 if [[ -z "$DEVICE_NAME" ]]; then
-    DEFAULT_NAME="pi-$(hostname -s)"
+    DEFAULT_NAME="$(default_device_name)"
     read -rp "Device name [${DEFAULT_NAME}]: " DEVICE_NAME
     DEVICE_NAME="${DEVICE_NAME:-$DEFAULT_NAME}"
 fi

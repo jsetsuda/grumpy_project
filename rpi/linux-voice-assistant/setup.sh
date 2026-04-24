@@ -15,24 +15,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
-
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
-info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-error() { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
+source "$SCRIPT_DIR/../lib/common.sh"
 
 # ── 1. Docker sanity ───────────────────────────────────────────────────────
-if ! command -v docker &>/dev/null; then
-    error "Docker not installed. Run ../kiosk/setup.sh first (it installs Docker)."
-fi
-if ! docker compose version &>/dev/null; then
-    error "docker compose plugin not found. Install docker-compose-plugin."
-fi
+require_docker
 
 # ── 2. Client name ─────────────────────────────────────────────────────────
 CLIENT_NAME="${1:-}"
 if [[ -z "$CLIENT_NAME" ]]; then
-    DEFAULT_NAME="pi-$(hostname -s)"
+    DEFAULT_NAME="$(default_device_name)"
     read -rp "Client name [${DEFAULT_NAME}]: " CLIENT_NAME
     CLIENT_NAME="${CLIENT_NAME:-$DEFAULT_NAME}"
 fi

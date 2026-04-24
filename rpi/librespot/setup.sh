@@ -10,10 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONF_PATH="/etc/raspotify/conf"
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
-info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-error() { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
+source "$SCRIPT_DIR/../lib/common.sh"
 
 [[ $EUID -eq 0 ]] && error "Don't run as root — script calls sudo where needed."
 
