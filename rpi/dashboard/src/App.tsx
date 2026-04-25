@@ -2,6 +2,7 @@ import { ConfigProvider, useConfig } from '@/config/config-provider'
 import { CredentialsProvider } from '@/config/credentials-provider'
 import { DashboardGrid } from '@/components/dashboard-grid'
 import { ZoneRenderer } from '@/components/zone-renderer'
+import { DesignFrame, parseDesignSize } from '@/components/design-frame'
 import { SpotifyCallback } from '@/widgets/music/spotify-callback'
 import { GoogleCallback } from '@/widgets/photos/google-callback'
 import { MicrosoftCallback } from '@/widgets/todo/microsoft-callback'
@@ -9,13 +10,14 @@ import { DashboardManager } from '@/pages/manage'
 
 function DashboardRouter() {
   const { config } = useConfig()
+  const designSize = parseDesignSize(config.designSize, config.designSizeCustom)
 
   // Use zone layout if a zoneLayout config is present with a templateId
-  if (config.zoneLayout?.templateId) {
-    return <ZoneRenderer />
-  }
+  const inner = config.zoneLayout?.templateId
+    ? <ZoneRenderer frameSize={designSize} />
+    : <DashboardGrid frameSize={designSize} />
 
-  return <DashboardGrid />
+  return <DesignFrame size={designSize}>{inner}</DesignFrame>
 }
 
 export default function App() {

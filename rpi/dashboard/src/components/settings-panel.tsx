@@ -211,12 +211,12 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
             backgroundPhotos={config.backgroundPhotos}
             backgroundOverlay={config.backgroundOverlay ?? 60}
             widgetOpacity={config.widgetOpacity ?? 100}
-            screenRatio={config.screenRatio || 'auto'}
-            screenRatioCustom={config.screenRatioCustom || ''}
+            designSize={config.designSize || 'auto'}
+            designSizeCustom={config.designSizeCustom || ''}
             screensaverEnabled={config.screensaverEnabled ?? true}
             screensaverTimeout={config.screensaverTimeout ?? 300}
-            onScreenRatioChange={(v) => updateConfig({ screenRatio: v })}
-            onScreenRatioCustomChange={(v) => updateConfig({ screenRatioCustom: v })}
+            onDesignSizeChange={(v) => updateConfig({ designSize: v })}
+            onDesignSizeCustomChange={(v) => updateConfig({ designSizeCustom: v })}
             onThemeChange={(t) => updateConfig({ theme: t })}
             onThemeCustomAccentChange={(hex) => updateConfig({ themeCustomAccent: hex })}
             onBackgroundModeChange={(m) => updateConfig({ backgroundMode: m })}
@@ -2192,12 +2192,12 @@ interface ThemeBackgroundSettingsProps {
   backgroundPhotos?: BackgroundPhotosConfig
   backgroundOverlay: number
   widgetOpacity: number
-  screenRatio: string
-  screenRatioCustom: string
+  designSize: string
+  designSizeCustom: string
   screensaverEnabled: boolean
   screensaverTimeout: number
-  onScreenRatioChange: (ratio: string) => void
-  onScreenRatioCustomChange: (ratio: string) => void
+  onDesignSizeChange: (value: string) => void
+  onDesignSizeCustomChange: (value: string) => void
   onThemeChange: (theme: ThemeName) => void
   onThemeCustomAccentChange: (hex: string) => void
   onBackgroundModeChange: (mode: 'solid' | 'photo') => void
@@ -2215,12 +2215,12 @@ function ThemeBackgroundSettings({
   backgroundPhotos,
   backgroundOverlay,
   widgetOpacity,
-  screenRatio,
-  screenRatioCustom,
+  designSize,
+  designSizeCustom,
   screensaverEnabled,
   screensaverTimeout,
-  onScreenRatioChange,
-  onScreenRatioCustomChange,
+  onDesignSizeChange,
+  onDesignSizeCustomChange,
   onThemeChange,
   onThemeCustomAccentChange,
   onBackgroundModeChange,
@@ -2508,34 +2508,36 @@ function ThemeBackgroundSettings({
           </div>
         </SettingsField>
 
-        {/* Screen ratio */}
-        <SettingsField label="Screen Ratio">
+        {/* Design size — render the dashboard at an explicit pixel size
+            in the center of the browser window. Useful for previewing
+            layouts at the actual target Pi screen size before deploying.
+            'Auto' fills the viewport (production behavior on a real Pi). */}
+        <SettingsField label="Design Size">
           <SelectInput
-            value={screenRatio}
-            onChange={onScreenRatioChange}
+            value={designSize}
+            onChange={onDesignSizeChange}
             options={[
-              { value: 'auto', label: 'Auto (fit to screen)' },
-              { value: '16:9', label: '16:9 Landscape (HD/4K TV)' },
-              { value: '16:10', label: '16:10 Landscape (MacBook)' },
-              { value: '1024:600', label: '1024×600 (~1.71:1) — 7" Pi touchscreen' },
-              { value: '4:3', label: '4:3 Landscape (iPad/Classic)' },
-              { value: '3:2', label: '3:2 Landscape (Surface)' },
-              { value: '21:9', label: '21:9 Ultrawide' },
-              { value: '9:16', label: '9:16 Portrait (Phone/Kiosk)' },
-              { value: '10:16', label: '10:16 Portrait' },
-              { value: '3:4', label: '3:4 Portrait (iPad)' },
-              { value: '2:3', label: '2:3 Portrait' },
-              { value: '1:1', label: '1:1 Square' },
-              { value: 'custom', label: 'Custom ratio...' },
+              { value: 'auto', label: 'Auto (fill viewport)' },
+              { value: '1024x600', label: '1024 × 600 — 7" Pi touchscreen' },
+              { value: '800x480', label: '800 × 480 — 5" Pi touchscreen' },
+              { value: '1280x800', label: '1280 × 800 — 10" tablet-style' },
+              { value: '1920x1080', label: '1920 × 1080 — Full HD' },
+              { value: '480x800', label: '480 × 800 — portrait kiosk' },
+              { value: 'custom', label: 'Custom size...' },
             ]}
           />
+          <p className="text-[10px] text-[var(--muted-foreground)] mt-1">
+            Renders the dashboard at a fixed pixel size centered in the browser
+            so you can design for a target screen. Per-device — set to a
+            preview size on your dev workstation; leave Auto on the actual Pi.
+          </p>
         </SettingsField>
-        {screenRatio === 'custom' && (
-          <SettingsField label="Custom ratio (W:H)">
+        {designSize === 'custom' && (
+          <SettingsField label="Custom size (W×H)">
             <TextInput
-              value={screenRatioCustom}
-              onChange={onScreenRatioCustomChange}
-              placeholder="e.g. 21:9"
+              value={designSizeCustom}
+              onChange={onDesignSizeCustomChange}
+              placeholder="e.g. 1024x600"
             />
           </SettingsField>
         )}

@@ -16,8 +16,17 @@ import { useSharedCredentials } from '@/config/credentials-provider'
 import { useDeviceSignal } from '@/hooks/use-device-signal'
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import type { ZoneRegion } from '@/config/zone-types'
+import type { DesignFrameSize } from './design-frame'
 
-export function ZoneRenderer() {
+interface ZoneRendererProps {
+  /** Reserved for future per-frame sizing; the zone layout already
+   *  uses percentage-positioned regions inside `fixed inset-0`, which
+   *  the DesignFrame transform scopes correctly. */
+  frameSize?: DesignFrameSize | null
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function ZoneRenderer({ frameSize: _frameSize }: ZoneRendererProps = {}) {
   const { config, deviceId, updateConfig } = useConfig()
   useDeviceSignal(deviceId)
   const [settingsOpen, setSettingsOpen] = useState(false)

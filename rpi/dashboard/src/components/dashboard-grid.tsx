@@ -20,14 +20,25 @@ import { MotionPopup } from './motion-popup'
 import { useMotionAlerts } from '@/hooks/use-motion-alerts'
 import { MorningBriefing } from './morning-briefing'
 import { useTimers } from '@/hooks/use-timers'
+import type { DesignFrameSize } from './design-frame'
 
-export function DashboardGrid() {
+interface DashboardGridProps {
+  /** When set, the dashboard renders at these explicit pixel dims instead of the viewport. */
+  frameSize?: DesignFrameSize | null
+}
+
+export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
   const { config, deviceId, updateConfig, updateWidgetConfig, updateAllLayouts } = useConfig()
   useDeviceSignal(deviceId)
   const [editMode, setEditMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [width, setWidth] = useState(window.innerWidth - 24)
+  const [viewportWidth, setViewportWidth] = useState(window.innerWidth)
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight)
   const [manualSlideshow, setManualSlideshow] = useState(false)
+
+  const frameW = frameSize?.width ?? viewportWidth
+  const frameH = frameSize?.height ?? viewportHeight
+  const width = frameW - 24
 
   useTheme(config.theme || 'midnight', config.themeCustomAccent)
 
@@ -48,7 +59,10 @@ export function DashboardGrid() {
   }, [])
 
   useEffect(() => {
-    const onResize = () => setWidth(window.innerWidth - 24)
+    const onResize = () => {
+      setViewportWidth(window.innerWidth)
+      setViewportHeight(window.innerHeight)
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
@@ -101,7 +115,7 @@ export function DashboardGrid() {
     const marginY = config.grid.margin?.[1] ?? 12
     const topBarSpace = (config.showTopBar ?? true) ? (config.widgetStartY ?? 90) : 0
     const verticalPadding = 12 // px pb-3 on the grid container
-    const availableHeight = window.innerHeight - topBarSpace - verticalPadding
+    const availableHeight = frameH - topBarSpace - verticalPadding
     // A grid with N rows has total height: N * rowHeight + (N + 1) * marginY
     const maxRows = Math.max(1, Math.floor((availableHeight - marginY) / (rowHeight + marginY)))
 
@@ -113,7 +127,7 @@ export function DashboardGrid() {
       return { i: w.id, x, y, w: width, h: height }
     })
     updateAllLayouts(updated)
-  }, [config.widgets, config.grid, config.widgetStartY, config.showTopBar, updateAllLayouts])
+  }, [config.widgets, config.grid, config.widgetStartY, config.showTopBar, frameH, updateAllLayouts])
 
   const showTopBar = config.showTopBar ?? true
   const showTopBarWeather = config.topBarWeather ?? true
@@ -403,7 +417,7 @@ export function DashboardGrid() {
 
       {/* Main dashboard (fades out during slideshow) */}
       <div
-        className="h-screen w-screen flex flex-col relative z-10 transition-opacity duration-1000 overflow-hidden"
+        className="h-full w-full flex flex-col relative z-10 transition-opacity duration-1000 overflow-hidden"
         style={{
           opacity: inSlideshow ? 0 : 1,
           pointerEvents: inSlideshow ? 'none' : 'auto',

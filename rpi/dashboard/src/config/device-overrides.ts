@@ -10,8 +10,8 @@ import type { DashboardConfig } from './types'
  * background are shared.
  */
 export const DEVICE_OVERRIDE_FIELDS = [
-  'screenRatio',
-  'screenRatioCustom',
+  'designSize',
+  'designSizeCustom',
   'screensaverEnabled',
   'screensaverTimeout',
   'voiceTtsVoice',

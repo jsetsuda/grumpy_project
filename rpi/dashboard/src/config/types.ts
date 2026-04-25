@@ -47,8 +47,17 @@ export interface DashboardConfig {
   topBarWeather: boolean
   topBarWeatherMode: 'current' | 'hourly' | 'forecast'
   topBarForecastDays: 3 | 5 | 7
-  screenRatio: string // 'auto' | '16:9' | '16:10' | '1024:600' | '4:3' | '3:2' | '21:9' | '9:16' | '10:16' | '3:4' | '2:3' | '1:1' | 'custom'
-  screenRatioCustom?: string // e.g. '21:9'
+  /**
+   * Renders the dashboard at an explicit pixel size, centered in the
+   * viewport with letterboxing around it. Lets you design from a
+   * desktop browser at the actual target screen dimensions
+   * (e.g. 1024×600 for the 7" Pi touchscreen).
+   *
+   * 'auto' fills the viewport (production default on a real Pi).
+   * 'custom' reads `designSizeCustom` (e.g. "1024x600").
+   */
+  designSize: string // 'auto' | '1024x600' | '1280x800' | '800x480' | '1920x1080' | '480x800' | 'custom'
+  designSizeCustom?: string // e.g. "1024x600"
   screensaverEnabled: boolean
   screensaverTimeout: number // seconds
   widgetOpacity: number // 0-100
