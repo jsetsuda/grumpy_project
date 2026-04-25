@@ -285,7 +285,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
         <div className="fixed top-3 right-3 z-50 flex gap-2">
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            className="p-3 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
             title="Settings"
           >
             <Settings size={18} />
@@ -293,7 +293,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
           {editMode && (
             <button
               onClick={resetWidgetsIntoView}
-              className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+              className="p-3 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
               title="Pull widgets back into view"
             >
               <RotateCcw size={18} />
@@ -301,7 +301,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
           )}
           <button
             onClick={() => setEditMode(!editMode)}
-            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            className="p-3 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
             title={editMode ? 'Lock layout' : 'Edit layout'}
           >
             {editMode ? <Unlock size={18} /> : <Lock size={18} />}
@@ -363,7 +363,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
             {inSlideshow ? (
               <button
                 onClick={exitSlideshow}
-                className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                 title="Back to dashboard"
               >
                 <Home size={20} />
@@ -372,7 +372,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
               config.backgroundMode === 'photo' && config.backgroundPhotos && (
                 <button
                   onClick={() => setManualSlideshow(true)}
-                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                   title="Start slideshow"
                 >
                   <Play size={20} />
@@ -383,7 +383,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
               <>
                 <button
                   onClick={() => setSettingsOpen(true)}
-                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                   title="Settings"
                 >
                   <Settings size={18} />
@@ -391,7 +391,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
                 {editMode && (
                   <button
                     onClick={resetWidgetsIntoView}
-                    className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                    className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                     title="Pull widgets back into view"
                   >
                     <RotateCcw size={18} />
@@ -399,7 +399,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
                 )}
                 <button
                   onClick={() => setEditMode(!editMode)}
-                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                   title={editMode ? 'Lock layout' : 'Edit layout'}
                 >
                   {editMode ? <Unlock size={18} /> : <Lock size={18} />}
@@ -434,7 +434,13 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
               rowHeight: config.grid.rowHeight,
               margin: config.grid.margin,
             }}
-            dragConfig={{ enabled: editMode }}
+            dragConfig={{
+              enabled: editMode,
+              // Drag only via the .widget-drag-handle strip rendered
+              // by WidgetFrame in edit mode. Keeps widget content
+              // (buttons, scroll regions) tappable on touchscreens.
+              handle: '.widget-drag-handle',
+            }}
             resizeConfig={{
               enabled: editMode,
               // All 8 handles when in edit mode: side arrows for one-axis
@@ -455,7 +461,7 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
 
               return (
                 <div key={widget.id}>
-                  <WidgetFrame>
+                  <WidgetFrame editing={editMode}>
                     <WidgetComponent
                       id={widget.id}
                       config={widget.config}

@@ -28,6 +28,16 @@ body {
   margin: 0;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /* Drop the legacy 300ms tap-to-zoom delay on touch — we don't
+     want pinch-zoom in kiosk mode anyway. */
+  touch-action: manipulation;
+}
+
+/* Drag/resize surfaces must capture the gesture entirely so the
+   browser doesn't try to scroll the page or fire ghost clicks. */
+.widget-drag-handle,
+.react-resizable-handle {
+  touch-action: none;
 }
 
 /* react-grid-layout styles */
@@ -103,16 +113,28 @@ body {
 .react-resizable-handle-e { right: 2px; }
 .react-resizable-handle-w { left: 2px; }
 
-/* Corner handles: small squares for two-axis resize. */
+/* Corner handles: chunky squares so a fingertip can grip them. */
 .react-resizable-handle-se,
 .react-resizable-handle-sw,
 .react-resizable-handle-ne,
 .react-resizable-handle-nw {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
 }
 .react-resizable-handle-se { right: 2px; bottom: 2px; cursor: se-resize; }
 .react-resizable-handle-sw { left: 2px; bottom: 2px; cursor: sw-resize; }
 .react-resizable-handle-ne { right: 2px; top: 2px; cursor: ne-resize; }
 .react-resizable-handle-nw { left: 2px; top: 2px; cursor: nw-resize; }
+
+/* Side handles already span 32px on the long axis; widen the hit
+   area on the short axis with a transparent ::before so fingers
+   don't have to land on the visible 6px bar. */
+.react-resizable-handle-n::before,
+.react-resizable-handle-s::before,
+.react-resizable-handle-e::before,
+.react-resizable-handle-w::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}

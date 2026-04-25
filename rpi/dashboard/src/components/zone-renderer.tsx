@@ -193,7 +193,7 @@ export function ZoneRenderer({ frameSize: _frameSize }: ZoneRendererProps = {}) 
             {inSlideshow ? (
               <button
                 onClick={exitSlideshow}
-                className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                 title="Back to dashboard"
               >
                 <Home size={20} />
@@ -202,7 +202,7 @@ export function ZoneRenderer({ frameSize: _frameSize }: ZoneRendererProps = {}) 
               config.backgroundMode === 'photo' && config.backgroundPhotos && (
                 <button
                   onClick={() => setManualSlideshow(true)}
-                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                   title="Start slideshow"
                 >
                   <Play size={20} />
@@ -213,14 +213,14 @@ export function ZoneRenderer({ frameSize: _frameSize }: ZoneRendererProps = {}) 
               <>
                 <button
                   onClick={() => setSettingsOpen(true)}
-                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                   title="Settings"
                 >
                   <Settings size={18} />
                 </button>
                 <button
                   onClick={() => setZoneEditorOpen(true)}
-                  className="p-2 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
+                  className="p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors"
                   title="Edit zones"
                 >
                   <Lock size={18} />
@@ -236,14 +236,14 @@ export function ZoneRenderer({ frameSize: _frameSize }: ZoneRendererProps = {}) 
         <div className="fixed top-3 right-3 z-50 flex gap-2">
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            className="p-3 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
             title="Settings"
           >
             <Settings size={18} />
           </button>
           <button
             onClick={() => setZoneEditorOpen(true)}
-            className="p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            className="p-3 rounded-full bg-black/40 backdrop-blur-sm text-white/80 hover:bg-black/60 hover:text-white transition-colors"
             title="Edit zones"
           >
             <Lock size={18} />
