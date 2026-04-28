@@ -50,6 +50,29 @@ export interface MaPlayerState {
   positionUpdatedAt?: number
 }
 
+/**
+ * One row in a Music Assistant search result. The exact shape varies by
+ * provider but these are the fields we rely on. `uri` doubles as the
+ * media_content_id for play_media calls; `mediaType` becomes
+ * media_content_type. Artist/album sub-objects are normalized into the
+ * top-level subtitle for display.
+ */
+export interface MaSearchItem {
+  uri: string
+  mediaType: 'track' | 'album' | 'artist' | 'playlist' | 'radio'
+  name: string
+  subtitle?: string
+  image?: string
+}
+
+export interface MaSearchResult {
+  artists: MaSearchItem[]
+  albums: MaSearchItem[]
+  tracks: MaSearchItem[]
+  playlists: MaSearchItem[]
+  radio: MaSearchItem[]
+}
+
 interface PendingCall {
   resolve: (value: unknown) => void
   reject: (err: Error) => void
@@ -66,9 +89,16 @@ interface UseMaClientReturn {
   error: string | null
   players: MaMediaPlayer[]
   targetState: MaPlayerState | null
+  /** True once we've located the MA config entry id; required for
+   *  music_assistant.search. False when MA isn't installed in HA. */
+  maAvailable: boolean
   browse: (mediaContentType?: string, mediaContentId?: string) => Promise<MaBrowseItem>
   playMedia: (mediaContentId: string, mediaContentType: string) => Promise<void>
   callService: (service: string, data?: Record<string, unknown>) => Promise<void>
+  /** MA-scoped search via the music_assistant.search action. Results
+   *  come from MA's library + connected providers, not HA's aggregated
+   *  media-source list. Throws if MA isn't installed. */
+  searchMa: (query: string, opts?: { limit?: number; libraryOnly?: boolean }) => Promise<MaSearchResult>
   /** Re-fetch the media_player entity list. Useful after registering a new
    *  player in MA — idle entities don't emit state_changed events so the
    *  initial subscribe doesn't pick them up automatically. */
@@ -87,6 +117,47 @@ function mapBrowseNode(raw: Record<string, unknown>): MaBrowseItem {
     children: Array.isArray(raw.children)
       ? (raw.children as Record<string, unknown>[]).map(mapBrowseNode)
       : undefined,
+  }
+}
+
+function mapSearchItem(raw: Record<string, unknown>, mediaType: MaSearchItem['mediaType']): MaSearchItem {
+  // MA's response uses `image` for items that have one resolved, and
+  // sometimes `metadata.images[0].path`. Take whichever we can find.
+  const image = (raw.image as string | null | undefined)
+    ?? (((raw.metadata as Record<string, unknown> | undefined)?.images as Array<Record<string, unknown>> | undefined)?.[0]?.path as string | undefined)
+    ?? undefined
+
+  let subtitle: string | undefined
+  const artistsRaw = raw.artists as Array<{ name?: string }> | undefined
+  if (artistsRaw && artistsRaw.length > 0) {
+    subtitle = artistsRaw.map(a => a.name).filter(Boolean).join(', ')
+  }
+  const album = raw.album as { name?: string } | undefined
+  if (album?.name && mediaType === 'track') {
+    subtitle = subtitle ? `${subtitle} · ${album.name}` : album.name
+  }
+
+  return {
+    uri: (raw.uri as string) || '',
+    mediaType,
+    name: (raw.name as string) || '',
+    subtitle,
+    image,
+  }
+}
+
+function mapSearchResult(raw: Record<string, unknown>): MaSearchResult {
+  const get = (key: string, type: MaSearchItem['mediaType']): MaSearchItem[] => {
+    const arr = raw[key]
+    if (!Array.isArray(arr)) return []
+    return arr.map(item => mapSearchItem(item as Record<string, unknown>, type)).filter(i => i.uri)
+  }
+  return {
+    artists: get('artists', 'artist'),
+    albums: get('albums', 'album'),
+    tracks: get('tracks', 'track'),
+    playlists: get('playlists', 'playlist'),
+    radio: get('radio', 'radio'),
   }
 }
 
@@ -120,6 +191,7 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
   const [error, setError] = useState<string | null>(null)
   const [players, setPlayers] = useState<MaMediaPlayer[]>([])
   const [targetState, setTargetState] = useState<MaPlayerState | null>(null)
+  const [configEntryId, setConfigEntryId] = useState<string | null>(null)
 
   const socketRef = useRef<WebSocket | null>(null)
   const msgIdRef = useRef(1)
@@ -127,6 +199,8 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
   const authedRef = useRef(false)
   const targetPlayerRef = useRef(targetPlayer)
   targetPlayerRef.current = targetPlayer
+  const configEntryIdRef = useRef<string | null>(null)
+  configEntryIdRef.current = configEntryId
 
   // --- WS lifecycle ---
   useEffect(() => {
@@ -189,6 +263,30 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
             id: msgIdRef.current++,
             type: 'subscribe_events',
             event_type: 'state_changed',
+          }))
+
+          // Discover the Music Assistant config_entry_id. Required by
+          // the music_assistant.search action; without it we can still
+          // browse + play but search falls back to HA's generic browse.
+          // If the user runs multiple MA instances we pick the first
+          // loaded one — typical install only has one anyway.
+          const cfgId = msgIdRef.current++
+          pendingRef.current.set(cfgId, {
+            resolve: (val) => {
+              const entries = val as Array<{ entry_id: string; domain: string; state?: string; disabled_by?: string | null }>
+              const ma = entries.find(e =>
+                e.domain === 'music_assistant' &&
+                !e.disabled_by &&
+                (!e.state || e.state === 'loaded')
+              ) ?? entries.find(e => e.domain === 'music_assistant')
+              if (ma) setConfigEntryId(ma.entry_id)
+            },
+            reject: () => {},
+          })
+          socket.send(JSON.stringify({
+            id: cfgId,
+            type: 'config_entries/get',
+            domain: 'music_assistant',
           }))
         } else if (msg.type === 'auth_invalid') {
           setError('Invalid HA token')
@@ -337,6 +435,27 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
     })
   }, [wsCall])
 
+  const searchMa = useCallback(async (
+    query: string,
+    opts?: { limit?: number; libraryOnly?: boolean },
+  ): Promise<MaSearchResult> => {
+    const cfg = configEntryIdRef.current
+    if (!cfg) throw new Error('Music Assistant not detected')
+    const result = await wsCall<{ response?: Record<string, unknown> }>({
+      type: 'call_service',
+      domain: 'music_assistant',
+      service: 'search',
+      service_data: {
+        config_entry_id: cfg,
+        name: query,
+        limit: opts?.limit ?? 20,
+        ...(opts?.libraryOnly ? { library_only: true } : {}),
+      },
+      return_response: true,
+    })
+    return mapSearchResult(result.response || {})
+  }, [wsCall])
+
   const refreshPlayers = useCallback(() => {
     if (!authedRef.current || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return
     const id = msgIdRef.current++
@@ -358,5 +477,16 @@ export function useMaClient({ haUrl, haToken, targetPlayer }: UseMaClientOptions
     socketRef.current.send(JSON.stringify({ id, type: 'get_states' }))
   }, [])
 
-  return { connected, error, players, targetState, browse, playMedia, callService, refreshPlayers }
+  return {
+    connected,
+    error,
+    players,
+    targetState,
+    maAvailable: !!configEntryId,
+    browse,
+    playMedia,
+    callService,
+    searchMa,
+    refreshPlayers,
+  }
 }

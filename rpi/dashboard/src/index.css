@@ -40,6 +40,31 @@ body {
   touch-action: none;
 }
 
+/* Touch scrolling on Pi kiosk: Chromium under kiosk flags doesn't
+   reliably engage panning on overflow surfaces from a body with
+   touch-action:manipulation alone. Force pan-y on every Tailwind
+   overflow utility so widget lists, tab bodies, and panel content
+   all scroll consistently. */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-y-scroll,
+[data-scrollable] {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Tap targets opt back into touch-action:manipulation explicitly.
+   Safari/Chromium treat this as "no double-tap zoom delay" without
+   inheriting weirdness from ancestors that may have set pan-y. */
+button,
+a,
+[role="button"],
+input,
+label {
+  touch-action: manipulation;
+}
+
 /* react-grid-layout styles */
 .react-grid-layout {
   position: relative;

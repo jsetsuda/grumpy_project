@@ -68,6 +68,7 @@ chromium \
     --check-for-update-interval=31536000 \
     --disable-background-networking \
     --enable-features=OverlayScrollbar \
+    --enable-pinch \
     --window-size=${WINDOW_SIZE} \
     "${FULL_URL}" &
 CHROMIUM_PID=$!

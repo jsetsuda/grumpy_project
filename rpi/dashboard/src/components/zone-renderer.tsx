@@ -10,6 +10,7 @@ import { ZoneEditor } from './zone-editor'
 import { TopBarWeather } from './topbar-weather'
 import { NowPlayingOverlay } from './now-playing-overlay'
 import { VoiceOverlay } from './voice-overlay'
+import { SystemVolumeStrip } from './system-volume-strip'
 import { getTemplate } from '@/config/zone-templates'
 import { useTheme } from '@/hooks/use-theme'
 import { useSharedCredentials } from '@/config/credentials-provider'
@@ -299,6 +300,22 @@ export function ZoneRenderer({ frameSize: _frameSize }: ZoneRendererProps = {}) 
           pipelineId={config.voicePipelineId}
           showBackground={topBarBg}
           onInteraction={wakeUp}
+        />
+      )}
+
+      {/* System volume strip — pinned to the right edge.
+          Zone layouts use percentage-positioned regions, so the strip
+          overlays whatever sits in the rightmost 64px. Configure your
+          zones with right-padding if widget content is getting hidden. */}
+      {(config.systemVolume?.enabled ?? true) && (
+        <SystemVolumeStrip
+          haUrl={haUrl}
+          haToken={haToken}
+          fallbackEntity={config.systemVolume?.fallbackEntity}
+          hidden={inSlideshow}
+          showBackground={topBarBg}
+          topOffset={showTopBar ? (config.topBarHeight ?? 60) : 0}
+          bottomOffset={(config.voiceEnabled ?? true) ? 80 : 12}
         />
       )}
 

@@ -85,6 +85,16 @@ export interface DashboardConfig {
       durationSec?: number
     }>
   }
+  /**
+   * Always-visible vertical volume strip pinned to the right edge.
+   * Auto-targets whichever HA media_player is currently playing/paused
+   * (most-recent wins) and falls back to `fallbackEntity` when nothing
+   * is active.
+   */
+  systemVolume?: {
+    enabled?: boolean
+    fallbackEntity?: string
+  }
   widgets: WidgetInstance[]
   zoneLayout?: ZoneLayoutConfig
 }

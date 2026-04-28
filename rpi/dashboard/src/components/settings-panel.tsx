@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Plus, Trash2, ChevronDown, ChevronRight, Search, Eye, EyeOff, Pencil, Check } from 'lucide-react'
 import { useConfig } from '@/config/config-provider'
+import { useMomentumScroll } from '@/hooks/use-momentum-scroll'
 import { registry } from '@/widgets/registry'
 import { WIDGET_CATEGORY_ORDER, type WidgetCategory, type WidgetDefinition } from '@/widgets/types'
 import { SpotifyAuth } from '@/widgets/music/spotify-auth'
@@ -163,6 +164,9 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
     }
   }, [open, cachedCredentials])
 
+  const panelScrollRef = useRef<HTMLDivElement>(null)
+  useMomentumScroll(panelScrollRef, { enabled: open })
+
   if (!open) return null
 
   const isZoneMode = dashboardMeta?.layoutMode === 'zones' || !!config.zoneLayout
@@ -173,7 +177,7 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative ml-auto w-full max-w-md h-full bg-[var(--background)] border-l border-[var(--border)] overflow-y-auto">
+      <div ref={panelScrollRef} className="relative ml-auto w-full max-w-md h-full bg-[var(--background)] border-l border-[var(--border)] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--border)] sticky top-0 bg-[var(--background)] z-10">
           <h2 className="text-lg font-medium">Settings</h2>
@@ -280,6 +284,13 @@ export function SettingsPanel({ open, onClose, onOpenZoneEditor }: SettingsPanel
           <MotionAlertsSettings
             config={config.motionAlerts}
             onChange={(next) => updateConfig({ motionAlerts: next })}
+          />
+
+          <SectionHeader label="System volume" />
+
+          <SystemVolumeSettings
+            config={config.systemVolume}
+            onChange={(next) => updateConfig({ systemVolume: next })}
           />
 
           <SectionHeader label="Widgets" />
@@ -2941,6 +2952,64 @@ function MotionAlertsSettings({
         >
           <Plus size={14} /> Add trigger
         </button>
+      </div>}
+    </div>
+  )
+}
+
+// --- System Volume Settings ---
+
+interface SystemVolumeConfig {
+  enabled?: boolean
+  fallbackEntity?: string
+}
+
+function SystemVolumeSettings({
+  config,
+  onChange,
+}: {
+  config: SystemVolumeConfig | undefined
+  onChange: (next: SystemVolumeConfig) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const current: SystemVolumeConfig = config || { enabled: true }
+  const enabled = current.enabled ?? true
+
+  return (
+    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 p-3 hover:bg-[var(--muted)] transition-colors text-left"
+      >
+        {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className="flex-1 text-sm font-medium">
+          System volume strip
+          <span className="ml-2 text-xs text-[var(--muted-foreground)] font-normal">
+            {enabled ? 'enabled' : 'disabled'}
+          </span>
+        </span>
+      </button>
+
+      {expanded && <div className="p-3 pt-0 border-t border-[var(--border)] space-y-2">
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Vertical volume slider pinned to the right edge. Auto-targets the
+          HA media_player that is currently playing or paused. Requires the
+          Home Assistant Entities widget to be configured.
+        </p>
+        <Toggle
+          checked={enabled}
+          onChange={(v) => onChange({ ...current, enabled: v })}
+          label="Show volume strip"
+        />
+        {enabled && (
+          <SettingsField label="Fallback media_player (optional)">
+            <TextInput
+              value={current.fallbackEntity || ''}
+              onChange={(v) => onChange({ ...current, fallbackEntity: v || undefined })}
+              placeholder="media_player.living_room_speaker"
+            />
+          </SettingsField>
+        )}
       </div>}
     </div>
   )

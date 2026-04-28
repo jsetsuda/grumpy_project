@@ -17,6 +17,7 @@ import { NowPlayingOverlay } from './now-playing-overlay'
 import { TimerOverlay } from './timer-overlay'
 import { VoiceOverlay } from './voice-overlay'
 import { MotionPopup } from './motion-popup'
+import { SystemVolumeStrip } from './system-volume-strip'
 import { useMotionAlerts } from '@/hooks/use-motion-alerts'
 import { MorningBriefing } from './morning-briefing'
 import { useTimers } from '@/hooks/use-timers'
@@ -38,7 +39,12 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
 
   const frameW = frameSize?.width ?? viewportWidth
   const frameH = frameSize?.height ?? viewportHeight
-  const width = frameW - 24
+  // Right edge reserved for the always-visible system volume strip.
+  // Has to be subtracted from both the grid width and the grid container
+  // padding so widgets don't render under it.
+  const systemVolumeEnabled = config.systemVolume?.enabled ?? true
+  const systemVolumeReserve = systemVolumeEnabled ? 64 : 0
+  const width = frameW - 24 - systemVolumeReserve
 
   useTheme(config.theme || 'midnight', config.themeCustomAccent)
 
@@ -425,7 +431,10 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
         }}
       >
         {/* Widget Grid */}
-        <div className="flex-1 px-3 pb-3 overflow-hidden">
+        <div
+          className="flex-1 pl-3 pb-3 overflow-hidden"
+          style={{ paddingRight: `${12 + systemVolumeReserve}px` }}
+        >
           <GridLayout
             width={width}
             layout={layout}
@@ -527,6 +536,21 @@ export function DashboardGrid({ frameSize }: DashboardGridProps = {}) {
           satelliteEntity={config.voiceSatelliteEntity}
           showBackground={topBarBg}
           onInteraction={wakeUp}
+        />
+      )}
+
+      {/* System volume strip — pinned to the right edge.
+          Bottom offset clears the voice overlay (48px button + 16px margin
+          + breathing room) when voice is enabled. */}
+      {systemVolumeEnabled && (
+        <SystemVolumeStrip
+          haUrl={haUrl}
+          haToken={haToken}
+          fallbackEntity={config.systemVolume?.fallbackEntity}
+          hidden={inSlideshow}
+          showBackground={topBarBg}
+          topOffset={showTopBar ? (config.topBarHeight ?? 90) : 0}
+          bottomOffset={(config.voiceEnabled ?? true) ? 80 : 12}
         />
       )}
 

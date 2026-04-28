@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Monitor, Search, ChevronLeft,
-  Volume2, Loader2, Music, RefreshCw,
+  Volume2, Loader2, Music, RefreshCw, ListMusic,
 } from 'lucide-react'
-import { useMaClient, type MaBrowseItem, type MaMediaPlayer } from './ma-api'
+import { useMaClient, type MaBrowseItem, type MaMediaPlayer, type MaSearchItem, type MaSearchResult } from './ma-api'
+import { useMomentumScroll } from '@/hooks/use-momentum-scroll'
 
 interface MaViewProps {
   haUrl: string
@@ -23,10 +24,10 @@ interface MaViewProps {
   preferredDefault?: string
 }
 
-type Tab = 'browse' | 'search' | 'devices'
+type Tab = 'browse' | 'playlists' | 'search' | 'devices'
 
 export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, credsLoading, preferredDefault }: MaViewProps) {
-  const { connected, error, players, targetState, browse, playMedia, callService, refreshPlayers } =
+  const { connected, error, players, targetState, maAvailable, browse, playMedia, callService, searchMa, refreshPlayers } =
     useMaClient({ haUrl, haToken, targetPlayer })
 
   const [tab, setTab] = useState<Tab>('browse')
@@ -42,7 +43,18 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
   const [node, setNode] = useState<MaBrowseItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<MaBrowseItem[]>([])
+  const [searchResults, setSearchResults] = useState<MaSearchResult | null>(null)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [libraryOnly, setLibraryOnly] = useState(false)
+  // Playlists tab keeps its own browse cursor so switching tabs doesn't
+  // throw away navigation state. `playlistsNode` is whatever the user is
+  // currently viewing inside Playlists; `playlistsPath` is the trail
+  // *within* the Playlists subtree (the Playlists folder itself is
+  // implicit and doesn't appear in the breadcrumb).
+  const [playlistsNode, setPlaylistsNode] = useState<MaBrowseItem | null>(null)
+  const [playlistsPath, setPlaylistsPath] = useState<Array<{ title: string; type: string; id: string }>>([])
+  const [playlistsLoading, setPlaylistsLoading] = useState(false)
+  const [playlistsMissing, setPlaylistsMissing] = useState(false)
 
   // If no target picked yet, pick the best MA-managed player. Preference:
   //  1. Exact preferredDefault match (when MA-managed).
@@ -124,23 +136,117 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
     }
   }
 
-  // Search: many MA providers accept the media_class "search" lookup via
-  // browse_media with media_content_type="search". If MA rejects it, we
-  // surface nothing and the user can still browse.
-  const runSearch = useCallback(async () => {
-    if (!searchQuery.trim() || !connected) return
-    setLoading(true)
+  // --- Playlists tab ---
+  // MA's "Playlists" entry usually sits at the root of an MA-managed
+  // browse, but on some setups it lives one level deeper (under a
+  // "Music Assistant" or "Library" parent). We probe both before giving
+  // up.
+  const findPlaylistsFolder = useCallback(async (): Promise<MaBrowseItem | null> => {
+    const root = await browse()
+    const isPlaylistsFolder = (c: MaBrowseItem) =>
+      /^playlists?$/i.test(c.title) ||
+      c.mediaClass === 'playlist' ||
+      c.mediaContentType === 'playlist'
+
+    const direct = (root.children || []).find(isPlaylistsFolder)
+    if (direct) return direct
+
+    for (const parent of root.children || []) {
+      if (!parent.canExpand) continue
+      if (!/music assistant|library|my music/i.test(parent.title)) continue
+      try {
+        const sub = await browse(parent.mediaContentType, parent.mediaContentId)
+        const nested = (sub.children || []).find(isPlaylistsFolder)
+        if (nested) return nested
+      } catch {
+        /* skip — keep looking */
+      }
+    }
+    return null
+  }, [browse])
+
+  const loadPlaylistsRoot = useCallback(async () => {
+    if (!connected || !targetPlayer) return
+    setPlaylistsLoading(true)
+    setPlaylistsMissing(false)
     try {
-      // Empirically, MA's browse accepts a "search/<query>" content id.
-      const result = await browse('search', `search/${searchQuery.trim()}`)
-      setSearchResults(result.children || [])
+      const folder = await findPlaylistsFolder()
+      if (!folder) {
+        setPlaylistsNode(null)
+        setPlaylistsPath([])
+        setPlaylistsMissing(true)
+        return
+      }
+      const sub = await browse(folder.mediaContentType, folder.mediaContentId)
+      setPlaylistsNode(sub)
+      setPlaylistsPath([])
+    } catch {
+      setPlaylistsNode(null)
+    } finally {
+      setPlaylistsLoading(false)
+    }
+  }, [connected, targetPlayer, browse, findPlaylistsFolder])
+
+  useEffect(() => {
+    if (tab === 'playlists') loadPlaylistsRoot()
+  }, [tab, loadPlaylistsRoot])
+
+  async function enterPlaylistsFolder(item: MaBrowseItem) {
+    setPlaylistsLoading(true)
+    try {
+      const child = await browse(item.mediaContentType, item.mediaContentId)
+      setPlaylistsPath(prev => [...prev, { title: item.title, type: item.mediaContentType, id: item.mediaContentId }])
+      setPlaylistsNode(child)
+    } finally {
+      setPlaylistsLoading(false)
+    }
+  }
+
+  async function goBackPlaylists() {
+    if (playlistsPath.length === 0) return
+    setPlaylistsLoading(true)
+    try {
+      const next = playlistsPath.slice(0, -1)
+      if (next.length === 0) {
+        // Back to the Playlists root reloads the list.
+        await loadPlaylistsRoot()
+        return
+      }
+      const tail = next[next.length - 1]
+      const parent = await browse(tail.type, tail.id)
+      setPlaylistsNode(parent)
+      setPlaylistsPath(next)
+    } finally {
+      setPlaylistsLoading(false)
+    }
+  }
+
+  // Search: routes through the music_assistant.search action so results
+  // come from MA's catalog + connected providers (Spotify, Tidal, local
+  // library, etc.) rather than HA's aggregated media-source surface.
+  const runSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !connected || !maAvailable) return
+    setLoading(true)
+    setSearchError(null)
+    try {
+      const result = await searchMa(searchQuery.trim(), { libraryOnly })
+      setSearchResults(result)
     } catch (e) {
-      console.warn('[MA] search unsupported or failed:', e)
-      setSearchResults([])
+      console.warn('[MA] search failed:', e)
+      setSearchResults(null)
+      setSearchError(e instanceof Error ? e.message : 'Search failed')
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, connected, browse])
+  }, [searchQuery, connected, maAvailable, libraryOnly, searchMa])
+
+  async function playSearchItem(item: MaSearchItem) {
+    try {
+      await playMedia(item.uri, item.mediaType)
+    } catch (e) {
+      console.error('[MA] play (from search) failed:', e)
+    }
+  }
 
   const albumArtUrl = useMemo(() => {
     if (!targetState?.albumArt) return undefined
@@ -150,6 +256,9 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
   }, [targetState?.albumArt, haUrl])
 
   const isPlaying = targetState?.state === 'playing'
+
+  const tabBodyRef = useRef<HTMLDivElement>(null)
+  useMomentumScroll(tabBodyRef)
 
   // --- Render ---
 
@@ -246,12 +355,13 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[var(--border)]">
         <TabButton active={tab === 'browse'} onClick={() => setTab('browse')} label="Browse" />
+        <TabButton active={tab === 'playlists'} onClick={() => setTab('playlists')} label="Playlists" />
         <TabButton active={tab === 'search'} onClick={() => setTab('search')} label="Search" />
         <TabButton active={tab === 'devices'} onClick={() => setTab('devices')} label="Player" />
       </div>
 
       {/* Tab bodies */}
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div ref={tabBodyRef} className="flex-1 min-h-0 overflow-auto">
         {tab === 'browse' && (
           <BrowseList
             node={node}
@@ -262,35 +372,40 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
             onBack={goBack}
           />
         )}
-        {tab === 'search' && (
-          <div className="flex flex-col gap-2 p-1">
-            <div className="flex gap-1">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') runSearch() }}
-                placeholder="Search artists, albums, tracks…"
-                className="flex-1 px-2 py-1.5 rounded bg-[var(--muted)] text-sm outline-none focus:ring-1 focus:ring-[var(--primary)]"
-              />
+        {tab === 'playlists' && (
+          playlistsMissing ? (
+            <div className="flex flex-col items-center gap-2 p-4 text-xs text-[var(--muted-foreground)] text-center">
+              <ListMusic size={20} className="opacity-60" />
+              <span>No Playlists folder found in this player's library.</span>
               <button
-                onClick={runSearch}
-                className="px-3 py-1.5 rounded bg-[var(--muted)] hover:bg-[var(--muted)]/70 text-sm flex items-center gap-1"
-              ><Search size={14} /></button>
+                onClick={loadPlaylistsRoot}
+                className="flex items-center gap-1 px-2 py-1 rounded hover:bg-[var(--muted)]"
+              ><RefreshCw size={12} /> Retry</button>
             </div>
-            {loading ? (
-              <div className="flex items-center justify-center py-6 text-sm text-[var(--muted-foreground)]">
-                <Loader2 size={14} className="animate-spin mr-2" /> Searching…
-              </div>
-            ) : (
-              <ItemList items={searchResults} onEnter={enterFolder} onPlay={handlePlay} />
-            )}
-            {!loading && searchQuery && searchResults.length === 0 && (
-              <div className="text-xs text-[var(--muted-foreground)] text-center py-4">
-                No results. (MA's search surface varies by provider — try browsing instead.)
-              </div>
-            )}
-          </div>
+          ) : (
+            <BrowseList
+              node={playlistsNode}
+              path={playlistsPath}
+              loading={playlistsLoading}
+              onEnter={enterPlaylistsFolder}
+              onPlay={handlePlay}
+              onBack={goBackPlaylists}
+            />
+          )
+        )}
+        {tab === 'search' && (
+          <SearchTab
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            onSubmit={runSearch}
+            results={searchResults}
+            loading={loading}
+            error={searchError}
+            maAvailable={maAvailable}
+            libraryOnly={libraryOnly}
+            onLibraryOnlyChange={setLibraryOnly}
+            onPlay={playSearchItem}
+          />
         )}
         {tab === 'devices' && (
           <DeviceList
@@ -301,6 +416,114 @@ export function MaView({ haUrl, haToken, targetPlayer, onTargetPlayerChange, cre
           />
         )}
       </div>
+    </div>
+  )
+}
+
+function SearchTab({
+  query, onQueryChange, onSubmit, results, loading, error, maAvailable, libraryOnly, onLibraryOnlyChange, onPlay,
+}: {
+  query: string
+  onQueryChange: (q: string) => void
+  onSubmit: () => void
+  results: MaSearchResult | null
+  loading: boolean
+  error: string | null
+  maAvailable: boolean
+  libraryOnly: boolean
+  onLibraryOnlyChange: (v: boolean) => void
+  onPlay: (item: MaSearchItem) => void
+}) {
+  const groups: Array<{ label: string; items: MaSearchItem[] }> = results ? [
+    { label: 'Tracks', items: results.tracks },
+    { label: 'Albums', items: results.albums },
+    { label: 'Artists', items: results.artists },
+    { label: 'Playlists', items: results.playlists },
+    { label: 'Radio', items: results.radio },
+  ].filter(g => g.items.length > 0) : []
+
+  const totalResults = groups.reduce((sum, g) => sum + g.items.length, 0)
+
+  return (
+    <div className="flex flex-col gap-2 p-1">
+      <div className="flex gap-1">
+        <input
+          type="text"
+          value={query}
+          onChange={e => onQueryChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') onSubmit() }}
+          placeholder="Search Music Assistant…"
+          disabled={!maAvailable}
+          className="flex-1 px-2 py-1.5 rounded bg-[var(--muted)] text-sm outline-none focus:ring-1 focus:ring-[var(--primary)] disabled:opacity-50"
+        />
+        <button
+          onClick={onSubmit}
+          disabled={!maAvailable || !query.trim()}
+          className="px-3 py-1.5 rounded bg-[var(--muted)] hover:bg-[var(--muted)]/70 text-sm flex items-center gap-1 disabled:opacity-50"
+        ><Search size={14} /></button>
+      </div>
+
+      <label className="flex items-center gap-2 px-1 text-xs text-[var(--muted-foreground)]">
+        <input
+          type="checkbox"
+          checked={libraryOnly}
+          onChange={e => onLibraryOnlyChange(e.target.checked)}
+          className="accent-[var(--primary)]"
+        />
+        Library only (skip provider catalogs)
+      </label>
+
+      {!maAvailable && (
+        <div className="text-xs text-[var(--muted-foreground)] text-center py-4">
+          Music Assistant integration not detected in Home Assistant.
+        </div>
+      )}
+
+      {loading && (
+        <div className="flex items-center justify-center py-6 text-sm text-[var(--muted-foreground)]">
+          <Loader2 size={14} className="animate-spin mr-2" /> Searching…
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="text-xs text-red-400 text-center py-2">{error}</div>
+      )}
+
+      {!loading && !error && results && totalResults === 0 && query && (
+        <div className="text-xs text-[var(--muted-foreground)] text-center py-4">
+          No results in {libraryOnly ? 'your library' : 'MA'}.
+        </div>
+      )}
+
+      {!loading && groups.map(group => (
+        <div key={group.label} className="flex flex-col">
+          <div className="px-2 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            {group.label}
+          </div>
+          {group.items.map(item => (
+            <button
+              key={`${group.label}-${item.uri}`}
+              onClick={() => onPlay(item)}
+              className="flex items-center gap-2 px-2 py-1.5 text-left hover:bg-[var(--muted)] rounded transition-colors"
+            >
+              {item.image ? (
+                <img src={item.image} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded bg-[var(--muted)]/70 flex items-center justify-center shrink-0">
+                  <Music size={14} className="text-[var(--muted-foreground)]" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm truncate">{item.name}</div>
+                {item.subtitle && (
+                  <div className="text-[11px] text-[var(--muted-foreground)] truncate">{item.subtitle}</div>
+                )}
+              </div>
+              <Play size={14} className="text-[var(--muted-foreground)] shrink-0" />
+            </button>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
