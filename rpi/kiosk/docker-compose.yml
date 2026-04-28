@@ -11,6 +11,7 @@ services:
       - DISPLAY=${DISPLAY:-:0}
       - DASHBOARD_URL=${DASHBOARD_URL:-https://192.168.5.118:5173}
       - DEVICE_NAME=${DEVICE_NAME:-pi-unnamed}
+      - WINDOW_SIZE=${WINDOW_SIZE:-1920,1080}
       - XDG_RUNTIME_DIR=/run/user/1000
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
       - PULSE_COOKIE=/tmp/pulse-cookie

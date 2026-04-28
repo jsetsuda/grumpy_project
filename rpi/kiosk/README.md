@@ -5,7 +5,7 @@ Runs the Grumpy dashboard full-screen in Chromium inside a Docker container on a
 ## Prerequisites
 
 - Raspberry Pi 4 or Pi 5
-- Raspberry Pi OS **Bookworm 64-bit Desktop** (the Desktop image — not Lite)
+- Raspberry Pi OS **Bookworm or Trixie 64-bit Desktop** (the Desktop image — not Lite)
 - Network connectivity to the Grumpy backend server
 - Display connected (HDMI or DSI touchscreen)
 - USB microphone and speakers for voice interaction
@@ -27,7 +27,7 @@ The setup script will:
 You can also pass arguments directly:
 
 ```bash
-./setup.sh https://192.168.5.118:5173 pi-kitchen
+./setup.sh https://192.168.5.118:5173 pi-kitchen 1024,600
 ```
 
 ## Configuration
@@ -39,6 +39,7 @@ All configuration lives in `.env` (created by `setup.sh`):
 | `DASHBOARD_URL` | `https://192.168.5.118:5173`      | Backend dashboard URL           |
 | `DEVICE_NAME`   | `pi-unnamed`                      | Device identifier in the URL    |
 | `DISPLAY`       | `:0`                              | X11 display                     |
+| `WINDOW_SIZE`   | `1920,1080`                       | Chromium window size (`w,h`)    |
 
 After editing `.env`, restart the container:
 

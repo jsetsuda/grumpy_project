@@ -39,8 +39,15 @@ if [[ -z "$DEVICE_NAME" ]]; then
     DEVICE_NAME="${DEVICE_NAME:-$DEFAULT_NAME}"
 fi
 
+WINDOW_SIZE="${3:-}"
+if [[ -z "$WINDOW_SIZE" ]]; then
+    read -rp "Window size [1920,1080]: " WINDOW_SIZE
+    WINDOW_SIZE="${WINDOW_SIZE:-1920,1080}"
+fi
+
 info "Dashboard URL: ${DASHBOARD_URL}"
 info "Device name:   ${DEVICE_NAME}"
+info "Window size:   ${WINDOW_SIZE}"
 
 # ── 4. Write .env ──────────────────────────────────────────────────────────
 cat > "$SCRIPT_DIR/.env" <<EOF
@@ -48,17 +55,49 @@ cat > "$SCRIPT_DIR/.env" <<EOF
 DASHBOARD_URL=${DASHBOARD_URL}
 DEVICE_NAME=${DEVICE_NAME}
 DISPLAY=:0
+WINDOW_SIZE=${WINDOW_SIZE}
 EOF
 info "Wrote .env"
 
-# ── 5. Disable screen blanking on host ─────────────────────────────────────
-AUTOSTART_DIR="/etc/xdg/lxsession/LXDE-pi"
-if [[ -d "$AUTOSTART_DIR" ]] || [[ -d "/etc/xdg/lxsession" ]]; then
-    sudo mkdir -p "$AUTOSTART_DIR"
-    # Preserve existing entries, add ours if missing
-    AUTOSTART_FILE="$AUTOSTART_DIR/autostart"
-    if [[ -f "$AUTOSTART_FILE" ]] && grep -q "xset s off" "$AUTOSTART_FILE" 2>/dev/null; then
-        info "Screen blanking already disabled in autostart"
+# ── 5. Disable screen blanking + grant X11 access on host ──────────────────
+# Detect compositor: labwc (Trixie/Wayland) vs LXDE (Bookworm/Xorg)
+LABWC_AUTOSTART_DIR="${HOME}/.config/labwc"
+LXDE_AUTOSTART_DIR="/etc/xdg/lxsession/LXDE-pi"
+
+if [[ -d "$LABWC_AUTOSTART_DIR" ]] || command -v labwc &>/dev/null; then
+    # labwc (Trixie / Wayland + Xwayland)
+    mkdir -p "$LABWC_AUTOSTART_DIR"
+    AUTOSTART_FILE="$LABWC_AUTOSTART_DIR/autostart"
+    if grep -q "xset s off" "$AUTOSTART_FILE" 2>/dev/null; then
+        info "Screen blanking already disabled in labwc autostart"
+    else
+        cat >> "$AUTOSTART_FILE" <<'AUTOSTART'
+
+# Grumpy: disable screen blanking and grant X11 access to containers
+xset s off &
+xset -dpms &
+xset s noblank &
+AUTOSTART
+        info "Disabled screen blanking in ${AUTOSTART_FILE}"
+    fi
+    # Grant X11 access (xhost must run *in* the graphical session — write it to autostart)
+    if grep -q "xhost +local:" "$AUTOSTART_FILE" 2>/dev/null; then
+        info "xhost already configured in labwc autostart"
+    else
+        cat >> "$AUTOSTART_FILE" <<'AUTOSTART'
+# Grant X11 access then restart the kiosk container — Docker starts it at boot
+# before Xwayland is ready, so it needs a kick once the display is up.
+DISPLAY=:0 XAUTHORITY=$HOME/.Xauthority xhost +local: && \
+    docker restart grumpy-kiosk &
+AUTOSTART
+        info "Added xhost +local: + container restart to labwc autostart (takes effect on next login)"
+    fi
+elif [[ -d "$LXDE_AUTOSTART_DIR" ]] || [[ -d "/etc/xdg/lxsession" ]]; then
+    # LXDE (Bookworm / Xorg)
+    sudo mkdir -p "$LXDE_AUTOSTART_DIR"
+    AUTOSTART_FILE="$LXDE_AUTOSTART_DIR/autostart"
+    if grep -q "xset s off" "$AUTOSTART_FILE" 2>/dev/null; then
+        info "Screen blanking already disabled in LXDE autostart"
     else
         sudo tee -a "$AUTOSTART_FILE" >/dev/null <<'AUTOSTART'
 
@@ -69,26 +108,24 @@ if [[ -d "$AUTOSTART_DIR" ]] || [[ -d "/etc/xdg/lxsession" ]]; then
 AUTOSTART
         info "Disabled screen blanking in ${AUTOSTART_FILE}"
     fi
+    if command -v xhost &>/dev/null; then
+        xhost +local: 2>/dev/null || true
+        info "X11 local access granted"
+    else
+        warn "xhost not found; container may not be able to access the display."
+    fi
 else
-    warn "LXDE autostart directory not found; skipping screen blanking config."
-    warn "You may need to disable screen blanking manually."
+    warn "Neither labwc nor LXDE autostart directory found; skipping screen blanking config."
+    warn "You may need to disable screen blanking and run 'xhost +local:' manually."
 fi
 
-# ── 6. Allow X11 access ────────────────────────────────────────────────────
-if command -v xhost &>/dev/null; then
-    xhost +local: 2>/dev/null || true
-    info "X11 local access granted"
-else
-    warn "xhost not found; container may not be able to access the display."
-fi
-
-# ── 7. Build and start ─────────────────────────────────────────────────────
+# ── 6. Build and start ─────────────────────────────────────────────────────
 info "Building and starting kiosk container…"
 docker compose build
 docker compose up -d
 info "Container started"
 
-# ── 8. Systemd service for boot ────────────────────────────────────────────
+# ── 7. Systemd service for boot ────────────────────────────────────────────
 SERVICE_FILE="/etc/systemd/system/grumpy-kiosk.service"
 sudo tee "$SERVICE_FILE" >/dev/null <<EOF
 [Unit]
@@ -113,7 +150,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable grumpy-kiosk.service
 info "Systemd service installed and enabled"
 
-# ── 8b. Periodic-restart timer ─────────────────────────────────────────────
+# ── 7b. Periodic-restart timer ─────────────────────────────────────────────
 # Long-running Chromium in kiosk mode leaks memory over days. A scheduled
 # restart every 12 hours keeps the dashboard fresh without manual touch.
 # Disable anytime with:  sudo systemctl disable --now grumpy-kiosk-restart.timer
@@ -155,7 +192,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now grumpy-kiosk-restart.timer
 info "Scheduled restart timer installed (every 12h)"
 
-# ── 9. Done ─────────────────────────────────────────────────────────────────
+# ── 8. Done ─────────────────────────────────────────────────────────────────
 echo ""
 echo "════════════════════════════════════════════════════════════"
 echo "  Grumpy Kiosk is running!"

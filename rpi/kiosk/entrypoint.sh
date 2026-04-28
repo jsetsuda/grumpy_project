@@ -8,6 +8,7 @@ set -e
 DASHBOARD_URL="${DASHBOARD_URL:-https://192.168.5.118:5173}"
 DEVICE_NAME="${DEVICE_NAME:-pi-unnamed}"
 ROTATION="${ROTATION:-0}"
+WINDOW_SIZE="${WINDOW_SIZE:-1920,1080}"
 DISPLAY="${DISPLAY:-:0}"
 export DISPLAY
 
@@ -17,6 +18,7 @@ echo "Grumpy Kiosk starting"
 echo "  URL:      ${FULL_URL}"
 echo "  Display:  ${DISPLAY}"
 echo "  Rotation: ${ROTATION}"
+echo "  Window:   ${WINDOW_SIZE}"
 
 # ── Graceful shutdown ───────────────────────────────────────────────────────
 cleanup() {
@@ -53,6 +55,7 @@ UNCLUTTER_PID=$!
 chromium \
     --kiosk \
     --no-sandbox \
+    --touch-events=enabled \
     --noerrdialogs \
     --disable-infobars \
     --disable-session-crashed-bubble \
@@ -65,7 +68,7 @@ chromium \
     --check-for-update-interval=31536000 \
     --disable-background-networking \
     --enable-features=OverlayScrollbar \
-    --window-size=1920,1080 \
+    --window-size=${WINDOW_SIZE} \
     "${FULL_URL}" &
 CHROMIUM_PID=$!
 

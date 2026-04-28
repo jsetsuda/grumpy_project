@@ -291,6 +291,28 @@ export function DashboardManager() {
 
   // Push a reload signal to the device. Each Pi polls every 30s; the
   // reload fires on their next poll after we post the signal.
+  // Drag-to-scroll for touch/pointer devices (touchscreen sends mouse events on X11)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ y: number; scrollTop: number } | null>(null)
+  const didScroll = useRef(false)
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    const el = scrollRef.current
+    if (!el) return
+    drag.current = { y: e.clientY, scrollTop: el.scrollTop }
+    didScroll.current = false
+  }
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!drag.current || !scrollRef.current) return
+    const dy = drag.current.y - e.clientY
+    if (Math.abs(dy) > 5) didScroll.current = true
+    scrollRef.current.scrollTop = drag.current.scrollTop + dy
+  }
+  function onPointerUp() { drag.current = null }
+  function onClickCapture(e: React.MouseEvent) {
+    if (didScroll.current) { e.stopPropagation(); e.preventDefault(); didScroll.current = false }
+  }
+
   const [reloadingDevice, setReloadingDevice] = useState<string | null>(null)
   async function handleReloadDevice(deviceName: string) {
     setReloadingDevice(deviceName)
@@ -371,8 +393,14 @@ export function DashboardManager() {
 
   return (
     <div
+      ref={scrollRef}
       className="h-screen overflow-y-auto overscroll-contain bg-gray-900 text-gray-100 p-6"
-      style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
+      style={{ touchAction: 'none' }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onClickCapture={onClickCapture}
     >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
