@@ -370,7 +370,10 @@ export function DashboardManager() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
+    <div
+      className="h-screen overflow-y-auto overscroll-contain bg-gray-900 text-gray-100 p-6"
+      style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
+    >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
