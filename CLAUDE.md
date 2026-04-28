@@ -127,14 +127,16 @@ Key design points:
 ### Phase 4 — Pi Deployment  ⬜  `pi-client/`
 Scripts for provisioning a Pi from a fresh Raspberry Pi OS install:
 - Install `unclutter`, `xdotool`, `chromium-browser` if missing
-- Configure autostart (via LXDE autostart or systemd user unit) to
-  launch Chromium in kiosk mode pointed at the dashboard URL
+- Configure autostart (labwc on Trixie, LXDE on Bookworm) to launch
+  Chromium in kiosk mode pointed at the dashboard URL
 - Disable screen blanking
 - Handle touchscreen calibration for common panels
 - Provide a one-liner install: `curl ... | bash`
 
-Test matrix: Pi 4 (4GB and 8GB), Pi 5 (8GB), Raspberry Pi OS Bookworm
-64-bit Desktop.
+Test matrix: Pi 4 (4GB and 8GB), Pi 5 (8GB). Primary target is
+**Raspberry Pi OS Trixie 64-bit Desktop** (labwc + Wayland +
+Xwayland); Bookworm (LXDE + Xorg) still works via the same setup
+script but is no longer the development focus.
 
 ### Phase 5 — Voice UI in the Dashboard  ⬜
 Add voice interaction to the dashboard:

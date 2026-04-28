@@ -5,7 +5,7 @@ Runs the Grumpy dashboard full-screen in Chromium inside a Docker container on a
 ## Prerequisites
 
 - Raspberry Pi 4 or Pi 5
-- Raspberry Pi OS **Bookworm or Trixie 64-bit Desktop** (the Desktop image — not Lite)
+- Raspberry Pi OS **Trixie or Bookworm 64-bit Desktop** (Trixie is the primary target; both work via the Desktop image — not Lite)
 - Network connectivity to the Grumpy backend server
 - Display connected (HDMI or DSI touchscreen)
 - USB microphone and speakers for voice interaction

@@ -22,7 +22,8 @@ Backend VM.
 ## Target hardware
 
 - Raspberry Pi 4 (4 GB or 8 GB) or Raspberry Pi 5 (4 GB+)
-- Raspberry Pi OS Bookworm 64-bit **Desktop** (PipeWire audio stack)
+- Raspberry Pi OS Trixie 64-bit **Desktop** (labwc + Xwayland;
+  PipeWire audio stack). Bookworm (LXDE + Xorg) also works.
 - Official 7" touchscreen (1024×600) or HDMI display
 - USB microphone (or ReSpeaker HAT)
 - Speakers — HDMI out, 3.5 mm jack, or USB

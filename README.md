@@ -75,7 +75,8 @@ Grumpy spans three machines. Each has a specific, limited role.
 ### Machine Roles
 
 **Raspberry Pi (4 or 5)** — *the display and I/O endpoint*
-- Raspberry Pi OS Bookworm Desktop with PipeWire audio
+- Raspberry Pi OS Trixie Desktop with PipeWire audio (Bookworm also
+  supported)
 - Chromium fullscreen (Docker container managed by systemd; auto
   restarts every 12 h to clear memory leaks)
 - `linux-voice-assistant` advertises a wake-word satellite over the
