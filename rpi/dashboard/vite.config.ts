@@ -243,6 +243,32 @@ function configApiPlugin(): Plugin {
       // fine: Pis reconnect on restart anyway.
       const deviceSignals = new Map<string, { id: string; type: string; createdAt: string }>()
 
+      // Last-seen heartbeat: updated when a device polls its signal endpoint.
+      const deviceLastSeen = new Map<string, number>()
+      const ONLINE_THRESHOLD_MS = 90_000
+
+      server.middlewares.use('/api/device-status', async (req, res) => {
+        if (req.method !== 'GET') {
+          res.statusCode = 405
+          res.end('Method not allowed')
+          return
+        }
+        const devices: Record<string, string> = fs.existsSync(DEVICES_PATH)
+          ? JSON.parse(fs.readFileSync(DEVICES_PATH, 'utf-8'))
+          : {}
+        const now = Date.now()
+        const status: Record<string, { lastSeen: string | null; online: boolean }> = {}
+        for (const name of Object.keys(devices)) {
+          const last = deviceLastSeen.get(name)
+          status[name] = {
+            lastSeen: last ? new Date(last).toISOString() : null,
+            online: last ? (now - last) < ONLINE_THRESHOLD_MS : false,
+          }
+        }
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(status))
+      })
+
       server.middlewares.use('/api/devices', async (req, res) => {
         const url = req.url || '/'
         const segments = url.split('?')[0].split('/').filter(Boolean)
@@ -256,6 +282,8 @@ function configApiPlugin(): Plugin {
             return
           }
           if (req.method === 'GET') {
+            // Device-side poll: this is our heartbeat.
+            deviceLastSeen.set(name, Date.now())
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({ signal: deviceSignals.get(name) || null }))
             return
@@ -295,6 +323,7 @@ function configApiPlugin(): Plugin {
             existing[name] = 'default'
             fs.writeFileSync(DEVICES_PATH, JSON.stringify(existing, null, 2), 'utf-8')
           }
+          deviceLastSeen.set(name, Date.now())
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ ok: true, added }))
           return

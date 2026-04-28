@@ -7,6 +7,13 @@ interface DeviceAssignments {
   [deviceName: string]: string
 }
 
+interface DeviceStatus {
+  lastSeen: string | null
+  online: boolean
+}
+
+type DeviceStatusMap = Record<string, DeviceStatus>
+
 interface SharedCredentials {
   homeAssistant?: { url: string; token: string }
   spotify?: { clientId: string; clientSecret: string; refreshToken: string }
@@ -21,6 +28,9 @@ interface SharedCredentials {
 export function DashboardManager() {
   const [dashboards, setDashboards] = useState<DashboardMeta[]>([])
   const [devices, setDevices] = useState<DeviceAssignments>({})
+  const [deviceStatus, setDeviceStatus] = useState<DeviceStatusMap>({})
+  // Tick once a second so "last seen Xs ago" stays fresh between polls.
+  const [statusNow, setStatusNow] = useState(() => Date.now())
   const [showNewForm, setShowNewForm] = useState(false)
   const [newName, setNewName] = useState('')
   const [newLayoutMode, setNewLayoutMode] = useState<'grid' | 'zones'>('grid')
@@ -71,6 +81,17 @@ export function DashboardManager() {
     }
   }, [])
 
+  const loadDeviceStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/device-status')
+      if (res.ok) {
+        setDeviceStatus(await res.json())
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
   const loadCredentials = useCallback(async () => {
     try {
       const res = await fetch('/api/credentials')
@@ -114,20 +135,28 @@ export function DashboardManager() {
   useEffect(() => {
     loadDashboards()
     loadDevices()
+    loadDeviceStatus()
     loadCredentials()
-  }, [loadDashboards, loadDevices, loadCredentials])
+  }, [loadDashboards, loadDevices, loadDeviceStatus, loadCredentials])
 
   // Auto-refresh the device list so newly-booted Pis appear without a
   // manual reload. Poll every 10s, and also refresh on tab focus.
   useEffect(() => {
-    const interval = setInterval(loadDevices, 10_000)
-    const onFocus = () => loadDevices()
+    const refresh = () => { loadDevices(); loadDeviceStatus() }
+    const interval = setInterval(refresh, 10_000)
+    const onFocus = () => refresh()
     window.addEventListener('focus', onFocus)
     return () => {
       clearInterval(interval)
       window.removeEventListener('focus', onFocus)
     }
-  }, [loadDevices])
+  }, [loadDevices, loadDeviceStatus])
+
+  // Tick statusNow so "Xs ago" labels keep counting between server polls.
+  useEffect(() => {
+    const t = setInterval(() => setStatusNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
   function slugify(name: string): string {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -310,6 +339,20 @@ export function DashboardManager() {
   function getDeviceUrl(deviceName: string): string {
     const base = window.location.origin
     return `${base}/?device=${encodeURIComponent(deviceName)}`
+  }
+
+  function formatRelative(iso: string | null, now: number): string {
+    if (!iso) return 'never'
+    const ms = now - new Date(iso).getTime()
+    if (!isFinite(ms) || ms < 0) return 'just now'
+    const s = Math.floor(ms / 1000)
+    if (s < 60) return `${s}s ago`
+    const m = Math.floor(s / 60)
+    if (m < 60) return `${m}m ago`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h}h ago`
+    const d = Math.floor(h / 24)
+    return `${d}d ago`
   }
 
   function formatDate(iso: string): string {
@@ -823,15 +866,37 @@ export function DashboardManager() {
               <thead>
                 <tr className="border-b border-gray-700">
                   <th className="text-left px-4 py-3 text-gray-400 font-medium">Device</th>
+                  <th className="text-left px-4 py-3 text-gray-400 font-medium">Status</th>
                   <th className="text-left px-4 py-3 text-gray-400 font-medium">Dashboard</th>
                   <th className="text-left px-4 py-3 text-gray-400 font-medium">URL</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(devices).map(([deviceName, assignedDashboard]) => (
+                {Object.entries(devices).map(([deviceName, assignedDashboard]) => {
+                  const status = deviceStatus[deviceName]
+                  const online = !!status?.online
+                  const lastSeenLabel = formatRelative(status?.lastSeen ?? null, statusNow)
+                  return (
                   <tr key={deviceName} className="border-b border-gray-700/50">
                     <td className="px-4 py-3 text-white font-medium">{deviceName}</td>
+                    <td className="px-4 py-3">
+                      <div
+                        className="flex items-center gap-2"
+                        title={status?.lastSeen
+                          ? `Last seen ${new Date(status.lastSeen).toLocaleString()}`
+                          : 'Never connected since server start'}
+                      >
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full ${
+                            online ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+                          }`}
+                        />
+                        <span className={online ? 'text-green-400 text-xs' : 'text-gray-400 text-xs'}>
+                          {online ? 'Online' : status?.lastSeen ? lastSeenLabel : 'Never'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <select
                         value={assignedDashboard}
@@ -874,10 +939,11 @@ export function DashboardManager() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
                 {Object.keys(devices).length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                    <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
                       No devices registered yet.
                     </td>
                   </tr>

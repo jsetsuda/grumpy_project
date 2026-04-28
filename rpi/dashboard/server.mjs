@@ -26,6 +26,12 @@ const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
 // In-memory per-device signal store. One latest-signal per device.
 // Dropped on process restart (Pis reconnect anyway).
 const deviceSignals = new Map();
+
+// In-memory last-seen timestamps (ms). Updated whenever a device polls
+// its signal endpoint (every ~30s) or registers itself. Lost on restart;
+// devices repopulate it within a poll cycle.
+const deviceLastSeen = new Map();
+const ONLINE_THRESHOLD_MS = 90_000;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const CERT_DIR = path.join(__dirname, '.certs');
 const CERT_PATH = path.join(CERT_DIR, 'cert.pem');
@@ -282,6 +288,25 @@ async function handleRequest(req, res) {
     return send405(res);
   }
 
+  // GET /api/device-status — connection status for every registered device.
+  // Uses a hyphenated path to avoid collision with /api/devices/:name routes.
+  if (pathname === '/api/device-status' || pathname === '/api/device-status/') {
+    if (req.method !== 'GET') return send405(res);
+    const devices = fs.existsSync(DEVICES_PATH)
+      ? JSON.parse(fs.readFileSync(DEVICES_PATH, 'utf-8'))
+      : {};
+    const now = Date.now();
+    const status = {};
+    for (const name of Object.keys(devices)) {
+      const last = deviceLastSeen.get(name);
+      status[name] = {
+        lastSeen: last ? new Date(last).toISOString() : null,
+        online: last ? (now - last) < ONLINE_THRESHOLD_MS : false,
+      };
+    }
+    return sendJSON(res, status);
+  }
+
   // PUT /api/devices/:name — idempotent auto-register.
   if (pathname.startsWith('/api/devices/') && !pathname.endsWith('/signal') && req.method === 'PUT') {
     const rawName = pathname.slice('/api/devices/'.length).split('/')[0];
@@ -295,6 +320,7 @@ async function handleRequest(req, res) {
       existing[name] = 'default';
       fs.writeFileSync(DEVICES_PATH, JSON.stringify(existing, null, 2), 'utf-8');
     }
+    deviceLastSeen.set(name, Date.now());
     return sendJSON(res, { ok: true, added });
   }
 
@@ -304,6 +330,8 @@ async function handleRequest(req, res) {
     const name = middle.replace(/[^a-zA-Z0-9_-]/g, '');
     if (!name) { res.writeHead(400); return res.end('Invalid device name'); }
     if (req.method === 'GET') {
+      // Device-side poll: this is our heartbeat.
+      deviceLastSeen.set(name, Date.now());
       return sendJSON(res, { signal: deviceSignals.get(name) || null });
     }
     if (req.method === 'POST') {
