@@ -564,6 +564,7 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     if (!token) return
     try {
       await transferPlayback(token, deviceId, true)
+      setError(null)
       setViewState({ view: 'now-playing' })
       setTimeout(fetchSpotifyNowPlaying, 1000)
     } catch (e) {
@@ -636,14 +637,6 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     )
   }
 
-  if (error && !nowPlaying && viewState.view === 'now-playing') {
-    return (
-      <div className="flex items-center justify-center h-full text-[var(--muted-foreground)] text-sm px-4">
-        {error}
-      </div>
-    )
-  }
-
   // --- Main renders ---
   return (
     <div className="flex flex-col h-full">
@@ -689,14 +682,17 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
     const displayTrack = nowPlaying || lastPlayed
     if (!displayTrack) {
       return (
-        <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] px-4">
+        <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] px-4 text-center">
           <Music size={32} className="mb-2 opacity-50" />
-          <p className="text-sm">Nothing playing</p>
+          <p className="text-sm">{error || 'Nothing playing'}</p>
           <button
-            onClick={() => setViewState({ view: 'browse' })}
+            onClick={() => {
+              setError(null)
+              setViewState({ view: error ? 'devices' : 'browse' })
+            }}
             className="mt-3 text-xs text-[var(--primary)] hover:underline min-h-[44px] flex items-center"
           >
-            Browse music
+            {error ? 'Choose device' : 'Browse music'}
           </button>
         </div>
       )
@@ -760,6 +756,25 @@ export function MusicWidget({ config, onConfigChange }: WidgetProps<MusicConfig>
             <span>{formatTime(displayTrack.duration)}</span>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-2 flex items-center gap-2 px-2 py-1.5 bg-[var(--muted)] rounded text-xs text-[var(--muted-foreground)]">
+            <span className="flex-1 truncate" title={error}>{error}</span>
+            <button
+              onClick={() => { setError(null); setViewState({ view: 'devices' }) }}
+              className="text-[var(--primary)] hover:underline shrink-0 min-h-[28px] px-1"
+            >
+              Choose device
+            </button>
+            <button
+              onClick={() => setError(null)}
+              className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] shrink-0 min-h-[28px] min-w-[28px]"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center justify-center gap-4">
           <button onClick={() => spotifyCommand('previous')} className="p-2 hover:bg-[var(--muted)] rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
