@@ -37,6 +37,16 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
     }
   }, [provider, config.immich?.serverUrl, config.immich?.apiKey, config.immich?.albumId, config.google?.refreshToken, config.google?.albumId, config.icloud?.sharedAlbumUrl, config.local?.baseUrl])
 
+  // Cloud providers return signed URLs with ~1h TTL — refetch periodically so they don't go stale.
+  useEffect(() => {
+    if (provider !== 'icloud' && provider !== 'google') return
+    const refresh = setInterval(() => {
+      if (provider === 'icloud' && config.icloud?.sharedAlbumUrl) fetchICloudPhotos()
+      if (provider === 'google' && config.google?.refreshToken) fetchGooglePhotos()
+    }, 30 * 60 * 1000)
+    return () => clearInterval(refresh)
+  }, [provider, config.icloud?.sharedAlbumUrl, config.google?.refreshToken])
+
   useEffect(() => {
     if (photos.length <= 1) return
     const timer = setInterval(() => {
@@ -97,7 +107,7 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
           url: `${item.baseUrl}=w1920-h1080`,
         }))
       setPhotos(photoItems)
-      setCurrentIndex(0)
+      setCurrentIndex(prev => prev < photoItems.length ? prev : 0)
     } catch {
       // Silently fail for background
     }
@@ -167,7 +177,7 @@ export function BackgroundLayer({ config, overlay, fullscreen }: BackgroundLayer
         }
       }
       setPhotos(photosList)
-      setCurrentIndex(0)
+      setCurrentIndex(prev => prev < photosList.length ? prev : 0)
     } catch {
       // Silently fail
     }
